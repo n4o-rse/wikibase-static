@@ -16,7 +16,7 @@ Sprache: dieses Dokument ist deutsch, alles andere im Repo (Code, Kommentare, RE
 |---|---|---|
 | `n4o-rse/wikibase-static` | Paket, Orchestrator `main.py`, alle Schritte (dieses Repo) | neu, S1 |
 | `n4o-rse/wikibase-static-template` | GitHub-Template-Repo: `site.yaml`, Pages-Workflow, installiert `wikibase-static` per pip | geplant, S9 |
-| `n4o-rse/fuzzy-sl-static` | Demo 1: Rettung von `fuzzy-sl.wikibase.cloud` | geplant, S4 |
+| `n4o-rse/fuzzy-sl-static` | Demo 1: Rettung von `fuzzy-sl.wikibase.cloud` | angelegt 2026-10-20, `data/raw/` gefüllt (S4); Seitenbau mit S3/S9 |
 | `n4o-rse/chublets-wikibase-demo` | Demo 2: Dummy-Wikibase aus CSV (Ideen von chublets.software, `open-archaeo/py`) | geplant, S7 |
 
 Was schon existiert und **kopiert** wird (nicht referenziert, siehe A3):
@@ -34,9 +34,12 @@ Was schon existiert und **kopiert** wird (nicht referenziert, siehe A3):
 1. `wikibase-federation` ist ein **Schreib**-Werkzeug (QuickStatements-artiger Importer, `wbqs/importer.py`, `client.py`). Es enthält keinen Harvester.
 2. In `open-archaeo/py` findet die Suche nach `harvest|wbgetentities|EntityData|allpages|Special:` nur `wbgetentities` in `py/wikidata/api.py` (lesend, gegen Wikidata). Pyodide, Leaflet und rdflib kommen in den `.py`-Dateien nicht vor. `docs/preview.html` (5 878 Zeilen) und `docs/sparql.html` wurden nicht geöffnet.
 3. `bb-5kbc-sites` enthält keinen Wikibase-Harvester, nur Anreicherung gegen den Wikidata Query Service (`data/enrichment/mapping_admin_regions/wikidata_map.py`) mit User-Agent, Retries und `REQUEST_DELAY`.
-4. Ein automatisierter Abruf der Startseite von `https://fuzzy-sl.wikibase.cloud` liefert die **Anubis**-Challenge (Proof-of-Work, benötigt JavaScript) statt der Seite. Ob `api.php` und `Special:EntityData` ebenfalls geschützt sind, ist **ungeprüft**.
-5. Annahme, ungeprüft: Auf Wikibase Cloud liegen Items in Namespace 120 und Properties in 122. Der Harvest liest das in S4 per `meta=siteinfo` und verdrahtet es nicht fest.
-6. Die Sandbox, in der der Harvest entwickelt wurde, erreicht `fuzzy-sl.wikibase.cloud` nicht (Proxy antwortet mit 403 auf den Tunnel, geprüft 2026-10-20). Wie sich Anubis gegenüber `api.php` verhält, ist damit weiter **ungeprüft**; der erste echte Test ist `--probe` bei dir lokal.
+4. Ein automatisierter Abruf der Startseite von `https://fuzzy-sl.wikibase.cloud` liefert die **Anubis**-Challenge (Proof-of-Work, benötigt JavaScript) statt der Seite. Ob `api.php` und `Special:EntityData` ebenfalls geschützt sind, war **ungeprüft**; **korrigiert 2026-10-20 (Befund 7): `api.php` ist für den Harvest erreichbar.**
+5. Annahme, ungeprüft: Auf Wikibase Cloud liegen Items in Namespace 120 und Properties in 122. Der Harvest liest das in S4 per `meta=siteinfo` und verdrahtet es nicht fest. **Bestätigt 2026-10-20** (Befund 7).
+6. Die Sandbox, in der der Harvest entwickelt wurde, erreicht `fuzzy-sl.wikibase.cloud` nicht (Proxy antwortet mit 403 auf den Tunnel, geprüft 2026-10-20). Wie sich Anubis gegenüber `api.php` verhält, war damit **ungeprüft**; der Lauf bei dir lokal hat es geklärt (Befund 7).
+7. **Erster echter Harvest** (`fuzzy-sl-static`, Commit `bc288a2`, geprüft 2026-10-20 am Klon): `data/raw/` enthält 173 Entitäten (137 Items, 36 Properties), Manifest und Dateien stimmen überein (173 Zeilen, 0 SHA-256-Abweichungen). Die Quelle ist `https://fuzzy-sl.wikibase.cloud/w/api.php` (MediaWiki 1.43.11), Namespaces 120 (Item) und 122 (Property), jüngste Änderung 2025-11-01. Die Seitentitel tragen die Präfixe `Item:` und `Property:`, die ID wird also wie vorgesehen hinter dem Doppelpunkt gelesen. ID-Lücken: Items Q8, Q9, Q12, Q40, Q41, Q43, Q44, Q45, Q47, Q48, Q65 und Property P36 (nicht gelistet, vermutlich gelöscht; ob es Weiterleitungen sind, ist nicht geprüft).
+   Inhalt, relevant für S2/S3/S5/S6: 488 Statements (464 `normal`, 24 `preferred`, alle mit `snaktype` `value`), 41 davon mit References, 0 Sitelinks. Haupt-Datentypen: Item 293, URL 79, Koordinate 62, String 51, External-ID 3; in Qualifiern zusätzlich Item 370, String 155, URL 62, Monolingual Text 2. **Nicht vorhanden:** Zeit, Quantity, Commons-Datei (also kein P18-Bild), föderierte Entitäten (alle Item-Verweise sind Q-/P-IDs). Labels fast nur Englisch (173 `en`, 2 `de`: Q82, Q130), 167 Entitäten mit Description, 21 mit Aliasen. Alle 62 Koordinaten haben als Globus `http://www.wikidata.org/entity/Q2` (Erde) und Genauigkeiten von 1e-6 bis 1e-4 Grad. Gesamtgröße der Rohdaten etwa 650 KB. Häufigste Properties: P1 (instance of) 134, P10 65, P4 62, P3 58.
+   Datenqualität: URL-Werte wie `http://openopenstreetmap.org/node/…` (doppeltes „open“) und `http://wikidata.org/entity/Q6681` (ohne `www`) fallen auf; der Renderer sollte URLs unverändert zeigen und nicht „reparieren“.
 
 ### A2 Zielbild
 
@@ -136,7 +139,7 @@ Das Repo veröffentlicht RDF (S6). Vorschlag: Die RDF-Dateien verwenden die Konz
 | S1 | Skeleton: Layout, `main.py`, `utils.py`, Lizenz, Citation | wikibase-static | – | offen (Patch geliefert 2026-10-20) |
 | S2 | Loader und Validator für das Zwischenformat, Label-Auflösung | wikibase-static | S0, S1 | offen |
 | S3 | Renderer: Item- und Property-Seiten im Wikibase-Look, Leaflet, Commons, Linkcheck | wikibase-static | S2 | offen |
-| S4 | Harvest, inkrementell, `--probe`, `--from-dir`; Test mit `fuzzy-sl` | wikibase-static, fuzzy-sl-static | S0, S1 | offen (Patch geliefert 2026-10-20, Lauf gegen `fuzzy-sl` steht aus) |
+| S4 | Harvest, inkrementell, `--probe`, `--from-dir`; Test mit `fuzzy-sl` | wikibase-static, fuzzy-sl-static | S0, S1 | offen (Code committet, Erstlauf gegen `fuzzy-sl` erfolgreich 2026-10-20; Zweitlauf „0 changed“ noch zu bestätigen) |
 | S5 | Suche mit Autocomplete | wikibase-static | S2 | offen |
 | S6 | RDF-Export und SPARQL-Seite | wikibase-static | S2 | offen |
 | S7 | CSV-Import und Chublets-Demo | wikibase-static, chublets-wikibase-demo | S2 | offen |
@@ -201,7 +204,7 @@ Inhalt: Client (aus `wbqs/client.py` übernommen, nur lesend), ID-Liste, `lastre
 
 **Abnahme:** Erster Lauf füllt `data/raw/`, zweiter Lauf meldet „0 changed“ und schreibt nichts (`git status` sauber); der Bericht nennt die Zahl der Requests.
 
-### Erledigt 2026-10-20 (Code und Offline-Tests; Lauf gegen `fuzzy-sl` steht aus)
+### Erledigt 2026-10-20 (Code, Offline-Tests und Erstlauf gegen `fuzzy-sl`)
 
 **Gebaut** (`py/wikibase_static/step_harvest.py`, `tests/test_harvest.py`):
 
@@ -216,9 +219,9 @@ Inhalt: Client (aus `wbqs/client.py` übernommen, nur lesend), ID-Liste, `lastre
 - 10 Tests gegen einen lokalen Fake-Wikibase-Server (Standardbibliothek) laufen durch: Erstlauf, Zweitlauf ohne Änderung (Verzeichnis byte-gleich, nur Listen-Requests, kein `wbgetentities`), geänderte und gelöschte Entität, von Hand geänderte Datei, Challenge, `--probe` (1 Request, nichts geschrieben), `maxlag`-Retry, fremde Quelle, `--from-dir` in drei Formen, kanonisches Dateiformat.
 - Bei 7 Entitäten und 2 Entitäten pro Listenseite im Fake braucht der Zweitlauf 4 Requests (nur Liste). Bei 500 pro Seite ist das für dreistellige Größen **ein Request je Namespace**.
 - Der Standardlauf (`python main.py`, `--strict`) ist unverändert, `git status` bleibt sauber.
-- **Nicht geprüft:** jede Antwort eines echten Servers. Der Fake bildet das Format nach, das ich von `api.php` erwarte; Abweichungen von Wikibase Cloud (Titelpräfix `Item:`, Namespace-Zahlen, Verhalten von Anubis) zeigt erst der erste Lauf bei dir.
+- **Erstlauf gegen `fuzzy-sl`** (bei dir lokal, Ergebnis in `fuzzy-sl-static`): Der Harvest lief über `api.php` ohne Challenge, Titelpräfix, Namespaces und Datenformat entsprachen dem Fake; Details in A1, Befund 7. Die Sandbox selbst erreicht den Host nicht.
 
-**Offen für den ersten echten Lauf:** (1) `--probe` gegen `fuzzy-sl`; (2) bei Challenge den Browser-Weg mit `--from-dir`; (3) ob die Seiten-`lastrevid` aus `allpages` auf Wikibase Cloud mit der `lastrevid` der Entität übereinstimmt (sonst lädt jeder Lauf alles neu; der Bericht zeigt das als „N changed“ im Zweitlauf).
+**Noch offen:** Ob der **Zweitlauf** auf Wikibase Cloud „0 changed“ meldet, also ob die Seiten-`lastrevid` aus `allpages` mit der `lastrevid` der Entität übereinstimmt. Das ist die letzte Abnahme von S4; zeigt der Zweitlauf „N changed“, ist die Listenabfrage anzupassen (dann zurück auf `wbgetentities&props=info`).
 
 ### S5 — Suche
 
@@ -262,8 +265,9 @@ Inhalt: Client (aus `wbqs/client.py` übernommen, nur lesend), ID-Liste, `lastre
 
 ## Teil D — Offene Punkte
 
-- **Anubis und die API:** Ob `api.php` und `Special:EntityData` auf Wikibase Cloud geschützt sind, zeigt erst `--probe` bei dir lokal (S4; aus der Sandbox ist `fuzzy-sl` nicht erreichbar, siehe Befund 6). Bis dahin ist `--from-dir` der Fallback.
-- **Demo-Repo `fuzzy-sl-static`:** noch nicht angelegt. Der Harvest läuft mit `WBS_ROOT` im Demo-Repo, damit `data/raw/` des Paket-Repos leer bleibt. Anlegen vor dem ersten echten Lauf, Aufbau (`site.yaml`, Workflow) kommt mit S9.
+- **Anubis und die API:** `api.php` von `fuzzy-sl` ist für den Harvest erreichbar (Befund 7); `Special:EntityData` wurde nicht geprüft und wird nicht gebraucht. `--from-dir` bleibt der Fallback für Wikibases, die `api.php` schützen.
+- **Demo-Repo `fuzzy-sl-static`:** angelegt, enthält bisher nur `data/raw/`. Der Harvest läuft mit `WBS_ROOT` im Demo-Repo, damit `data/raw/` des Paket-Repos leer bleibt. Aufbau (`site.yaml`, Workflow) kommt mit S3/S9.
+- **Lizenz von `fuzzy-sl`:** weiter offen (S0); die gesicherten Daten sind im öffentlichen Repo, ihre Lizenz ist nirgends vermerkt.
 - **Lizenz und Hinweise der gesicherten Daten:** Welche Lizenz hat `fuzzy-sl`? Wie zeigt jede Seite Quelle und Abrufdatum an (Fußzeile)? Klären in S0.
 - **Föderierte Properties und Werte** (`wd:`-IRIs aus `wikibase-federation`): nur verlinken oder eigene Seite? Klären in S0.
 - **Mehrere Wikibases in einer Seite:** vorerst nicht vorgesehen.
