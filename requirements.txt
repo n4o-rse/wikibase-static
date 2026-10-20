@@ -6,5 +6,5 @@
 #
 # PyYAML>=6      # S0/S2: site.yaml and manifest handling
 # Jinja2>=3.1    # S3: page templates
-# requests>=2.31 # S4: harvest (session, retries, Retry-After)
+# S4 (harvest) uses urllib from the standard library; no requests needed.
 # rdflib>=7      # S6: RDF export and verification of the example queries

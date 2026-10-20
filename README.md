@@ -46,10 +46,28 @@ python main.py
 python main.py --strict
 ```
 
-`harvest` touches the network and is therefore not part of the default run:
+`harvest` touches the network and is therefore not part of the default run. Run it
+in the repository of the site you are building (set `WBS_ROOT` to its folder), so
+that `data/raw/` of this package repository stays empty. One Wikibase per `data/raw/`.
 
 ```cmd
-python main.py harvest
+set WBS_ROOT=C:\path\to\fuzzy-sl-static&& python main.py harvest --probe --url https://fuzzy-sl.wikibase.cloud
+set WBS_ROOT=C:\path\to\fuzzy-sl-static&& python main.py harvest --url https://fuzzy-sl.wikibase.cloud
+set WBS_ROOT=C:\path\to\fuzzy-sl-static&& python main.py harvest
+set WBS_ROOT=C:\path\to\fuzzy-sl-static&& python main.py harvest --from-dir C:\path\to\saved-json
+```
+
+`--probe` makes one request and writes nothing. The second command downloads the
+entities; the third (the address is remembered in `data/raw/manifest.json`) fetches
+only what changed. If the host answers with a bot challenge such as Anubis, the
+step stops with exit code 2 and does not try to get around it: save the entity JSON
+in a browser and use `--from-dir`. Set a contact in the User-Agent with
+`--contact` or the `WBS_CONTACT` environment variable.
+
+Offline tests (a fake Wikibase on localhost, no network needed):
+
+```cmd
+python tests\test_harvest.py
 ```
 
 ## Layout
