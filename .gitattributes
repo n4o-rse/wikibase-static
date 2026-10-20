@@ -1,0 +1,2 @@
+# Keep line endings as LF on every platform: the harvest manifest stores SHA-256 sums of the files.
+* text=auto eol=lf

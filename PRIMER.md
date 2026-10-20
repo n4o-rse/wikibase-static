@@ -75,6 +75,7 @@ Das Ergebnis hat diese prüfbaren Eigenschaften:
 - Wiederverwendung heißt kopieren, nicht referenzieren. Ausnahme: ein gemeinsames Vokabular, das per w3id-IRI importiert wird.
 - Kopierter Code bringt seine Prüfungen mit. Eine Absicherung, die beim Kopieren verloren geht, ist die gefährlichste Form der Wiederverwendung.
 - **Keine Uhr im Output.** Kein Generator ruft `datetime.now()` auf. Datumsangaben kommen aus `RELEASE_DATE` (in `py/wikibase_static/utils.py`) oder aus den Quelldaten selbst.
+- **Zeilenenden LF.** Jedes Repo der Familie hat eine `.gitattributes` mit `* text=auto eol=lf`; sonst weichen unter Windows die Hashes der Rohdaten ab (siehe S4, „Erledigt“).
 - **Zweimal laufen lassen, `git status` bleibt sauber.** `dist/pipeline_report.txt` enthält deshalb nur, was die Schritte sagen, keine Laufzeiten (die erscheinen nur im Terminal).
 - **Netzwerk nur im Schritt `harvest`.** Alles andere läuft offline gegen die Daten auf der Platte. `harvest` ist nie Teil des Standardlaufs, sondern hat ein eigenes Verb: `python main.py harvest`.
 - **Höflicher Harvest.** Ehrlicher User-Agent mit Kontaktadresse, Pause zwischen Requests, `Retry-After` und `maxlag` beachten. Verlangt ein Host eine Bot-Challenge (z. B. Anubis), bricht `harvest` mit einer klaren Meldung ab. Es wird nicht versucht, sie zu lösen oder zu umgehen; der Weg ist dann `--from-dir` mit im Browser gesicherten JSON-Dateien.
@@ -99,7 +100,7 @@ Das Ergebnis hat diese prüfbaren Eigenschaften:
 | SPARQL | RDF im Wikibase-Modell erzeugen, Abfrage im Browser über rdflib unter Pyodide (kein Endpoint) | 2026-10-20 |
 | Zwischenformat | Wikibase-JSON, wie `Special:EntityData` / `wbgetentities` es liefert; `from-csv` erzeugt dasselbe | Vorschlag |
 | Ablage CSV-Variante | Eingabe-CSV unter `data/csv/`, erzeugtes Wikibase-JSON unter `data/derived/`; `data/raw/` bleibt dem Harvest vorbehalten | Vorschlag |
-| Harvest inkrementell | IDs und `lastrevid` in einer Abfrage je Namespace (`generator=allpages` mit `prop=info`, 500 pro Request) mit `data/raw/manifest.json` vergleichen, nur Geändertes per `wbgetentities` laden (50 pro Request). Gegenüber dem früheren Vorschlag (`wbgetentities&props=info` je Batch) spart das die Info-Requests; Seiten-`lastrevid` und Entitäts-`lastrevid` sind bei Wikibase dieselbe Revision. Bestätigt wird das beim ersten Lauf gegen `fuzzy-sl` | Vorschlag (S4 umgesetzt 2026-10-20) |
+| Harvest inkrementell | IDs und `lastrevid` in einer Abfrage je Namespace (`generator=allpages` mit `prop=info`, 500 pro Request) mit `data/raw/manifest.json` vergleichen, nur Geändertes per `wbgetentities` laden (50 pro Request). Gegenüber dem früheren Vorschlag (`wbgetentities&props=info` je Batch) spart das die Info-Requests; Seiten-`lastrevid` und Entitäts-`lastrevid` sind bei Wikibase dieselbe Revision. Bestätigt am Erst- und Zweitlauf gegen `fuzzy-sl` (Seiten- und Entitäts-`lastrevid` stimmen überein) | 2026-10-20 |
 | Harvest, SPARQL als Quelle | `--source sparql` ist nicht umgesetzt; der Query Service kann nachhinken und hängt evtl. hinter derselben Challenge. Wird nur gebaut, wenn der Lauf gegen `fuzzy-sl` es nötig macht | zurückgestellt 2026-10-20 |
 | Datum im Manifest | nur serverseitige Werte (`lastrevid`, `modified`; `latest_modified` ist das Maximum davon), keine lokale Uhrzeit | Vorschlag |
 | Ablage Roh-Entitäten | `data/raw/entities/<ID>.json` (ein Entitätsobjekt, wie `wbgetentities` es liefert, Schlüssel sortiert) plus `data/raw/manifest.json` (`source`, je Entität `lastrevid`, `modified`, `sha256`). Die Sortierung der Schlüssel ändert nichts am Inhalt, ist aber nötig für byte-gleiche Läufe | Vorschlag |
@@ -151,9 +152,9 @@ Das Repo veröffentlicht RDF (S6). Vorschlag: Die RDF-Dateien verwenden die Konz
 |---|---|---|---|---|
 | S0 | Festlegungen: Zwischenformat, `site.yaml`-Schema, Seiten-URLs | wikibase-static | – | erledigt 2026-10-20 |
 | S1 | Skeleton: Layout, `main.py`, `utils.py`, Lizenz, Citation | wikibase-static | – | erledigt 2026-10-20 |
-| S2 | Loader und Validator für das Zwischenformat, Label-Auflösung | wikibase-static | S0, S1 | offen (Patch geliefert 2026-10-20) |
+| S2 | Loader und Validator für das Zwischenformat, Label-Auflösung | wikibase-static | S0, S1 | erledigt 2026-10-20 |
 | S3 | Renderer: Item- und Property-Seiten im Wikibase-Look, Leaflet, Commons, Linkcheck | wikibase-static | S2 | offen |
-| S4 | Harvest, inkrementell, `--probe`, `--from-dir`; Test mit `fuzzy-sl` | wikibase-static, fuzzy-sl-static | S0, S1 | offen (Code committet, Erstlauf gegen `fuzzy-sl` erfolgreich 2026-10-20; Zweitlauf „0 changed“ noch zu bestätigen) |
+| S4 | Harvest, inkrementell, `--probe`, `--from-dir`; Test mit `fuzzy-sl` | wikibase-static, fuzzy-sl-static | S0, S1 | erledigt 2026-10-20 |
 | S5 | Suche mit Autocomplete | wikibase-static | S2 | offen |
 | S6 | RDF-Export und SPARQL-Seite | wikibase-static | S2 | offen |
 | S7 | CSV-Import und Chublets-Demo | wikibase-static, chublets-wikibase-demo | S2 | offen |
@@ -234,7 +235,7 @@ Inhalt: Client (aus `wbqs/client.py` übernommen, nur lesend), ID-Liste, `lastre
 
 **Abnahme:** Erster Lauf füllt `data/raw/`, zweiter Lauf meldet „0 changed“ und schreibt nichts (`git status` sauber); der Bericht nennt die Zahl der Requests.
 
-### Erledigt 2026-10-20 (Code, Offline-Tests und Erstlauf gegen `fuzzy-sl`)
+### Erledigt 2026-10-20 (Code, Offline-Tests, Erst- und Zweitlauf gegen `fuzzy-sl`)
 
 **Gebaut** (`py/wikibase_static/step_harvest.py`, `tests/test_harvest.py`):
 
@@ -251,7 +252,8 @@ Inhalt: Client (aus `wbqs/client.py` übernommen, nur lesend), ID-Liste, `lastre
 - Der Standardlauf (`python main.py`, `--strict`) ist unverändert, `git status` bleibt sauber.
 - **Erstlauf gegen `fuzzy-sl`** (bei dir lokal, Ergebnis in `fuzzy-sl-static`): Der Harvest lief über `api.php` ohne Challenge, Titelpräfix, Namespaces und Datenformat entsprachen dem Fake; Details in A1, Befund 7. Die Sandbox selbst erreicht den Host nicht.
 
-**Noch offen:** Ob der **Zweitlauf** auf Wikibase Cloud „0 changed“ meldet, also ob die Seiten-`lastrevid` aus `allpages` mit der `lastrevid` der Entität übereinstimmt. Das ist die letzte Abnahme von S4; zeigt der Zweitlauf „N changed“, ist die Listenabfrage anzupassen (dann zurück auf `wbgetentities&props=info`).
+- **Zweitlauf gegen `fuzzy-sl`** (bei dir lokal, 2026-10-20): `0 changed, 0 deleted, 173 unchanged (nothing written)`, `requests: 2 (list 2)`, also je eine Listenabfrage pro Namespace und kein `wbgetentities`. Damit stimmt die Seiten-`lastrevid` aus `allpages` mit der `lastrevid` der Entität überein und die Abnahme von S4 ist erfüllt.
+- **Zeilenenden:** Der Manifest-Hash gilt für LF-Dateien. Ein Windows-Checkout mit `core.autocrlf=true` macht daraus CRLF, und alle 173 Hashes weichen ab (nachgestellt 2026-10-20 mit einem Klon mit `core.autocrlf=true`); der Harvest würde alles neu laden. Behoben mit einer `.gitattributes` (`* text=auto eol=lf`) in beiden Repos; mit ihr stimmen nach einem solchen Klon alle 173 Hashes.
 
 ### S5 — Suche
 
