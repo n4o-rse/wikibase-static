@@ -16,7 +16,7 @@ Sprache: dieses Dokument ist deutsch, alles andere im Repo (Code, Kommentare, RE
 |---|---|---|
 | `n4o-rse/wikibase-static` | Paket, Orchestrator `main.py`, alle Schritte (dieses Repo) | neu, S1 |
 | `n4o-rse/wikibase-static-template` | GitHub-Template-Repo: `site.yaml`, Pages-Workflow, installiert `wikibase-static` per pip | geplant, S9 |
-| `n4o-rse/fuzzy-sl-static` | Demo 1: Rettung von `fuzzy-sl.wikibase.cloud` | angelegt 2026-10-20, `data/raw/` gefüllt (S4); Seitenbau mit S3/S9 |
+| `n4o-rse/fuzzy-sl-static` | Demo 1: Rettung von `fuzzy-sl.wikibase.cloud` | angelegt 2026-10-20: `data/raw/` gefüllt (S4), dünnes Gerüst mit `main.py`-Wrapper; Seitenbau mit S3/S9 |
 | `n4o-rse/chublets-wikibase-demo` | Demo 2: Dummy-Wikibase aus CSV (Ideen von chublets.software, `open-archaeo/py`) | geplant, S7 |
 
 Was schon existiert und **kopiert** wird (nicht referenziert, siehe A3):
@@ -40,6 +40,7 @@ Was schon existiert und **kopiert** wird (nicht referenziert, siehe A3):
 7. **Erster echter Harvest** (`fuzzy-sl-static`, Commit `bc288a2`, geprüft 2026-10-20 am Klon): `data/raw/` enthält 173 Entitäten (137 Items, 36 Properties), Manifest und Dateien stimmen überein (173 Zeilen, 0 SHA-256-Abweichungen). Die Quelle ist `https://fuzzy-sl.wikibase.cloud/w/api.php` (MediaWiki 1.43.11), Namespaces 120 (Item) und 122 (Property), jüngste Änderung 2025-11-01. Die Seitentitel tragen die Präfixe `Item:` und `Property:`, die ID wird also wie vorgesehen hinter dem Doppelpunkt gelesen. ID-Lücken: Items Q8, Q9, Q12, Q40, Q41, Q43, Q44, Q45, Q47, Q48, Q65 und Property P36 (nicht gelistet, vermutlich gelöscht; ob es Weiterleitungen sind, ist nicht geprüft).
    Inhalt, relevant für S2/S3/S5/S6: 488 Statements (464 `normal`, 24 `preferred`, alle mit `snaktype` `value`), 41 davon mit References, 0 Sitelinks. Haupt-Datentypen: Item 293, URL 79, Koordinate 62, String 51, External-ID 3; in Qualifiern zusätzlich Item 370, String 155, URL 62, Monolingual Text 2. **Nicht vorhanden:** Zeit, Quantity, Commons-Datei (also kein P18-Bild), föderierte Entitäten (alle Item-Verweise sind Q-/P-IDs). Labels fast nur Englisch (173 `en`, 2 `de`: Q82, Q130), 167 Entitäten mit Description, 21 mit Aliasen. Alle 62 Koordinaten haben als Globus `http://www.wikidata.org/entity/Q2` (Erde) und Genauigkeiten von 1e-6 bis 1e-4 Grad. Gesamtgröße der Rohdaten etwa 650 KB. Häufigste Properties: P1 (instance of) 134, P10 65, P4 62, P3 58.
    Datenqualität: URL-Werte wie `http://openopenstreetmap.org/node/…` (doppeltes „open“) und `http://wikidata.org/entity/Q6681` (ohne `www`) fallen auf; der Renderer sollte URLs unverändert zeigen und nicht „reparieren“.
+8. `pip install wikibase-static` installiert nur das Paket unter `py/wikibase_static/`, nicht das `main.py` im Wurzelverzeichnis dieses Repos (geprüft 2026-10-20 mit Installation von GitHub in eine neue virtuelle Umgebung). Das Demo-Repo `fuzzy-sl-static` startet die Schritte deshalb über einen eigenen kleinen Wrapper (`python -m wikibase_static.step_<name>`). Für S9 gehört der Orchestrator ins Paket, sonst gibt es ihn doppelt.
 
 ### A2 Zielbild
 
@@ -108,6 +109,13 @@ Das Ergebnis hat diese prüfbaren Eigenschaften:
 | Exit-Codes Harvest | 0 ok, 1 Fehler (u. a. Host nicht erreichbar), 2 Bot-Challenge oder keine API unter der Adresse | Vorschlag |
 | Paketform | Paket unter `py/wikibase_static/` mit `pyproject.toml`, damit das Template-Repo es per pip installieren kann; Abweichung vom flachen `py/<repo>_utils.py` der Familie: `utils.py` liegt im Paket | Vorschlag |
 | Lizenz | MIT; Copyright-Zeile aktuell „Florian Thiery“, bei Bedarf auf die Organisation ändern | Vorschlag |
+| Seiten-URL-Schema | flach: `docs/Q123.html`, `docs/P1.html`; alle Seiten in einem Ordner | 2026-10-20 |
+| Sprachen, Standard | `en` als Standardsprache, `de` als zweite Sprache mit Umschalter; Fallback auf `en`. Pro Site in `site.yaml` änderbar (die Chublets-Demo kann `de` als Standard setzen) | 2026-10-20 |
+| Föderierte Properties und Werte | nur verlinken (Wikidata-Seite im neuen Tab), keine eigene Seite | 2026-10-20 |
+| Fußzeile pro Seite | Quelle (Link auf die Quell-Wikibase und die Originalseite der Entität), Stand (`modified` der Entität aus dem Manifest), Lizenz (Text und Link aus `site.yaml`; ohne Eintrag steht dort „Lizenz nicht angegeben“) | 2026-10-20 |
+| `site.yaml`, Schlüssel | `title`, `description`, `logo` (optional), `colour` (optional), `source.url` (muss zum Manifest passen), `license.name`, `license.url`, `languages.default`, `languages.second`, `imprint` (Text oder URL), `pages_url` (optional) | Vorschlag |
+| Demo-Repo, Gerüst | `fuzzy-sl-static` bekommt bis S9 ein dünnes Gerüst (`main.py`-Wrapper, `requirements.txt` mit pip-Installation von GitHub, `README.md`, `.gitignore`), kein `LICENSE`, solange die Datenlizenz offen ist | 2026-10-20 |
+| Orchestrator im Paket | der Orchestrator (`main.py`-Logik) zieht in S9 ins Paket (`python -m wikibase_static`); das `main.py` im Wurzelverzeichnis wird zum dünnen Aufruf | Vorschlag |
 
 ### A5 Was in welchem Chat hochgeladen wird
 
@@ -135,8 +143,8 @@ Das Repo veröffentlicht RDF (S6). Vorschlag: Die RDF-Dateien verwenden die Konz
 
 | ID | Schritt | Repo | hängt ab von | Status |
 |---|---|---|---|---|
-| S0 | Festlegungen: Zwischenformat, `site.yaml`-Schema, Seiten-URLs | wikibase-static | – | offen |
-| S1 | Skeleton: Layout, `main.py`, `utils.py`, Lizenz, Citation | wikibase-static | – | offen (Patch geliefert 2026-10-20) |
+| S0 | Festlegungen: Zwischenformat, `site.yaml`-Schema, Seiten-URLs | wikibase-static | – | erledigt 2026-10-20 |
+| S1 | Skeleton: Layout, `main.py`, `utils.py`, Lizenz, Citation | wikibase-static | – | erledigt 2026-10-20 |
 | S2 | Loader und Validator für das Zwischenformat, Label-Auflösung | wikibase-static | S0, S1 | offen |
 | S3 | Renderer: Item- und Property-Seiten im Wikibase-Look, Leaflet, Commons, Linkcheck | wikibase-static | S2 | offen |
 | S4 | Harvest, inkrementell, `--probe`, `--from-dir`; Test mit `fuzzy-sl` | wikibase-static, fuzzy-sl-static | S0, S1 | offen (Code committet, Erstlauf gegen `fuzzy-sl` erfolgreich 2026-10-20; Zweitlauf „0 changed“ noch zu bestätigen) |
@@ -162,6 +170,10 @@ S0 und S1 sind unabhängig voneinander. Nach S2 sind S3, S5, S6 und S7 voneinand
 Als Formular zu klären (jeweils mit freiem Kommentarfeld): Seiten-URL-Schema (`Q123.html` flach oder `item/Q123/`), Inhalt und Schlüssel von `site.yaml` (Titel, Logo, Farben, Basis-URL der Quelle, Standardsprache, zweite Sprache, Impressum), Umgang mit föderierten Properties und Werten (Link auf Wikidata statt eigener Seite), Lizenzhinweis pro Seite (Quelle, Abrufdatum aus dem Manifest, Lizenz der Wikibase).
 
 **Abnahme:** Jede Frage oben hat in A4 einen datierten Beschluss oder ist ausdrücklich als `Vorschlag` markiert.
+
+### Erledigt 2026-10-20
+
+Als Formular beantwortet, alle vier Empfehlungen angenommen (Einzelheiten in A4): flaches URL-Schema, `en` Standard mit `de` als zweiter Sprache, föderierte Verweise nur verlinken, Fußzeile mit Quelle, Stand und Lizenz. Der Schlüsselsatz von `site.yaml` steht als `Vorschlag` in A4 und wird mit S3 bestätigt, sobald der Renderer ihn liest. Dazu kamen zwei Beschlüsse zum Demo-Repo und zum Orchestrator (A4, Befund 8). Offen bleibt die Lizenz von `fuzzy-sl` (Teil D); die Fußzeile zeigt bis dahin „Lizenz nicht angegeben“.
 
 ### S1 — Skeleton
 
@@ -267,9 +279,6 @@ Inhalt: Client (aus `wbqs/client.py` übernommen, nur lesend), ID-Liste, `lastre
 
 - **Anubis und die API:** `api.php` von `fuzzy-sl` ist für den Harvest erreichbar (Befund 7); `Special:EntityData` wurde nicht geprüft und wird nicht gebraucht. `--from-dir` bleibt der Fallback für Wikibases, die `api.php` schützen.
 - **Demo-Repo `fuzzy-sl-static`:** angelegt, enthält bisher nur `data/raw/`. Der Harvest läuft mit `WBS_ROOT` im Demo-Repo, damit `data/raw/` des Paket-Repos leer bleibt. Aufbau (`site.yaml`, Workflow) kommt mit S3/S9.
-- **Lizenz von `fuzzy-sl`:** weiter offen (S0); die gesicherten Daten sind im öffentlichen Repo, ihre Lizenz ist nirgends vermerkt.
-- **Lizenz und Hinweise der gesicherten Daten:** Welche Lizenz hat `fuzzy-sl`? Wie zeigt jede Seite Quelle und Abrufdatum an (Fußzeile)? Klären in S0.
-- **Föderierte Properties und Werte** (`wd:`-IRIs aus `wikibase-federation`): nur verlinken oder eigene Seite? Klären in S0.
+- **Lizenz der gesicherten Daten:** Welche Lizenz hat `fuzzy-sl`? Das ist beim Betreiber zu klären; die gesicherten Daten liegen im öffentlichen Repo `fuzzy-sl-static`, ohne Lizenzvermerk. Die Fußzeile ist geklärt (A4), nur der Inhalt von `license` in `site.yaml` fehlt.
 - **Mehrere Wikibases in einer Seite:** vorerst nicht vorgesehen.
 - **w3id-Präfix** für die Dummy-Wikibase und Content Negotiation: offen, erst relevant ab S6/S9.
-- **Anzahl der Ordner auf Pages:** Bei flachem URL-Schema (`Q123.html`) liegen einige hundert Dateien in einem Ordner; bei dreistelliger Größe unproblematisch, in S0 mit entscheiden.
