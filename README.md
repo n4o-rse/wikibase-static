@@ -10,9 +10,9 @@ and references, clickable Q- and P-ids, external links in a new tab, maps for
 coordinates, Commons images, a search box and an in-browser SPARQL page. Nothing
 on the published site can be edited.
 
-> **Status: skeleton.** The repository currently holds the orchestrator, the
-> package layout and the work plan. Every step reports "nothing to do" until it
-> is implemented; see [`PRIMER.md`](PRIMER.md) (German) for the plan, the
+> **Status.** `harvest` (S4), `load` (S2) and the page renderer `build` (S3) work. Search (S5),
+> the RDF export and SPARQL page (S6) and the CSV import (S7) are still skeleton steps that report
+> "nothing to do". See [`PRIMER.md`](https://github.com/n4o-rse/wikibase-static/blob/main/PRIMER.md) (German) for the plan, the
 > decisions taken so far and the order of the steps.
 
 ## Planned workflow
@@ -37,7 +37,8 @@ Two properties are part of the design and are checked, not hoped for:
 
 ## Usage
 
-Python 3.10 or later; the skeleton needs no third-party packages.
+Python 3.10 or later. `harvest` and `load` need no third-party packages; `build` needs PyYAML and Jinja2
+(`pip install -r requirements.txt`, or install the package, which brings both).
 
 ```cmd
 python main.py --list
@@ -71,18 +72,53 @@ and warnings (`--all` prints every warning). It writes nothing and runs with the
 python main.py load
 ```
 
+`build` renders the loaded entities into `docs/`: `index.html`, one flat page per entity (`Q123.html`,
+`P1.html`) and `assets/`. It needs no network. Pages look like a Wikibase (statements, qualifiers,
+references, links between Q- and P-ids that show the id behind the label, external links in a new tab),
+put the logo top left above a short navigation, show a map for every coordinate on Earth (Leaflet, OpenStreetMap tiles) and Commons images through `Special:FilePath`, and carry a
+footer with the source, the date of the last change and the licence (CC0 1.0, Public Domain, unless
+`site.yaml` says otherwise). With a second language in
+`site.yaml` the pages have a language switch. The step then checks its own output: pages against
+entities and every internal link. Problems are `WARN` lines, `--strict` turns them into errors.
+
+```
+python main.py build
+```
+
+`site.yaml` in the repository root is optional; every key has a default:
+
+```yaml
+title: My Wikibase
+description: One line for the start page
+logo: assets/logo.png            # a file in the repository (copied to docs/assets/logo/), or a URL
+colour: "#336699"                # accent colour, hex
+source:
+  url: https://example.wikibase.cloud   # must match data/raw/manifest.json
+license:                         # optional; without it the footer says CC0 1.0 (Public Domain)
+  name: CC BY 4.0                # text, shown as given
+  url: https://creativecommons.org/licenses/by/4.0/
+languages:
+  default: en
+  second: de                     # optional: adds the language switch
+imprint: https://example.org/imprint    # text or URL
+pages_url: https://example.github.io/repo/   # optional, for the canonical link
+formatter_property: P1630        # property that holds the formatter URL of external-id properties
+```
+
 Offline tests (a fake Wikibase on localhost, no network needed):
 
 ```cmd
 python tests\test_harvest.py
 python tests\test_loader.py
+python tests\test_build.py
 ```
 
 ## Layout
 
 ```
 main.py                     the only entry point
-py/wikibase_static/         the package (one module per step, utils.py, model.py, loader.py)
+py/wikibase_static/         the package (one module per step, utils.py, model.py, loader.py, render.py,
+                            site_config.py, templates/, static/ with a copy of Leaflet 1.9.4)
 data/raw/                   harvested JSON, as obtained
 data/derived/               intermediates made from CSV
 dist/                       versioned products: RDF, pipeline report

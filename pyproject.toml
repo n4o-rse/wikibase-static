@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
 authors = [{ name = "Florian Thiery" }]
-dependencies = []
+dependencies = ["PyYAML>=6", "Jinja2>=3.1"]
 
 [project.urls]
 Repository = "https://github.com/n4o-rse/wikibase-static"
@@ -20,3 +20,8 @@ version = { attr = "wikibase_static.__version__" }
 
 [tool.setuptools.packages.find]
 where = ["py"]
+
+# Without this, `pip install` ships the code but not the page templates and assets,
+# and the build step of a site repository finds nothing to render with.
+[tool.setuptools.package-data]
+wikibase_static = ["templates/*.html", "static/*", "static/vendor/leaflet/*", "static/vendor/leaflet/images/*"]

@@ -1,0 +1,3 @@
+{% macro prop_link(view) -%}
+{% if view.link %}<a href="{{ view.property }}.html">{{ view.label }}</a>{% else %}{{ view.label }}{% endif %}
+{%- endmacro %}

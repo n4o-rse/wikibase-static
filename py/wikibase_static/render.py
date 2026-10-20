@@ -1,0 +1,429 @@
+"""Turn the model into page contexts and HTML fragments (S3).
+
+Everything here is a pure function of the loaded site and ``site.yaml``: no
+clock, no network, no file access, so a page changes exactly when data or model
+change (PRIMER.md, A3).
+
+What a page shows is what the source says. Values are formatted but never
+repaired: a URL with a typo is shown with the typo (PRIMER.md, A1, Befund 7).
+
+Text that exists in two languages is written as two ``<span lang=..>`` elements;
+the language switch only changes ``data-lang`` on ``<html>`` and a style rule in
+the page head hides the other one. Without JavaScript the default language
+shows. When both languages give the same text (or the second is missing, so the
+default language is the fallback) a single plain text is written.
+"""
+
+from __future__ import annotations
+
+import json
+import math
+import re
+from dataclasses import dataclass
+from decimal import Decimal, InvalidOperation
+from typing import Any
+from urllib.parse import quote
+
+from markupsafe import Markup, escape
+
+from wikibase_static.loader import LabelResolver, Site
+from wikibase_static.model import Entity, Snak, Statement, id_sort_key
+from wikibase_static.site_config import SiteConfig
+
+EARTH = "http://www.wikidata.org/entity/Q2"
+WIKIDATA = "https://www.wikidata.org/wiki/"
+COMMONS = "https://commons.wikimedia.org/wiki/"
+LINK_SCHEMES = ("http://", "https://", "ftp://", "ftps://")
+ENTITY_URI = re.compile(r"/entity/([QP][1-9][0-9]*)$")
+TIME = re.compile(r"^([+-])(\d+)-(\d\d)-(\d\d)T")
+JULIAN = "Q1985786"
+
+# --------------------------------------------------------------------------- interface texts
+
+STRINGS: dict[str, dict[str, str]] = {
+    "en": {
+        "statements": "Statements", "no_statements": "No statements.", "also_known_as": "Also known as",
+        "no_description": "No description", "references_n": "{n} reference(s)", "unknown_value": "unknown value",
+        "no_value": "no value", "rank_preferred": "preferred", "rank_deprecated": "deprecated",
+        "datatype": "Data type", "referenced_by": "Referenced by ({n})", "items": "Items", "properties": "Properties",
+        "id": "ID", "label": "Label", "description": "Description", "source": "Source", "as_of": "As of",
+        "license": "Licence", "license_missing": "Licence not stated", "imprint": "Imprint",
+        "generated": "Static read-only copy, generated with", "map": "Map", "item": "Item", "property": "Property",
+        "entities_n": "{n} entities ({items} items, {properties} properties)", "language": "Language",
+        "open_original": "Original page", "federated": "Wikidata (opens in a new tab)",
+        "dt_wikibase-item": "Item", "dt_wikibase-property": "Property", "dt_string": "String",
+        "dt_external-id": "External identifier", "dt_url": "URL", "dt_commonsMedia": "Commons media file",
+        "dt_time": "Point in time", "dt_quantity": "Quantity", "dt_monolingualtext": "Monolingual text",
+        "dt_globe-coordinate": "Globe coordinate", "home": "Home", "unsupported": "Unsupported value",
+    },
+    "de": {
+        "statements": "Aussagen", "no_statements": "Keine Aussagen.", "also_known_as": "Auch bekannt als",
+        "no_description": "Keine Beschreibung", "references_n": "{n} Beleg(e)", "unknown_value": "unbekannter Wert",
+        "no_value": "kein Wert", "rank_preferred": "bevorzugt", "rank_deprecated": "veraltet",
+        "datatype": "Datentyp", "referenced_by": "Verwendet von ({n})", "items": "Items", "properties": "Properties",
+        "id": "ID", "label": "Bezeichnung", "description": "Beschreibung", "source": "Quelle", "as_of": "Stand",
+        "license": "Lizenz", "license_missing": "Lizenz nicht angegeben", "imprint": "Impressum",
+        "generated": "Statische Nur-Lese-Kopie, erzeugt mit", "map": "Karte", "item": "Item", "property": "Property",
+        "entities_n": "{n} Entitäten ({items} Items, {properties} Properties)", "language": "Sprache",
+        "open_original": "Originalseite", "federated": "Wikidata (öffnet in neuem Tab)",
+        "dt_wikibase-item": "Item", "dt_wikibase-property": "Property", "dt_string": "Zeichenkette",
+        "dt_external-id": "Externer Bezeichner", "dt_url": "URL", "dt_commonsMedia": "Commons-Mediendatei",
+        "dt_time": "Zeitpunkt", "dt_quantity": "Größe", "dt_monolingualtext": "Einsprachiger Text",
+        "dt_globe-coordinate": "Geokoordinate", "home": "Startseite", "unsupported": "Nicht unterstützter Wert",
+    },
+}
+
+
+def _ordinal(n: int) -> str:
+    if 10 <= n % 100 <= 20:
+        suffix = "th"
+    else:
+        suffix = {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")
+    return f"{n}{suffix}"
+
+
+# --------------------------------------------------------------------------- pure value formatting
+
+
+def format_time(value: dict[str, Any]) -> str:
+    """A Wikibase time value as text, by precision. Years before 1 CE end in BCE."""
+    match = TIME.match(str(value.get("time", "")))
+    if not match:
+        return str(value.get("time", ""))
+    sign, year_text, month, day = match.groups()
+    year = int(year_text)
+    precision = value.get("precision")
+    precision = precision if isinstance(precision, int) else 11
+    bce = sign == "-"
+    shown_year = f"{year} BCE" if bce else f"{year:04d}" if year < 1000 else str(year)
+    if precision >= 11:
+        text = f"{year_text.zfill(4)}-{month}-{day}"
+        text = f"{text} BCE" if bce else text
+    elif precision == 10:
+        text = f"{year_text.zfill(4)}-{month}"
+        text = f"{text} BCE" if bce else text
+    elif precision == 9:
+        text = shown_year
+    elif precision == 8:
+        text = f"{(year // 10) * 10}s" + (" BCE" if bce else "")
+    elif precision == 7:
+        text = f"{_ordinal((year - 1) // 100 + 1)} century" + (" BCE" if bce else "")
+    elif precision == 6:
+        text = f"{_ordinal((year - 1) // 1000 + 1)} millennium" + (" BCE" if bce else "")
+    else:
+        text = shown_year
+    if str(value.get("calendarmodel", "")).endswith("/" + JULIAN):
+        text += " (Julian)"
+    return text
+
+
+def _decimal(text: Any) -> Decimal | None:
+    try:
+        return Decimal(str(text).lstrip("+"))
+    except (InvalidOperation, ValueError):
+        return None
+
+
+def format_amount(value: dict[str, Any]) -> tuple[str, str | None]:
+    """Quantity amount with ``±`` when the bounds are symmetric, and the unit URI (``None`` for unit ``1``)."""
+    amount = _decimal(value.get("amount"))
+    text = str(value.get("amount", "")).lstrip("+") if amount is None else format(amount, "f")
+    lower, upper = _decimal(value.get("lowerBound")), _decimal(value.get("upperBound"))
+    if amount is not None and lower is not None and upper is not None:
+        down, up = amount - lower, upper - amount
+        if down == up and down != 0:
+            text += f" ±{format(down, 'f')}"
+        elif down != 0 or up != 0:
+            text += f" ({format(lower, 'f')}–{format(upper, 'f')})"
+    unit = value.get("unit")
+    return text, (unit if isinstance(unit, str) and unit not in ("", "1") else None)
+
+
+def format_coordinate(value: dict[str, Any]) -> str:
+    """``39.08002° N, 17.12661° E``; at most as many decimals as the precision in degrees implies.
+
+    Trailing zeros are dropped, so a value the source stores as 39.08002 is shown as 39.08002.
+    """
+    lat, lon = value.get("latitude"), value.get("longitude")
+    precision = value.get("precision")
+    if isinstance(precision, (int, float)) and precision > 0:
+        decimals = min(8, max(0, math.ceil(-math.log10(precision))))
+    else:
+        decimals = 5
+    try:
+        lat_f, lon_f = float(lat), float(lon)
+    except (TypeError, ValueError):
+        return f"{lat}, {lon}"
+
+    def number(x: float) -> str:
+        text = f"{abs(x):.{decimals}f}"
+        return text.rstrip("0").rstrip(".") if "." in text else text
+
+    return (f"{number(lat_f)}° {'N' if lat_f >= 0 else 'S'}, "
+            f"{number(lon_f)}° {'E' if lon_f >= 0 else 'W'}")
+
+
+def map_point(value: dict[str, Any]) -> tuple[float, float] | None:
+    """Latitude and longitude when the value is on Earth and in range, else ``None``."""
+    if value.get("globe") != EARTH:
+        return None
+    try:
+        lat, lon = float(value["latitude"]), float(value["longitude"])
+    except (KeyError, TypeError, ValueError):
+        return None
+    if not (-90 <= lat <= 90 and -180 <= lon <= 180):
+        return None
+    return lat, lon
+
+
+def commons_name(name: str) -> str:
+    return quote(name.strip().replace(" ", "_"), safe="")
+
+
+def is_linkable(url: str) -> bool:
+    return url.lower().startswith(LINK_SCHEMES)
+
+
+# --------------------------------------------------------------------------- the renderer
+
+
+@dataclass
+class MapPoint:
+    lat: float
+    lon: float
+    text: str
+
+
+class Renderer:
+    """Builds the template contexts of the index page and of every entity page."""
+
+    def __init__(self, site: Site, cfg: SiteConfig, version: str) -> None:
+        self.site = site
+        self.cfg = cfg
+        self.version = version
+        self.default = cfg.default_language
+        self.second = cfg.second_language
+        self._labels_default = LabelResolver(site, [self.default])
+        self._labels_second = LabelResolver(site, [self.second, self.default]) if self.second else None
+        self.incoming = self._build_incoming()
+        self.unmapped_coordinates = 0
+
+    # ---- text
+
+    def bilingual(self, default_text: str, second_text: str | None) -> Markup:
+        if not self.second or second_text is None or second_text == default_text:
+            return Markup(escape(default_text))
+        return Markup(f'<span class="l" lang="{escape(self.default)}">{escape(default_text)}</span>'
+                      f'<span class="l" lang="{escape(self.second)}">{escape(second_text)}</span>')
+
+    def ui(self, key: str, **kwargs: Any) -> Markup:
+        def text(language: str) -> str:
+            table = STRINGS.get(language, STRINGS["en"])
+            return table.get(key, STRINGS["en"][key]).format(**kwargs)
+        return self.bilingual(text(self.default), text(self.second) if self.second else None)
+
+    def ui_text(self, key: str, **kwargs: Any) -> str:
+        """The default-language interface text as plain text (for ``<title>`` and attributes)."""
+        table = STRINGS.get(self.default, STRINGS["en"])
+        return table.get(key, STRINGS["en"][key]).format(**kwargs)
+
+    def label_text(self, entity_id: str, second: bool = False) -> str:
+        resolver = self._labels_second if second and self._labels_second else self._labels_default
+        return resolver.label(entity_id)
+
+    def label(self, entity_id: str) -> Markup:
+        return self.bilingual(self.label_text(entity_id), self.label_text(entity_id, True) if self.second else None)
+
+    def _pick(self, mapping: dict[str, str], languages: list[str]) -> str | None:
+        for language in languages:
+            if mapping.get(language):
+                return mapping[language]
+        return mapping[sorted(mapping)[0]] if mapping else None
+
+    def description_text(self, entity: Entity) -> str | None:
+        return self._pick(entity.descriptions, [self.default])
+
+    def description(self, entity: Entity) -> Markup | None:
+        first = self.description_text(entity)
+        if first is None:
+            return None
+        other = self._pick(entity.descriptions, [self.second, self.default]) if self.second else None
+        return self.bilingual(first, other)
+
+    def aliases(self, entity: Entity) -> Markup | None:
+        first = entity.aliases.get(self.default) or []
+        other = (entity.aliases.get(self.second) or first) if self.second else []
+        if not first and not other:
+            return None
+        return self.bilingual(" | ".join(first), " | ".join(other) if self.second else None)
+
+    def heading(self, entity_id: str) -> Markup:
+        """``Label (Q1)`` for the page heading."""
+        return self.label_with_id(entity_id)
+
+    # ---- links
+
+    def label_with_id(self, entity_id: str) -> Markup:
+        """The label followed by the id in a muted span, ``Label (Q10)``; just the id when there is no label."""
+        if not self.site.entities[entity_id].labels:
+            return Markup(escape(entity_id))
+        return Markup(f'{self.label(entity_id)} <span class="id">({escape(entity_id)})</span>')
+
+    def entity_link(self, entity_id: str, show_id: bool = True) -> Markup:
+        """Internal link ``Label (Q10)`` when the site holds the entity; otherwise a link to Wikidata in a new tab."""
+        if entity_id in self.site.entities:
+            text = self.label_with_id(entity_id) if show_id else self.label(entity_id)
+            return Markup(f'<a href="{escape(entity_id)}.html">{text}</a>')
+        title = self.ui_text("federated")
+        return Markup(f'<a class="federated" href="{WIKIDATA}{escape(entity_id)}" target="_blank" '
+                      f'rel="noopener" title="{escape(title)}">{escape(entity_id)}</a>')
+
+    def external_link(self, url: str, text: str | None = None) -> Markup:
+        """A link that opens in a new tab, or plain text when the scheme is not one of http(s)/ftp."""
+        shown = escape(url if text is None else text)
+        if not is_linkable(url):
+            return Markup(shown)
+        return Markup(f'<a href="{escape(url)}" target="_blank" rel="noopener">{shown}</a>')
+
+    # ---- values
+
+    def formatter_url(self, property_id: str) -> str | None:
+        prop = self.site.entities.get(property_id)
+        if prop is None:
+            return None
+        for statement in prop.statements:
+            snak = statement.mainsnak
+            if snak.property == self.cfg.formatter_property and snak.vtype == "string" and isinstance(snak.value, str):
+                if "$1" in snak.value:
+                    return snak.value
+        return None
+
+    def value(self, snak: Snak) -> Markup:
+        if snak.snaktype == "somevalue":
+            return Markup(f'<span class="special">{self.ui("unknown_value")}</span>')
+        if snak.snaktype == "novalue":
+            return Markup(f'<span class="special">{self.ui("no_value")}</span>')
+        value, kind = snak.value, snak.vtype
+        if kind == "wikibase-entityid" and snak.entity_id:
+            return self.entity_link(snak.entity_id)
+        if kind == "string" and isinstance(value, str):
+            return self._string_value(snak, value)
+        if kind == "time" and isinstance(value, dict):
+            return Markup(f'<span class="time">{escape(format_time(value))}</span>')
+        if kind == "quantity" and isinstance(value, dict):
+            return self._quantity(value)
+        if kind == "monolingualtext" and isinstance(value, dict):
+            return Markup(f'<span lang="{escape(value.get("language", ""))}">{escape(value.get("text", ""))}</span> '
+                          f'<span class="tag">{escape(value.get("language", ""))}</span>')
+        if kind == "globecoordinate" and isinstance(value, dict):
+            return self._coordinate(value)
+        shown = json.dumps(value, sort_keys=True, ensure_ascii=False)
+        return Markup(f'<span class="special">{self.ui("unsupported")}:</span> <code>{escape(shown)}</code>')
+
+    def _string_value(self, snak: Snak, value: str) -> Markup:
+        datatype = snak.datatype
+        if datatype == "url":
+            return self.external_link(value)
+        if datatype == "external-id":
+            formatter = self.formatter_url(snak.property)
+            if formatter:
+                return self.external_link(formatter.replace("$1", quote(value, safe="")), value)
+            return Markup(escape(value))
+        if datatype == "commonsMedia":
+            name = commons_name(value)
+            image = f"{COMMONS}Special:FilePath/{name}?width=400"
+            return Markup(f'<a class="commons" href="{COMMONS}File:{name}" target="_blank" rel="noopener">'
+                          f'<img src="{escape(image)}" alt="{escape(value)}" loading="lazy"><br>{escape(value)}</a>')
+        return Markup(escape(value))
+
+    def _quantity(self, value: dict[str, Any]) -> Markup:
+        text, unit = format_amount(value)
+        out = escape(text)
+        if unit:
+            found = ENTITY_URI.search(unit)
+            if found and found.group(1) in self.site.entities:
+                out = Markup(f"{out} {self.entity_link(found.group(1))}")
+            else:
+                out = Markup(f"{out} {self.external_link(unit, found.group(1) if found else unit)}")
+        return Markup(out)
+
+    def _coordinate(self, value: dict[str, Any]) -> Markup:
+        text = format_coordinate(value)
+        point = map_point(value)
+        if point is None:
+            note = "" if value.get("globe") == EARTH else f' <span class="tag">{escape(str(value.get("globe", "")))}</span>'
+            return Markup(f'<span class="coordinate">{escape(text)}</span>{note}')
+        lat, lon = point
+        osm = f"https://www.openstreetmap.org/?mlat={lat}&mlon={lon}#map=14/{lat}/{lon}"
+        return Markup(f'<a class="coordinate" href="{escape(osm)}" target="_blank" rel="noopener">{escape(text)}</a>')
+
+    # ---- statements
+
+    def _snak_view(self, snak: Snak) -> dict[str, Any]:
+        return {"property": snak.property, "label": self._property_label(snak.property),
+                "link": snak.property in self.site.entities, "value": self.value(snak)}
+
+    def _property_label(self, property_id: str) -> Markup:
+        return self.label_with_id(property_id) if property_id in self.site.entities else Markup(escape(property_id))
+
+    def statement_groups(self, entity: Entity) -> list[dict[str, Any]]:
+        groups: list[dict[str, Any]] = []
+        for statement in entity.statements:
+            prop = statement.mainsnak.property
+            if not groups or groups[-1]["property"] != prop:
+                groups.append({"property": prop, "label": self._property_label(prop), "link": prop in self.site.entities,
+                               "statements": []})
+            groups[-1]["statements"].append(self._statement_view(statement))
+        return groups
+
+    def _statement_view(self, statement: Statement) -> dict[str, Any]:
+        return {
+            "value": self.value(statement.mainsnak),
+            "rank": statement.rank,
+            "qualifiers": [self._snak_view(q) for q in statement.qualifiers],
+            "references": [[self._snak_view(s) for s in reference] for reference in statement.references],
+            "references_label": self.ui("references_n", n=len(statement.references)) if statement.references else None,
+        }
+
+    def map_points(self, entity: Entity) -> list[MapPoint]:
+        points: list[MapPoint] = []
+        for snak in entity.snaks():
+            if snak.vtype != "globecoordinate" or not isinstance(snak.value, dict):
+                continue
+            point = map_point(snak.value)
+            if point is None:
+                self.unmapped_coordinates += 1
+                continue
+            text = format_coordinate(snak.value)
+            if not any((p.lat, p.lon) == point for p in points):
+                points.append(MapPoint(point[0], point[1], text))
+        return points
+
+    # ---- who points here
+
+    def _build_incoming(self) -> dict[str, list[str]]:
+        found: dict[str, set[str]] = {}
+        for entity in self.site.entities.values():
+            for target in entity.referenced_ids():
+                if target != entity.id and target in self.site.entities:
+                    found.setdefault(target, set()).add(entity.id)
+        return {target: sorted(who, key=id_sort_key) for target, who in found.items()}
+
+    def referenced_by(self, entity_id: str) -> list[dict[str, Any]]:
+        return [{"id": who, "link": self.entity_link(who)} for who in self.incoming.get(entity_id, [])]
+
+    # ---- the footer of every entity page
+
+    def footer(self, entity: Entity | None) -> dict[str, Any]:
+        source = self.cfg.source_url
+        original = f"{source}/entity/{entity.id}" if source and entity else None
+        modified = entity.modified[:10] if entity and entity.modified else None
+        imprint = self.cfg.imprint
+        return {
+            "source_url": source, "source_text": re.sub(r"^https?://", "", source) if source else None,
+            "original_url": original, "modified": modified,
+            "license_name": self.cfg.license_name or self.cfg.license_url, "license_url": self.cfg.license_url,
+            "imprint_url": imprint if imprint and is_linkable(imprint) else None,
+            "imprint_text": imprint if imprint and not is_linkable(imprint) else None,
+            "version": self.version,
+        }

@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% from "_macros.html" import prop_link %}
+{% block main %}
+<article class="entity">
+  <p class="kind">{{ ui_kind }}</p>
+  <h1>{{ heading }}</h1>
+  <p class="description">{% if description %}{{ description }}{% else %}<span class="muted">{{ ui_no_description }}</span>{% endif %}</p>
+  {% if aliases %}
+  <p class="aliases"><span class="muted">{{ ui_also_known_as }}:</span> {{ aliases }}</p>
+  {% endif %}
+  {% if datatype_label %}
+  <p class="datatype"><span class="muted">{{ ui_datatype }}:</span> {{ datatype_label }} <code>{{ datatype }}</code></p>
+  {% endif %}
+
+  {% if map_points %}
+  <section class="map-section">
+    <h2>{{ ui_map }}</h2>
+    <div class="wbs-map" data-points="{{ points_json }}" role="img" aria-label="{{ ui_map_text }}"></div>
+  </section>
+  {% endif %}
+
+  <section class="statements">
+    <h2>{{ ui_statements }}</h2>
+    {% if not groups %}
+    <p class="muted">{{ ui_no_statements }}</p>
+    {% endif %}
+    {% for group in groups %}
+    <div class="claim-group" id="{{ group.property }}">
+      <div class="prop">{{ prop_link(group) }}</div>
+      <div class="values">
+        {% for st in group.statements %}
+        <div class="statement rank-{{ st.rank }}">
+          <div class="main">{{ st.value }}{% if st.rank == "preferred" %} <span class="rank rank-preferred">{{ ui_rank_preferred }}</span>{% elif st.rank == "deprecated" %} <span class="rank rank-deprecated">{{ ui_rank_deprecated }}</span>{% endif %}</div>
+          {% if st.qualifiers %}
+          <div class="qualifiers">
+            {% for q in st.qualifiers %}
+            <div class="qualifier"><span class="qprop">{{ prop_link(q) }}</span> <span class="qval">{{ q.value }}</span></div>
+            {% endfor %}
+          </div>
+          {% endif %}
+          {% if st.references %}
+          <details class="references">
+            <summary>{{ st.references_label }}</summary>
+            {% for reference in st.references %}
+            <div class="reference">
+              {% for part in reference %}
+              <span class="qprop">{{ prop_link(part) }}</span> <span class="qval">{{ part.value }}</span>{% if not loop.last %}; {% endif %}
+              {% endfor %}
+            </div>
+            {% endfor %}
+          </details>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+  </section>
+
+  {% if incoming %}
+  <section class="incoming">
+    <details>
+      <summary>{{ ui_referenced_by }}</summary>
+      <ul>
+        {% for row in incoming %}
+        <li>{{ row.link }}</li>
+        {% endfor %}
+      </ul>
+    </details>
+  </section>
+  {% endif %}
+</article>
+{% endblock %}

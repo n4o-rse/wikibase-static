@@ -7,7 +7,11 @@ wikibase-static: from-csv -> load -> build -> search -> rdf -> sparql
   [load] source: https://fuzzy-sl.wikibase.cloud (latest change 2025-11-01T08:28:29Z)
   [load] 0 warning(s)
 [build]
-  [build] nothing to do: not implemented yet (PRIMER.md, S3)
+  [build] no site.yaml: defaults used (title 'fuzzy-sl.wikibase.cloud')
+  [build] 173 entities -> 173 entity pages + index.html in docs/ (difference 0), 11 asset files
+  [build] languages: en; source: https://fuzzy-sl.wikibase.cloud; licence: CC0 1.0 (default)
+  [build] maps: 61 distinct coordinate(s) on 59 page(s)
+  [build] linkcheck: 4733 internal links checked, 0 dead
 [search]
   [search] nothing to do: not implemented yet (PRIMER.md, S5)
 [rdf]

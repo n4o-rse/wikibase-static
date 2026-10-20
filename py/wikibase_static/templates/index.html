@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block main %}
+<article class="index">
+  <h1>{{ site_title }}</h1>
+  {% if site_description %}
+  <p class="description">{{ site_description }}</p>
+  {% endif %}
+  <p class="muted">{{ ui_counts }}</p>
+  {% for section in sections %}
+  <section id="{{ section.id }}">
+    <h2>{{ section.title }}</h2>
+    <table class="list">
+      <thead><tr><th>{{ ui_id }}</th><th>{{ ui_label }}</th><th>{{ ui_description }}</th></tr></thead>
+      <tbody>
+        {% for row in section.rows %}
+        <tr><td class="id">{{ row.id }}</td><td>{{ row.link }}</td><td>{% if row.description %}{{ row.description }}{% endif %}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+  {% endfor %}
+</article>
+{% endblock %}
