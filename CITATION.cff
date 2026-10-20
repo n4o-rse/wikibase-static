@@ -1,0 +1,24 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it using the metadata below."
+title: "wikibase-static: Static, read-only HTML demonstrators for Wikibase instances"
+abstract: >-
+  Archives an existing Wikibase (for example on Wikibase Cloud) through its
+  public API, or builds a dummy Wikibase from CSV, and publishes it as a static
+  site that looks and navigates like a Wikibase, with search, maps and an
+  in-browser SPARQL page, deployable on GitHub Pages.
+type: software
+authors:
+  - family-names: Thiery
+    given-names: Florian
+    # orcid: "https://orcid.org/..."  # TODO: insert ORCID
+license: MIT
+version: "0.1.0"
+repository-code: "https://github.com/n4o-rse/wikibase-static"
+# date-released: ""  # TODO: set when the first release is tagged
+# doi: ""            # TODO: add Zenodo DOI once minted
+keywords:
+  - Wikibase
+  - Linked Data
+  - FAIR4RS
+  - static site
+  - GitHub Pages

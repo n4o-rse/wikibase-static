@@ -1,0 +1,11 @@
+wikibase-static: from-csv -> build -> search -> rdf -> sparql
+[from-csv]
+  [from-csv] nothing to do: not implemented yet (PRIMER.md, S7)
+[build]
+  [build] nothing to do: not implemented yet (PRIMER.md, S3)
+[search]
+  [search] nothing to do: not implemented yet (PRIMER.md, S5)
+[rdf]
+  [rdf] nothing to do: not implemented yet (PRIMER.md, S6)
+[sparql]
+  [sparql] nothing to do: not implemented yet (PRIMER.md, S6)

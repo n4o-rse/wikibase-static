@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "wikibase-static"
+dynamic = ["version"]
+description = "Static, read-only HTML demonstrators for Wikibase instances"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Florian Thiery" }]
+dependencies = []
+
+[project.urls]
+Repository = "https://github.com/n4o-rse/wikibase-static"
+
+[tool.setuptools.dynamic]
+version = { attr = "wikibase_static.__version__" }
+
+[tool.setuptools.packages.find]
+where = ["py"]
