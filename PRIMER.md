@@ -26,7 +26,7 @@ Was schon existiert und **kopiert** wird (nicht referenziert, siehe A3):
 | `wikibase-federation` → `wbqs/client.py` | HTTP-Session, Retries nur bei GET, `Retry-After`, `maxlag`, User-Agent | nur der lesende Teil, für S4 |
 | `open-archaeo` → `py/wikidata/preview.py` | rendert Statements als Wikidata-artige Seite (Property links, Wert rechts, Qualifier eingerückt, Source-Chips) | Vorlage für S3; die Eingabe dort ist ein eigenes Claim-Modell, kein Wikibase-JSON |
 | `open-archaeo` → `py/wikidata/api.py` | `wbgetentities` lesend, nur `urllib` | Vorlage für S4 |
-| `open-archaeo` → `py/wikidata/labels.py` | Label-Cache | Vorlage für S2 |
+| `open-archaeo` → `py/wikidata/labels.py` | Label-Cache für Q-IDs außerhalb der Daten, gefüllt aus Wikidata | in S2 nur das Prinzip übernommen (eine fehlende ID wird als sie selbst angezeigt, nichts wird erfunden); der Code nicht, denn er holt Labels aus dem Netz (A3) |
 | `open-archaeo` → `py/wikidata/sparql.py`, `queries.py`, `docs/sparql.html` | Query-Seite, Beispielqueries als Quelltext | Vorlage für S6; läuft dort gegen den Query Service, hier muss sie lokal laufen (Muster `wdt-sparql`) |
 
 **Befunde** (geprüft 2026-10-20, per `git clone` der drei Repos und Lesen des Codes):
@@ -41,6 +41,7 @@ Was schon existiert und **kopiert** wird (nicht referenziert, siehe A3):
    Inhalt, relevant für S2/S3/S5/S6: 488 Statements (464 `normal`, 24 `preferred`, alle mit `snaktype` `value`), 41 davon mit References, 0 Sitelinks. Haupt-Datentypen: Item 293, URL 79, Koordinate 62, String 51, External-ID 3; in Qualifiern zusätzlich Item 370, String 155, URL 62, Monolingual Text 2. **Nicht vorhanden:** Zeit, Quantity, Commons-Datei (also kein P18-Bild), föderierte Entitäten (alle Item-Verweise sind Q-/P-IDs). Labels fast nur Englisch (173 `en`, 2 `de`: Q82, Q130), 167 Entitäten mit Description, 21 mit Aliasen. Alle 62 Koordinaten haben als Globus `http://www.wikidata.org/entity/Q2` (Erde) und Genauigkeiten von 1e-6 bis 1e-4 Grad. Gesamtgröße der Rohdaten etwa 650 KB. Häufigste Properties: P1 (instance of) 134, P10 65, P4 62, P3 58.
    Datenqualität: URL-Werte wie `http://openopenstreetmap.org/node/…` (doppeltes „open“) und `http://wikidata.org/entity/Q6681` (ohne `www`) fallen auf; der Renderer sollte URLs unverändert zeigen und nicht „reparieren“.
 8. `pip install wikibase-static` installiert nur das Paket unter `py/wikibase_static/`, nicht das `main.py` im Wurzelverzeichnis dieses Repos (geprüft 2026-10-20 mit Installation von GitHub in eine neue virtuelle Umgebung). Das Demo-Repo `fuzzy-sl-static` startet die Schritte deshalb über einen eigenen kleinen Wrapper (`python -m wikibase_static.step_<name>`). Für S9 gehört der Orchestrator ins Paket, sonst gibt es ihn doppelt.
+9. Der Harvest schreibt die Schlüssel von `data/raw/entities/*.json` sortiert (nötig für byte-gleiche Läufe). Dadurch ist die Reihenfolge der Properties in `claims` aus der Quelle nicht mehr erhalten (`P1`, `P10`, `P11`, … statt der Reihenfolge der Wikibase); Listen wie `qualifiers-order` und `snaks-order` bleiben erhalten (geprüft 2026-10-20 am Loader). Der Loader ordnet Statements deshalb nach numerischer Property-ID.
 
 ### A2 Zielbild
 
@@ -116,6 +117,11 @@ Das Ergebnis hat diese prüfbaren Eigenschaften:
 | `site.yaml`, Schlüssel | `title`, `description`, `logo` (optional), `colour` (optional), `source.url` (muss zum Manifest passen), `license.name`, `license.url`, `languages.default`, `languages.second`, `imprint` (Text oder URL), `pages_url` (optional) | Vorschlag |
 | Demo-Repo, Gerüst | `fuzzy-sl-static` bekommt bis S9 ein dünnes Gerüst (`main.py`-Wrapper, `requirements.txt` mit pip-Installation von GitHub, `README.md`, `.gitignore`), kein `LICENSE`, solange die Datenlizenz offen ist | 2026-10-20 |
 | Orchestrator im Paket | der Orchestrator (`main.py`-Logik) zieht in S9 ins Paket (`python -m wikibase_static`); das `main.py` im Wurzelverzeichnis wird zum dünnen Aufruf | Vorschlag |
+| Schritt `load` | `python main.py load` liest und prüft die Daten, schreibt nichts, steht im Standardlauf nach `from-csv`; ohne Daten meldet er „nothing to do“ (S2) | Vorschlag |
+| Ladeorte | `data/raw/entities/*.json` und `data/derived/entities/*.json`, eine Entität je Datei (auch die `Special:EntityData`-Form wird gelesen). Dieselbe ID in beiden Orten: erste (`raw`) gewinnt, `WARN` | Vorschlag |
+| Statement-Reihenfolge | numerische Property-ID, innerhalb einer Property die Reihenfolge der Quelle; Qualifier und Reference-Teile nach `qualifiers-order` bzw. `snaks-order`, sonst numerisch (Befund 9) | Vorschlag |
+| Validierung | Probleme sind `WARN`-Zeilen, nie ein Abbruch; geprüft werden unlesbares JSON, fehlende ID, Datei- und ID-Name, Typ gegen ID, Datentyp gegen Wertetyp und Pflichtschlüssel des Werts, nicht unterstützte Datentypen, fehlende Entitäten (einmal je ID, mit den ersten fünf Verweisenden) und Abweichungen zum Manifest. `--strict` macht daraus Fehler | Vorschlag |
+| Label-Auflösung | nur aus den geladenen Entitäten, nie aus dem Netz; erste Sprache der Liste mit Label, sonst die alphabetisch erste vorhandene, sonst die ID selbst | Vorschlag |
 
 ### A5 Was in welchem Chat hochgeladen wird
 
@@ -145,7 +151,7 @@ Das Repo veröffentlicht RDF (S6). Vorschlag: Die RDF-Dateien verwenden die Konz
 |---|---|---|---|---|
 | S0 | Festlegungen: Zwischenformat, `site.yaml`-Schema, Seiten-URLs | wikibase-static | – | erledigt 2026-10-20 |
 | S1 | Skeleton: Layout, `main.py`, `utils.py`, Lizenz, Citation | wikibase-static | – | erledigt 2026-10-20 |
-| S2 | Loader und Validator für das Zwischenformat, Label-Auflösung | wikibase-static | S0, S1 | offen |
+| S2 | Loader und Validator für das Zwischenformat, Label-Auflösung | wikibase-static | S0, S1 | offen (Patch geliefert 2026-10-20) |
 | S3 | Renderer: Item- und Property-Seiten im Wikibase-Look, Leaflet, Commons, Linkcheck | wikibase-static | S2 | offen |
 | S4 | Harvest, inkrementell, `--probe`, `--from-dir`; Test mit `fuzzy-sl` | wikibase-static, fuzzy-sl-static | S0, S1 | offen (Code committet, Erstlauf gegen `fuzzy-sl` erfolgreich 2026-10-20; Zweitlauf „0 changed“ noch zu bestätigen) |
 | S5 | Suche mit Autocomplete | wikibase-static | S2 | offen |
@@ -185,7 +191,7 @@ Inhalt: `main.py` mit den Flags `--list`, `--only`, `--from`, `--skip`, `--dry-r
 
 **Abnahme:**
 
-1. `python main.py --list` nennt alle sechs Schritte, `harvest` als Verb.
+1. `python main.py --list` nennt alle Schritte (ab S2 sieben), `harvest` als Verb.
 2. `python main.py` meldet für jeden Standardschritt „nothing to do“ und endet mit Exit-Code 0; `python main.py --strict` ebenso.
 3. Zwei Läufe hintereinander, danach `git status`: sauber (nach dem ersten Commit von `dist/pipeline_report.txt`).
 4. `python main.py harvest` läuft nur diesen Schritt.
@@ -197,6 +203,18 @@ Inhalt: `main.py` mit den Flags `--list`, `--only`, `--from`, `--skip`, `--dry-r
 Inhalt: Items und Properties aus Wikibase-JSON, Labels, Descriptions, Aliases, Claims mit Qualifiers und References, Datentypen aus A4. Label-Auflösung für referenzierte Entitäten (Cache nach dem Muster von `labels.py`). Validator meldet fehlende Referenzen als `WARN`.
 
 **Abnahme:** Eine Beispieldatei je Datentyp wird gelesen; der Bericht nennt Zahl der Items, Properties und Claims; ein absichtlich kaputtes JSON erzeugt eine Warnung, keinen Absturz.
+
+### Erledigt 2026-10-20
+
+**Gebaut:** `py/wikibase_static/model.py` (Dataclasses `Entity`, `Statement`, `Snak`, Datentypen aus A4), `loader.py` (`load_site()`, Validator, `LabelResolver`), `step_load.py` (Bericht), Eintrag `load` in `main.py`; `tests/test_loader.py` mit `tests/fixtures/entities/` (je eine Property pro Datentyp, ein Item `Q1` mit einem Statement pro Datentyp, dazu `Q2`). Die Entscheidungen stehen als `Vorschlag` in A4.
+
+**Befunde:**
+
+- 24 Tests laufen durch (alle zehn Datentypen, `somevalue`, Qualifier, Reference, Rang, Reihenfolge, `Special:EntityData`-Form, unlesbares JSON, fehlende Entität und Property, Datentyp/Wert-Konflikte, Manifest-Abweichung, Doppel- und Dateinamen-Konflikt, Label-Fallback, Bericht und `--strict`-Zeilen, Obergrenze der Warnungen). Die zehn Tests des Harvest laufen unverändert weiter.
+- **Gegen die echten Daten** (`fuzzy-sl-static`, Commit `896b173`): 173 Entitäten (137 Items, 36 Properties), 488 Statements (`wikibase-item` 293, `url` 79, `globe-coordinate` 62, `string` 51, `external-id` 3), **0 Warnungen**. Das heißt: Keine der ID-Lücken aus Befund 7 (Q8, Q9, …, P36) wird irgendwo referenziert, jede Referenz löst auf. Zwei Läufe liefern den identischen Bericht.
+- Beschädigte Kopie der Echtdaten (eine Datei kaputt, eine gelöscht): fünf `WARN`-Zeilen, der Lauf bricht nicht ab, `--strict` endet mit Exit-Code 1.
+- Die Auflösung von Labels braucht kein Netz und keinen Cache auf der Platte: Alle Entitäten, auf die `fuzzy-sl` verweist, liegen in den Daten (Befund oben). Ein Disk-Cache nach dem Muster von `labels.py` wird erst nötig, wenn eine Wikibase auf fremde IDs verweist (föderierte Werte werden nur verlinkt, A4).
+- Der Standardlauf im Paket-Repo ohne Daten bleibt „nothing to do“ (`--strict` Exit-Code 0); `dist/pipeline_report.txt` bekommt dafür die Zeilen des neuen Schritts.
 
 ### S3 — Renderer
 

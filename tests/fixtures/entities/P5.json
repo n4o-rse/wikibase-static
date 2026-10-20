@@ -1,0 +1,21 @@
+{
+  "aliases": {},
+  "claims": {},
+  "datatype": "time",
+  "descriptions": {
+    "en": {
+      "language": "en",
+      "value": "example property of datatype time"
+    }
+  },
+  "id": "P5",
+  "labels": {
+    "en": {
+      "language": "en",
+      "value": "date"
+    }
+  },
+  "lastrevid": 5,
+  "modified": "2026-01-01T00:00:00Z",
+  "type": "property"
+}

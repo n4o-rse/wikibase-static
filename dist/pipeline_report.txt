@@ -1,6 +1,11 @@
-wikibase-static: from-csv -> build -> search -> rdf -> sparql
+wikibase-static: from-csv -> load -> build -> search -> rdf -> sparql
 [from-csv]
   [from-csv] nothing to do: not implemented yet (PRIMER.md, S7)
+[load]
+  [load] 173 entities (137 items, 36 properties) from 173 file(s)
+  [load] 488 statements: external-id 3, globe-coordinate 62, string 51, url 79, wikibase-item 293
+  [load] source: https://fuzzy-sl.wikibase.cloud (latest change 2025-11-01T08:28:29Z)
+  [load] 0 warning(s)
 [build]
   [build] nothing to do: not implemented yet (PRIMER.md, S3)
 [search]

@@ -1,0 +1,21 @@
+{
+  "aliases": {},
+  "claims": {},
+  "datatype": "quantity",
+  "descriptions": {
+    "en": {
+      "language": "en",
+      "value": "example property of datatype quantity"
+    }
+  },
+  "id": "P6",
+  "labels": {
+    "en": {
+      "language": "en",
+      "value": "amount"
+    }
+  },
+  "lastrevid": 6,
+  "modified": "2026-01-01T00:00:00Z",
+  "type": "property"
+}

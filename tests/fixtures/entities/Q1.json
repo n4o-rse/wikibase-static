@@ -1,0 +1,265 @@
+{
+  "aliases": {
+    "en": [
+      {
+        "language": "en",
+        "value": "Sample site"
+      }
+    ]
+  },
+  "claims": {
+    "P1": [
+      {
+        "id": "Q1$fixture-1",
+        "mainsnak": {
+          "datatype": "wikibase-item",
+          "datavalue": {
+            "type": "wikibase-entityid",
+            "value": {
+              "entity-type": "item",
+              "id": "Q2",
+              "numeric-id": 2
+            }
+          },
+          "property": "P1",
+          "snaktype": "value"
+        },
+        "qualifiers": {
+          "P2": [
+            {
+              "datatype": "string",
+              "datavalue": {
+                "type": "string",
+                "value": "qualifier text"
+              },
+              "property": "P2",
+              "snaktype": "value"
+            }
+          ]
+        },
+        "qualifiers-order": [
+          "P2"
+        ],
+        "rank": "preferred",
+        "references": [
+          {
+            "hash": "x",
+            "snaks": {
+              "P4": [
+                {
+                  "datatype": "url",
+                  "datavalue": {
+                    "type": "string",
+                    "value": "https://example.org/source"
+                  },
+                  "property": "P4",
+                  "snaktype": "value"
+                }
+              ]
+            },
+            "snaks-order": [
+              "P4"
+            ]
+          }
+        ],
+        "type": "statement"
+      }
+    ],
+    "P10": [
+      {
+        "id": "Q1$fixture-11",
+        "mainsnak": {
+          "datatype": "wikibase-property",
+          "datavalue": {
+            "type": "wikibase-entityid",
+            "value": {
+              "entity-type": "property",
+              "id": "P1",
+              "numeric-id": 1
+            }
+          },
+          "property": "P10",
+          "snaktype": "value"
+        },
+        "rank": "normal",
+        "type": "statement"
+      }
+    ],
+    "P2": [
+      {
+        "id": "Q1$fixture-2",
+        "mainsnak": {
+          "datatype": "string",
+          "datavalue": {
+            "type": "string",
+            "value": "plain text"
+          },
+          "property": "P2",
+          "snaktype": "value"
+        },
+        "rank": "normal",
+        "type": "statement"
+      }
+    ],
+    "P3": [
+      {
+        "id": "Q1$fixture-3",
+        "mainsnak": {
+          "datatype": "external-id",
+          "datavalue": {
+            "type": "string",
+            "value": "EXT-0001"
+          },
+          "property": "P3",
+          "snaktype": "value"
+        },
+        "rank": "normal",
+        "type": "statement"
+      }
+    ],
+    "P4": [
+      {
+        "id": "Q1$fixture-4",
+        "mainsnak": {
+          "datatype": "url",
+          "datavalue": {
+            "type": "string",
+            "value": "https://example.org/"
+          },
+          "property": "P4",
+          "snaktype": "value"
+        },
+        "rank": "normal",
+        "type": "statement"
+      }
+    ],
+    "P5": [
+      {
+        "id": "Q1$fixture-5",
+        "mainsnak": {
+          "datatype": "time",
+          "datavalue": {
+            "type": "time",
+            "value": {
+              "after": 0,
+              "before": 0,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727",
+              "precision": 11,
+              "time": "+2020-05-17T00:00:00Z",
+              "timezone": 0
+            }
+          },
+          "property": "P5",
+          "snaktype": "value"
+        },
+        "rank": "normal",
+        "type": "statement"
+      },
+      {
+        "id": "Q1$fixture-6",
+        "mainsnak": {
+          "datatype": "time",
+          "property": "P5",
+          "snaktype": "somevalue"
+        },
+        "rank": "normal",
+        "type": "statement"
+      }
+    ],
+    "P6": [
+      {
+        "id": "Q1$fixture-7",
+        "mainsnak": {
+          "datatype": "quantity",
+          "datavalue": {
+            "type": "quantity",
+            "value": {
+              "amount": "+42",
+              "lowerBound": "+41",
+              "unit": "1",
+              "upperBound": "+43"
+            }
+          },
+          "property": "P6",
+          "snaktype": "value"
+        },
+        "rank": "normal",
+        "type": "statement"
+      }
+    ],
+    "P7": [
+      {
+        "id": "Q1$fixture-8",
+        "mainsnak": {
+          "datatype": "monolingualtext",
+          "datavalue": {
+            "type": "monolingualtext",
+            "value": {
+              "language": "de",
+              "text": "Beispiel"
+            }
+          },
+          "property": "P7",
+          "snaktype": "value"
+        },
+        "rank": "normal",
+        "type": "statement"
+      }
+    ],
+    "P8": [
+      {
+        "id": "Q1$fixture-9",
+        "mainsnak": {
+          "datatype": "globe-coordinate",
+          "datavalue": {
+            "type": "globecoordinate",
+            "value": {
+              "altitude": null,
+              "globe": "http://www.wikidata.org/entity/Q2",
+              "latitude": 49.9929,
+              "longitude": 8.2473,
+              "precision": 0.0001
+            }
+          },
+          "property": "P8",
+          "snaktype": "value"
+        },
+        "rank": "normal",
+        "type": "statement"
+      }
+    ],
+    "P9": [
+      {
+        "id": "Q1$fixture-10",
+        "mainsnak": {
+          "datatype": "commonsMedia",
+          "datavalue": {
+            "type": "string",
+            "value": "Example.jpg"
+          },
+          "property": "P9",
+          "snaktype": "value"
+        },
+        "rank": "normal",
+        "type": "statement"
+      }
+    ]
+  },
+  "descriptions": {
+    "en": {
+      "language": "en",
+      "value": "fixture item with one statement of every datatype"
+    }
+  },
+  "id": "Q1",
+  "labels": {
+    "en": {
+      "language": "en",
+      "value": "Example site"
+    }
+  },
+  "lastrevid": 100,
+  "modified": "2026-01-02T00:00:00Z",
+  "sitelinks": {},
+  "type": "item"
+}

@@ -1,0 +1,20 @@
+{
+  "aliases": {},
+  "claims": {},
+  "descriptions": {},
+  "id": "Q2",
+  "labels": {
+    "de": {
+      "language": "de",
+      "value": "Beispielklasse"
+    },
+    "en": {
+      "language": "en",
+      "value": "Example class"
+    }
+  },
+  "lastrevid": 101,
+  "modified": "2026-01-03T00:00:00Z",
+  "sitelinks": {},
+  "type": "item"
+}

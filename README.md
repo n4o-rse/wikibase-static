@@ -64,17 +64,25 @@ step stops with exit code 2 and does not try to get around it: save the entity J
 in a browser and use `--from-dir`. Set a contact in the User-Agent with
 `--contact` or the `WBS_CONTACT` environment variable.
 
+`load` reads `data/raw/entities` and `data/derived/entities`, checks them and prints the counts
+and warnings (`--all` prints every warning). It writes nothing and runs with the default steps:
+
+```cmd
+python main.py load
+```
+
 Offline tests (a fake Wikibase on localhost, no network needed):
 
 ```cmd
 python tests\test_harvest.py
+python tests\test_loader.py
 ```
 
 ## Layout
 
 ```
 main.py                     the only entry point
-py/wikibase_static/         the package (one module per step, shared utils.py)
+py/wikibase_static/         the package (one module per step, utils.py, model.py, loader.py)
 data/raw/                   harvested JSON, as obtained
 data/derived/               intermediates made from CSV
 dist/                       versioned products: RDF, pipeline report

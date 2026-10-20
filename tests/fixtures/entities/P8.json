@@ -1,0 +1,21 @@
+{
+  "aliases": {},
+  "claims": {},
+  "datatype": "globe-coordinate",
+  "descriptions": {
+    "en": {
+      "language": "en",
+      "value": "example property of datatype globe-coordinate"
+    }
+  },
+  "id": "P8",
+  "labels": {
+    "en": {
+      "language": "en",
+      "value": "coordinates"
+    }
+  },
+  "lastrevid": 8,
+  "modified": "2026-01-01T00:00:00Z",
+  "type": "property"
+}

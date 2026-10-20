@@ -1,0 +1,21 @@
+{
+  "aliases": {},
+  "claims": {},
+  "datatype": "url",
+  "descriptions": {
+    "en": {
+      "language": "en",
+      "value": "example property of datatype url"
+    }
+  },
+  "id": "P4",
+  "labels": {
+    "en": {
+      "language": "en",
+      "value": "website"
+    }
+  },
+  "lastrevid": 4,
+  "modified": "2026-01-01T00:00:00Z",
+  "type": "property"
+}

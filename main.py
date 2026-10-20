@@ -38,6 +38,7 @@ REPORT = ROOT / "dist" / "pipeline_report.txt"
 STEPS = [
     ("harvest", "step_harvest", False, "S4  fetch entities from a Wikibase (network, incremental)"),
     ("from-csv", "step_from_csv", True, "S7  CSV -> Wikibase JSON for a dummy Wikibase"),
+    ("load", "step_load", True, "S2  read data/raw and data/derived, check them"),
     ("build", "step_build", True, "S3  render the static pages into docs/"),
     ("search", "step_search", True, "S5  build the search index"),
     ("rdf", "step_rdf", True, "S6  export RDF in the Wikibase data model"),

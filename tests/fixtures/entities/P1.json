@@ -1,0 +1,21 @@
+{
+  "aliases": {},
+  "claims": {},
+  "datatype": "wikibase-item",
+  "descriptions": {
+    "en": {
+      "language": "en",
+      "value": "example property of datatype wikibase-item"
+    }
+  },
+  "id": "P1",
+  "labels": {
+    "en": {
+      "language": "en",
+      "value": "instance of"
+    }
+  },
+  "lastrevid": 1,
+  "modified": "2026-01-01T00:00:00Z",
+  "type": "property"
+}

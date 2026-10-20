@@ -1,0 +1,21 @@
+{
+  "aliases": {},
+  "claims": {},
+  "datatype": "wikibase-property",
+  "descriptions": {
+    "en": {
+      "language": "en",
+      "value": "example property of datatype wikibase-property"
+    }
+  },
+  "id": "P10",
+  "labels": {
+    "en": {
+      "language": "en",
+      "value": "related property"
+    }
+  },
+  "lastrevid": 10,
+  "modified": "2026-01-01T00:00:00Z",
+  "type": "property"
+}

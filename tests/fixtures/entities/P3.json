@@ -1,0 +1,21 @@
+{
+  "aliases": {},
+  "claims": {},
+  "datatype": "external-id",
+  "descriptions": {
+    "en": {
+      "language": "en",
+      "value": "example property of datatype external-id"
+    }
+  },
+  "id": "P3",
+  "labels": {
+    "en": {
+      "language": "en",
+      "value": "external id"
+    }
+  },
+  "lastrevid": 3,
+  "modified": "2026-01-01T00:00:00Z",
+  "type": "property"
+}
