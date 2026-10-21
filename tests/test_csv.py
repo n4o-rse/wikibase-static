@@ -245,6 +245,11 @@ class KernelTests(Workspace):
             self.assertEqual(entity.get("datatype"), datatype, entity_id)
             self.assertTrue(entity["labels"]["en"]["value"] and entity["labels"]["de"]["value"], entity_id)
 
+    def test_the_kernel_gives_wikidata_equivalent_its_formatter_url(self) -> None:
+        built = self.build()
+        claims = built.entities["P4"]["claims"]["P5"]
+        self.assertEqual([c["mainsnak"]["datavalue"]["value"] for c in claims], ["https://www.wikidata.org/entity/$1"])
+
     def test_classes_are_typed_as_classes_and_properties_as_properties(self) -> None:
         write(self.csv, "entities.csv", "id,kind,datatype,label_en\nQ100,class,,Thing\nP100,property,string,note\n")
         write(self.csv, "statements.csv", "subject,property,value\nQ100,P1,Q3\n")

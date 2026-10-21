@@ -7,6 +7,7 @@ sid,subject,property,value,rank,origin
 ,P2,P10,Q1,,
 ,P3,P9,Q2,,
 ,P3,P10,Q2,,
+,P4,P5,https://www.wikidata.org/entity/$1,,
 ,P5,P9,Q2,,
 ,P9,P9,Q2,,
 ,P9,P10,Q1,,

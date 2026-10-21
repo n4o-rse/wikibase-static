@@ -30,6 +30,14 @@ from wikibase_static.model import (
 MAX_REFERRERS = 5   # how many referring entities a "missing" message names
 
 
+# What identifies the kernel (``Site.has_kernel``): id, kind, datatype; and the statements (subject, property, value).
+KERNEL_CORE_ENTITIES = (("Q1", "item", None), ("Q2", "item", None), ("Q3", "item", None),
+                        ("P1", "property", "wikibase-item"), ("P2", "property", "wikibase-item"),
+                        ("P3", "property", "wikibase-property"))
+KERNEL_CORE_STATEMENTS = (("Q1", "P1", "Q3"), ("Q2", "P1", "Q3"),
+                          ("P1", "P10", "Q1"), ("P2", "P10", "Q1"), ("P3", "P10", "Q2"))
+
+
 @dataclass
 class Site:
     """Everything loaded from disk, plus what was wrong with it."""
@@ -59,6 +67,23 @@ class Site:
                 key = statement.mainsnak.datatype or "unknown"
                 counts[key] = counts.get(key, 0) + 1
         return dict(sorted(counts.items()))
+
+    def has_kernel(self) -> bool:
+        """True when the kernel of ``from-csv`` is part of the site (PRIMER.md, A4 "Kern" and "RDFS-Brücke").
+
+        The loaded JSON carries no marker, so the kernel is recognised by what it says: Q1, Q2 and Q3 are items,
+        P1, P2 and P3 are properties of the datatypes the kernel gives them, and the class tree and the ranges of
+        the three are as the kernel states them. A harvested Wikibase that merely uses the same numbers does not
+        match, and neither does a CSV site built with ``--no-kernel``."""
+        for entity_id, kind, datatype in KERNEL_CORE_ENTITIES:
+            entity = self.entities.get(entity_id)
+            if entity is None or entity.kind != kind or (entity.datatype or None) != datatype:
+                return False
+        for subject, prop, target in KERNEL_CORE_STATEMENTS:
+            if not any(s.mainsnak.property == prop and s.mainsnak.entity_id == target
+                       for s in self.entities[subject].statements):
+                return False
+        return True
 
     def labeller(self, languages: list[str]) -> "LabelResolver":
         return LabelResolver(self, languages)

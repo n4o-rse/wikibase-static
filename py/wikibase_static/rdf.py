@@ -70,6 +70,13 @@ FORMAT_VERSION = "1.0.0"                                # of the Wikibase RDF fo
 # Datatypes whose direct property is an owl:ObjectProperty (the value is an IRI); the rest are DatatypeProperty.
 OBJECT_DATATYPES = frozenset({"wikibase-item", "wikibase-property", "url", "commonsMedia"})
 
+# The RDFS bridge (PRIMER.md, A4): when the kernel is part of the site, its three class properties and three
+# classes are tied to RDFS and OWL, so that a reasoner (or a query with a property path) reads the class tree.
+BRIDGE_PROPERTIES = {"P1": RDFS + "subClassOf", "P2": RDF + "type", "P3": RDFS + "subPropertyOf"}
+BRIDGE_CLASSES = {"Q1": RDFS + "Class", "Q2": RDF + "Property", "Q3": OWL + "Thing"}
+BRIDGE_TITLE = ("RDFS bridge of the kernel (wikibase-static): the direct properties P1 to P3 and the classes Q1 to Q3 "
+                "tied to RDFS and OWL.\nNot part of the Wikibase data model; written only when the kernel is part of the site.")
+
 PRECISION_YEAR, PRECISION_MONTH, PRECISION_DAY = 9, 10, 11
 
 
@@ -331,6 +338,7 @@ class Rdf:
     notes: list[str] = field(default_factory=list)
     distributions: int = 0
     federated: int = 0                                          # snaks of Wikidata properties (wd:P...), linked but not exported
+    bridge: set[Triple] = field(default_factory=set)            # the RDFS bridge triples (kernel only), also in ``triples``
 
 
 @dataclass
@@ -359,6 +367,7 @@ class _Builder:
         self.property_types = {e.id: e.datatype for e in site.properties if e.datatype}
         self.problems: set[str] = set()
         self.skipped_types: dict[str, str] = {}
+        self.kernel = site.has_kernel()
 
     # ---- small helpers
 
@@ -620,6 +629,17 @@ class _Builder:
         self.add(restriction, Iri(OWL + "onProperty"), Iri(ns.wdt + pid))
         self.add(restriction, Iri(OWL + "someValuesFrom"), Iri(OWL + "Thing"))
 
+    def bridge(self, entity: Entity) -> None:
+        """The RDFS bridge triples of a kernel entity (only P1 to P3 and Q1 to Q3 have any)."""
+        if entity.id in BRIDGE_PROPERTIES and entity.kind == "property":
+            triple = (Iri(self.ns.wdt + entity.id), Iri(RDFS + "subPropertyOf"), Iri(BRIDGE_PROPERTIES[entity.id]))
+        elif entity.id in BRIDGE_CLASSES and entity.kind == "item":
+            triple = (self._wd(entity.id), Iri(OWL + "equivalentClass"), Iri(BRIDGE_CLASSES[entity.id]))
+        else:
+            return
+        self.add(*triple)
+        self.out.bridge.add(triple)
+
     # ---- DCAT
 
     def _dcat(self, name: str) -> Iri:
@@ -746,6 +766,8 @@ class _Builder:
         self.statements(entity)
         if entity.kind == "property":
             self.property_definition(entity)
+        if self.kernel:
+            self.bridge(entity)
         document = Iri(ns.data + entity.id)
         self.add(document, self._a(), Iri(SCHEMA + "Dataset"))
         self.add(document, Iri(SCHEMA + "about"), subject)
@@ -772,6 +794,8 @@ def build(site: Site, ns: Namespaces, license_url: str | None = None, catalog: C
         builder.catalogue()
         if not catalog.pages_url:
             builder.out.notes.append("no pages_url in site.yaml: the datasets have no distributions (a distribution needs a download URL)")
+    if builder.out.bridge:
+        builder.out.notes.append(f"the kernel is part of the site: {len(builder.out.bridge)} RDFS bridge triples written (own section in the Turtle file)")
     if builder.out.federated:
         builder.out.notes.append(f"{builder.out.federated} value(s) of Wikidata properties (wd:P...) are linked on the pages, not exported")
     problems = set(builder.problems)
@@ -806,8 +830,8 @@ class _Abbreviator:
         self.prefixes = prefixes
         self.by_length = sorted(prefixes.items(), key=lambda item: (-len(item[1]), item[0]))
 
-    def iri(self, value: str) -> str:
-        if value == RDF + "type":
+    def iri(self, value: str, predicate: bool = False) -> str:
+        if predicate and value == RDF + "type":     # "a" is only valid as a predicate; as an object it is rdf:type
             return "a"
         for prefix, namespace in self.by_length:
             if value.startswith(namespace):
@@ -816,9 +840,9 @@ class _Abbreviator:
                     return f"{prefix}:{local}"
         return f"<{value}>"
 
-    def term(self, term: Term) -> str:
+    def term(self, term: Term, predicate: bool = False) -> str:
         if isinstance(term, Iri):
-            return self.iri(term.value)
+            return self.iri(term.value, predicate)
         if isinstance(term, Blank):
             return f"_:{term.label}"
         text = f'"{escape_literal(term.lexical)}"'
@@ -850,12 +874,15 @@ def _subject_group(term: Term, ns: Namespaces) -> float:
     return 8
 
 
-def to_turtle(triples: Iterable[Triple], ns: Namespaces, header: str = "") -> str:
-    """The triples as Turtle: prefixes, then one block per subject, everything in a fixed order."""
+def to_turtle(triples: Iterable[Triple], ns: Namespaces, header: str = "",
+              section: tuple[str, Iterable[Triple]] | None = None) -> str:
+    """The triples as Turtle: prefixes, then one block per subject, everything in a fixed order.
+
+    ``section`` is a title and a set of triples that are written last, under a comment of their own, instead of
+    among the others (the RDFS bridge); the graph is the same either way."""
     abbreviate = _Abbreviator(ns.prefixes())
-    by_subject: dict[Term, dict[Term, list[Term]]] = {}
-    for s, p, o in triples:
-        by_subject.setdefault(s, {}).setdefault(p, []).append(o)
+    marked = set(section[1]) if section else set()
+    main = [t for t in triples if t not in marked]
 
     lines: list[str] = []
     for line in header.splitlines():
@@ -864,6 +891,18 @@ def to_turtle(triples: Iterable[Triple], ns: Namespaces, header: str = "") -> st
         lines.append("")
     for prefix, namespace in sorted(ns.prefixes().items()):
         lines.append(f"@prefix {prefix}: <{namespace}> .")
+    lines.extend(_blocks(main, ns, abbreviate))
+    if section and marked:
+        lines.append("")
+        lines.extend(f"# {line}" if line else "#" for line in section[0].splitlines())
+        lines.extend(_blocks(marked, ns, abbreviate))
+    return "\n".join(lines) + "\n"
+
+
+def _blocks(triples: Iterable[Triple], ns: Namespaces, abbreviate: "_Abbreviator") -> list[str]:
+    by_subject: dict[Term, dict[Term, list[Term]]] = {}
+    for s, p, o in triples:
+        by_subject.setdefault(s, {}).setdefault(p, []).append(o)
 
     def subject_key(term: Term) -> tuple[float, tuple[list[Any], str]]:
         return _subject_group(term, ns), _term_key(term)
@@ -871,6 +910,7 @@ def to_turtle(triples: Iterable[Triple], ns: Namespaces, header: str = "") -> st
     def object_key(term: Term) -> tuple[int, tuple[list[Any], str]]:
         return (0 if isinstance(term, Iri) else 1 if isinstance(term, Blank) else 2), _term_key(term)
 
+    lines: list[str] = []
     for subject in sorted(by_subject, key=subject_key):
         predicates = by_subject[subject]
         order = sorted(predicates, key=lambda p: (0 if isinstance(p, Iri) and p.value == RDF + "type" else 1, _term_key(p)))
@@ -880,7 +920,7 @@ def to_turtle(triples: Iterable[Triple], ns: Namespaces, header: str = "") -> st
             objects = sorted(predicates[predicate], key=object_key)
             rendered = [abbreviate.term(o) for o in objects]
             end = " ." if index == len(order) - 1 else " ;"
-            head = f"    {abbreviate.term(predicate)} "
+            head = f"    {abbreviate.term(predicate, True)} "
             if len(rendered) == 1:
                 lines.append(head + rendered[0] + end)
             else:
@@ -889,4 +929,4 @@ def to_turtle(triples: Iterable[Triple], ns: Namespaces, header: str = "") -> st
                 for item in rendered[1:-1]:
                     lines.append(pad + item + ",")
                 lines.append(pad + rendered[-1] + end)
-    return "\n".join(lines) + "\n"
+    return lines
