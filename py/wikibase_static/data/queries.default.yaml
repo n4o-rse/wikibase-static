@@ -182,15 +182,17 @@ queries:
       de: Aussagen, die angeben, woher sie stammen, mit Property und Wert der Fundstelle.
     sparql: |
       SELECT ?itemLabel ?propertyLabel ?sourceLabel ?source WHERE {
-        ?statement prov:wasDerivedFrom ?reference .
-        ?reference ?referenceProperty ?source .
-        ?sourceProperty wikibase:reference ?referenceProperty ;
-                        rdfs:label ?sourceLabel .
-        FILTER(LANG(?sourceLabel) = "@@lang@@")
-        ?property wikibase:claim ?claim ;
-                  rdfs:label ?propertyLabel .
-        FILTER(LANG(?propertyLabel) = "@@lang@@")
-        ?item ?claim ?statement .
+        # Three groups that are joined from the first outwards: written as one block, rdflib builds the
+        # cross product of the two property lists (every property times every property) before it joins them.
+        { ?statement prov:wasDerivedFrom ?reference .
+          ?reference ?referenceProperty ?source . }
+        { ?item ?claim ?statement .
+          ?property wikibase:claim ?claim ;
+                    rdfs:label ?propertyLabel .
+          FILTER(LANG(?propertyLabel) = "@@lang@@") }
+        { ?sourceProperty wikibase:reference ?referenceProperty ;
+                          rdfs:label ?sourceLabel .
+          FILTER(LANG(?sourceLabel) = "@@lang@@") }
         OPTIONAL {
           ?item rdfs:label ?itemLabel .
           FILTER(LANG(?itemLabel) = "@@lang@@")

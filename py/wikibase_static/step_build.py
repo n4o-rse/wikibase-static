@@ -73,10 +73,11 @@ def internal_targets(html: str) -> list[str]:
     return found
 
 
-def linkcheck(docs: Path, pending: tuple[str, ...] = ()) -> tuple[int, list[str]]:
+def linkcheck(docs: Path, pending: tuple[str, ...] = (), pending_dirs: tuple[str, ...] = ()) -> tuple[int, list[str]]:
     """(links checked, dead links as ``page -> target``) over every HTML file directly in ``docs``.
 
-    ``pending`` names files a later step writes (``sparql.html``): a link to one of them is not dead yet."""
+    ``pending`` names files a later step writes (``sparql.html``), ``pending_dirs`` folders it fills (``ttl/``): a link
+    to one of them is not dead yet."""
     checked = 0
     dead: list[str] = []
     for page in sorted(docs.glob("*.html")):
@@ -85,7 +86,7 @@ def linkcheck(docs: Path, pending: tuple[str, ...] = ()) -> tuple[int, list[str]
             resolved = posixpath.normpath(target)
             if resolved.startswith(".."):
                 dead.append(f"{page.name} -> {target} (outside docs/)")
-            elif resolved in pending:
+            elif resolved in pending or resolved.startswith(pending_dirs):
                 continue
             elif not (docs / resolved).is_file():
                 dead.append(f"{page.name} -> {target}")
@@ -177,8 +178,10 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     # Heavy imports only now, so that --list, --dry-run and an empty repository never need them.
+    from wikibase_static import rdf
     from wikibase_static.render import Renderer
     from wikibase_static.site_config import load_config
+    from wikibase_static.step_rdf import raw_file, resolve_base
 
     cfg = load_config(utils.SITE_YAML, site.source_url)
     problems = list(cfg.problems)
@@ -192,6 +195,8 @@ def main(argv: list[str] | None = None) -> int:
     env = make_env()
     r = Renderer(site, cfg, __version__)
     common = page_context(site, cfg, r, logo)
+    base, placeholder = resolve_base(cfg)
+    concepts = None if placeholder else rdf.Namespaces(base).wd       # no concept URI without a base to put it under
 
     expected: set[str] = set()
     pages_with_map = markers = 0
@@ -221,6 +226,10 @@ def main(argv: list[str] | None = None) -> int:
             "ui_in_other_languages": r.ui("in_other_languages"), "ui_tools": r.ui("tools"),
             "ui_referenced_by_short": r.ui("referenced_by_short"), "ui_tab_read": r.ui("tab_read"),
             "ui_tab_original": r.ui("tab_original"),
+            "concept_uri": f"{concepts}{entity.id}" if concepts else None,
+            "ttl_href": f"ttl/{entity.id}.ttl", "json_href": f"json/{entity.id}.json" if raw_file(entity) else None,
+            "ui_page_downloads": r.ui("page_downloads"), "ui_download_ttl": r.ui("download_ttl"),
+            "ui_download_json": r.ui("download_json"), "ui_copy_uri": r.ui("copy_uri"), "ui_copied": r.ui("copied"),
             "ui_datatype": r.ui("datatype"), "ui_map": r.ui("map"), "ui_statements": r.ui("statements"),
             "ui_no_statements": r.ui("no_statements"), "ui_rank_preferred": r.ui("rank_preferred"),
             "ui_rank_deprecated": r.ui("rank_deprecated"),
@@ -249,7 +258,7 @@ def main(argv: list[str] | None = None) -> int:
 
     entity_pages = sorted(p.name for p in docs.glob("*.html") if ENTITY_PAGE.match(p.name))
     missing = sorted(f"{e}.html" for e in site.entities if f"{e}.html" not in entity_pages)
-    checked, dead = linkcheck(docs, pending=("sparql.html", "query.html"))
+    checked, dead = linkcheck(docs, pending=("sparql.html", "query.html"), pending_dirs=("ttl/", "json/"))
 
     print(f"[{STEP}] {len(site.entities)} entities -> {len(entity_pages)} entity pages + index.html in docs/ "
           f"(difference {len(site.entities) - len(entity_pages)}), {assets} asset files")

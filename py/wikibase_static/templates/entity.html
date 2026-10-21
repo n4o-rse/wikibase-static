@@ -17,6 +17,17 @@
   <h1>{{ heading }}</h1>
   <p class="description">{% if description %}{{ description }}{% else %}<span class="muted">{{ ui_no_description }}</span>{% endif %}</p>
 
+  <p class="entity-tools">
+    <span class="muted">{{ ui_page_downloads }}:</span>
+    <a href="{{ ttl_href }}" download>{{ ui_download_ttl }}</a>
+    {% if json_href %}
+    <a href="{{ json_href }}" download>{{ ui_download_json }}</a>
+    {% endif %}
+    {% if concept_uri %}
+    <button type="button" class="copy-uri" data-copy="{{ concept_uri }}" title="{{ concept_uri }}"><span class="copy-label">{{ ui_copy_uri }}</span><span class="copy-done" hidden>{{ ui_copied }}</span></button>
+    {% endif %}
+  </p>
+
   <details class="languages" open>
     <summary>{{ ui_in_other_languages }}</summary>
     <table class="terms">
