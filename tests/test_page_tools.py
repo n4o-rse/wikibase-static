@@ -80,6 +80,31 @@ class PageTools(test_build.Site):
         self.assertIn("Konzept-URI kopieren", page)
         self.assertIn("Herunterladen", page)
 
+    def test_a_concept_uri_under_the_published_site_opens_a_page_that_forwards(self) -> None:
+        self.site_yaml("pages_url: https://example.org/demo/\nrdf_base: https://example.org/demo\n")
+        self.build()
+        code, _ = self.run_step(step_rdf)
+        stub = (self.docs / "entity" / "Q1.html").read_text(encoding="utf-8")
+        self.assertIn('url=../Q1.html', stub)
+        self.assertIn('href="../ttl/Q1.ttl"', stub)
+        self.assertEqual(sorted(p.stem for p in (self.docs / "entity").glob("*.html")),
+                         sorted(p.stem for p in (self.docs / "ttl").glob("*.ttl")))
+
+    def test_no_stubs_when_the_base_is_the_live_wikibase(self) -> None:
+        self.site_yaml("pages_url: https://example.org/demo/\nrdf_base: https://wiki.example.org\n")
+        self.build()
+        self.run_step(step_rdf)
+        self.assertFalse((self.docs / "entity").exists())
+
+    def test_stubs_that_are_no_longer_wanted_are_removed(self) -> None:
+        self.site_yaml("pages_url: https://example.org/demo/\nrdf_base: https://example.org/demo\n")
+        self.build()
+        self.run_step(step_rdf)
+        self.assertTrue((self.docs / "entity" / "Q1.html").is_file())
+        self.site_yaml("pages_url: https://example.org/demo/\nrdf_base: https://wiki.example.org\n")
+        self.run_step(step_rdf)
+        self.assertFalse((self.docs / "entity").exists())
+
     def test_the_index_has_no_tools(self) -> None:
         self.site_yaml("rdf_base: https://example.org\n")
         self.build()

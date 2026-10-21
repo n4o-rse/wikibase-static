@@ -9,6 +9,7 @@ Reads the loaded entities and ``site.yaml`` and writes::
     docs/downloads/wikibase-ontology.ttl   the Wikibase system ontology (CC0), copied from the package
     docs/ttl/Q1.ttl                        the triples of each entity on its own, with its DCAT description
     docs/json/Q1.json                      each entity as archived, byte for byte
+    docs/entity/Q1.html                    only when the concept URIs lie under ``pages_url`` (see ``concept_stubs``)
 
 The URIs are those of the real Wikibase (``site.yaml``: ``rdf_base``, else ``source.url``), so a query written for
 its Query Service runs against the file. The mapping, including the DCAT 3 description (catalogues, one dataset
@@ -69,7 +70,37 @@ def _sync(directory: Path, wanted: dict[str, bytes]) -> None:
             path.unlink()
 
 
-def write_published(site, ns, result, text: str, stem: str, header: list[str]) -> int:
+STUB = """<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>{id}</title>
+<meta http-equiv="refresh" content="0; url=../{id}.html">
+<link rel="canonical" href="../{id}.html">
+<link rel="alternate" type="text/turtle" href="../ttl/{id}.ttl">
+<link rel="alternate" type="application/json" href="../json/{id}.json">
+</head>
+<body>
+<p>The concept <code>{id}</code> is described on <a href="../{id}.html">{id}.html</a>
+(<a href="../ttl/{id}.ttl">RDF, Turtle</a>).</p>
+</body>
+</html>
+"""
+
+
+def concept_stubs(site, base: str, pages_url: str | None) -> dict[str, bytes]:
+    """``entity/<ID>.html`` for each entity, when the concept URIs (``<base>/entity/<ID>``) lie under the published site.
+
+    A static host cannot answer ``/entity/Q1`` with a redirect or with Turtle; GitHub Pages does serve ``entity/Q1.html``
+    for ``/entity/Q1``, so a small page that forwards to the real one makes the URI open instead of ending in a 404. It is
+    no content negotiation (a machine asking for Turtle gets the HTML stub, which names the Turtle file). For a site whose
+    base URI is that of the live Wikibase nothing is written."""
+    if not pages_url or pages_url.rstrip("/") != base.rstrip("/"):
+        return {}
+    return {f"{entity_id}.html": utils_bytes(STUB.format(id=entity_id)) for entity_id in sorted(site.entities)}
+
+
+def write_published(site, ns, result, text: str, stem: str, header: list[str], pages_url: str | None = None) -> int:
     """The files that go into docs/; returns how many."""
     downloads = {f"{stem}.ttl": utils_bytes(text), ONTOLOGY_NAME: ONTOLOGY.read_bytes()}
     ttl, raw = {}, {}
@@ -86,7 +117,12 @@ def write_published(site, ns, result, text: str, stem: str, header: list[str]) -
     _sync(utils.DOCS / "downloads", downloads)
     _sync(utils.DOCS / "ttl", ttl)
     _sync(utils.DOCS / "json", raw)
-    return len(downloads) + len(ttl) + len(raw)
+    stubs = concept_stubs(site, ns.base, pages_url)
+    if stubs or (utils.DOCS / "entity").is_dir():
+        _sync(utils.DOCS / "entity", stubs)
+        if not stubs:
+            (utils.DOCS / "entity").rmdir()
+    return len(downloads) + len(ttl) + len(raw) + len(stubs)
 
 
 def utils_bytes(text: str) -> bytes:
@@ -123,10 +159,10 @@ def main(argv: list[str] | None = None) -> int:
     text = rdf.to_turtle(result.triples, ns, "\n".join(header), (rdf.BRIDGE_TITLE, result.bridge) if result.bridge else None)
     target = target_file(base)
     utils.write_text(target, text)
-    published = write_published(site, ns, result, text, stem, header)
+    published = write_published(site, ns, result, text, stem, header, cfg.pages_url)
 
     print(f"[{STEP}] {result.entities} entities, {result.statements} statements -> {len(result.triples)} triples")
-    print(f"[{STEP}] {published} file(s) in docs/ (downloads, ttl/, json/); {result.distributions} distributions described")
+    print(f"[{STEP}] {published} file(s) in docs/ (downloads, ttl/, json/, entity/); {result.distributions} distributions described")
     for note in result.notes:
         print(f"[{STEP}] note: {note}")
     print(f"[{STEP}] {target.relative_to(utils.ROOT).as_posix()}: {len(target.read_bytes())} bytes, base URI {ns.base}"
