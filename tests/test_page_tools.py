@@ -65,7 +65,7 @@ class PageTools(test_build.Site):
         self.assertNotIn("data-copy", self.page("Q1.html"))
 
     def test_with_rdf_base_the_button_carries_the_concept_uri(self) -> None:
-        self.site_yaml("rdf_base: https://example.org/wiki\n")
+        self.site_yaml("pages_url: https://example.org/wiki/\nrdf_base: https://example.org/wiki\n")
         self.build()
         page = self.page("Q1.html")
         self.assertIn('data-copy="https://example.org/wiki/entity/Q1"', page)
@@ -74,7 +74,7 @@ class PageTools(test_build.Site):
         self.assertIn('data-copy="https://example.org/wiki/entity/P1"', self.page("P1.html"))
 
     def test_the_texts_come_in_both_languages(self) -> None:
-        self.site_yaml("rdf_base: https://example.org\nlanguages:\n  default: en\n  second: de\n")
+        self.site_yaml("pages_url: https://example.org/\nrdf_base: https://example.org\nlanguages:\n  default: en\n  second: de\n")
         self.build()
         page = self.page("Q1.html")
         self.assertIn("Konzept-URI kopieren", page)
@@ -105,8 +105,41 @@ class PageTools(test_build.Site):
         self.run_step(step_rdf)
         self.assertFalse((self.docs / "entity").exists())
 
+    def test_the_meta_description_is_plain_text_even_with_two_languages(self) -> None:
+        def terms(data: dict) -> None:
+            data["descriptions"]["en"] = {"language": "en", "value": "A set of things"}
+            data["descriptions"]["de"] = {"language": "de", "value": "Eine Menge"}
+        self.edit("Q1", terms)
+        self.site_yaml("languages:\n  default: en\n  second: de\n")
+        self.build()
+        head = self.page("Q1.html").split("</head>")[0]
+        self.assertIn('<meta name="description" content="A set of things">', head)
+
+    def test_a_site_that_copies_a_wikibase_copies_its_own_page_address_not_the_wikibases(self) -> None:
+        self.site_yaml("pages_url: https://example.org/copy/\nsource:\n  url: https://wb.example\n")
+        self.build()
+        page = self.page("Q1.html")
+        self.assertIn('data-copy="https://example.org/copy/Q1.html"', page)
+        self.assertIn("Copy page URL", page)
+        self.assertNotIn("wb.example/entity", page.split('<div class="content">')[1].split("</p>")[0])
+
+    def test_without_pages_url_a_live_wikibase_base_gives_no_button(self) -> None:
+        self.site_yaml("source:\n  url: https://wb.example\n")
+        self.build()
+        self.assertNotIn("data-copy", self.page("Q1.html"))
+
+    def test_the_meta_description_is_plain_text_even_with_two_languages(self) -> None:
+        def terms(data: dict) -> None:
+            data["descriptions"]["en"] = {"language": "en", "value": "A set of things"}
+            data["descriptions"]["de"] = {"language": "de", "value": "Eine Menge"}
+        self.edit("Q1", terms)
+        self.site_yaml("languages:\n  default: en\n  second: de\n")
+        self.build()
+        head = self.page("Q1.html").split("</head>")[0]
+        self.assertIn('<meta name="description" content="A set of things">', head)
+
     def test_the_index_has_no_tools(self) -> None:
-        self.site_yaml("rdf_base: https://example.org\n")
+        self.site_yaml("pages_url: https://example.org/\nrdf_base: https://example.org\n")
         self.build()
         self.assertNotIn("data-copy", self.page("index.html"))
 

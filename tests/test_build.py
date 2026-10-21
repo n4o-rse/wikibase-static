@@ -392,13 +392,14 @@ class BuildTests(Site):
         self.assertEqual(q1.count("<tr lang="), 1)
         self.assertIn("<td>English</td>", q1)
 
-    def test_tabs_name_the_kind_and_link_to_the_original(self) -> None:
+    def test_tabs_name_the_kind_and_do_not_link_to_the_original(self) -> None:
         self.site_yaml("source:\n  url: https://wb.example\n")
         self.build()
         q1, p1, index = self.page("Q1.html"), self.page("P1.html"), self.page("index.html")
         self.assertIn('<ul class="tabs-left"><li class="active"><span>Item</span></li></ul>', q1)
         self.assertIn('<ul class="tabs-left"><li class="active"><span>Property</span></li></ul>', p1)
-        self.assertIn('<li class="active"><span>Read</span></li><li><a href="https://wb.example/entity/Q1" target="_blank" rel="noopener">Original</a></li>', q1)
+        self.assertIn('<li class="active"><span>Read</span></li>', q1)
+        self.assertNotIn(">Original</a>", q1)                      # the footer still names the source (provenance)
         self.assertIn('<ul class="tabs-left"><li class="active"><span>Home</span></li></ul>', index)
         self.assertIn('<ul class="tabs-view"></ul>', index)
 

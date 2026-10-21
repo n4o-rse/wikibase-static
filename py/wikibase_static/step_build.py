@@ -138,7 +138,7 @@ def page_context(site: Any, cfg: Any, r: Any, logo: str | None):
             "default": cfg.default_language, "second": cfg.second_language, "colour": cfg.colour, "logo": logo,
             "site_title": cfg.title, "language_label": r.ui_text("language"),
             "canonical": f"{base_url}{page}" if base_url else None,
-            "title": title, "description": description, "footer": footer, "map_points": map_points or [], "leaflet": False,
+            "title": title, "description": description, "meta_description": description, "footer": footer, "map_points": map_points or [], "leaflet": False,
             "ui_source": r.ui("source"), "ui_original": r.ui("open_original"), "ui_as_of": r.ui("as_of"),
             "ui_license": r.ui("license"), "ui_license_missing": r.ui("license_missing"),
             "ui_imprint": r.ui("imprint"), "ui_generated": r.ui("generated"),
@@ -196,7 +196,17 @@ def main(argv: list[str] | None = None) -> int:
     r = Renderer(site, cfg, __version__)
     common = page_context(site, cfg, r, logo)
     base, placeholder = resolve_base(cfg)
-    concepts = None if placeholder else rdf.Namespaces(base).wd       # no concept URI without a base to put it under
+    own = cfg.pages_url.rstrip("/") if cfg.pages_url else None
+    concepts = rdf.Namespaces(base).wd if own and not placeholder and base == own else None   # URIs that resolve here (entity/<ID>.html)
+
+    def copy_target(entity_id: str) -> tuple[str | None, str]:
+        """(what the button copies, its text key): the concept URI where it opens a page of this site, else the page's own
+        address; never an address on another host (the Wikibase the data came from)."""
+        if concepts:
+            return f"{concepts}{entity_id}", "copy_uri"
+        if own:
+            return f"{own}/{entity_id}.html", "copy_page_uri"
+        return None, "copy_uri"
 
     expected: set[str] = set()
     pages_with_map = markers = 0
@@ -225,11 +235,10 @@ def main(argv: list[str] | None = None) -> int:
             "ui_language": r.ui("language"), "ui_label": r.ui("label"), "ui_description": r.ui("description"),
             "ui_in_other_languages": r.ui("in_other_languages"), "ui_tools": r.ui("tools"),
             "ui_referenced_by_short": r.ui("referenced_by_short"), "ui_tab_read": r.ui("tab_read"),
-            "ui_tab_original": r.ui("tab_original"),
-            "concept_uri": f"{concepts}{entity.id}" if concepts else None,
+            "concept_uri": copy_target(entity.id)[0],
             "ttl_href": f"ttl/{entity.id}.ttl", "json_href": f"json/{entity.id}.json" if raw_file(entity) else None,
             "ui_page_downloads": r.ui("page_downloads"), "ui_download_ttl": r.ui("download_ttl"),
-            "ui_download_json": r.ui("download_json"), "ui_copy_uri": r.ui("copy_uri"), "ui_copied": r.ui("copied"),
+            "ui_download_json": r.ui("download_json"), "ui_copy_uri": r.ui(copy_target(entity.id)[1]), "ui_copied": r.ui("copied"),
             "ui_datatype": r.ui("datatype"), "ui_map": r.ui("map"), "ui_statements": r.ui("statements"),
             "ui_no_statements": r.ui("no_statements"), "ui_rank_preferred": r.ui("rank_preferred"),
             "ui_rank_deprecated": r.ui("rank_deprecated"),
