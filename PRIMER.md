@@ -1,6 +1,6 @@
 # PRIMER — wikibase-static
 
-Arbeitsplan für `n4o-rse/wikibase-static`. Wird zu Beginn jedes Chats hochgeladen (Bundle, siehe A5) und am Ende zurückgeschrieben. Stand: 2026-10-21 (nach S7b: Modell des Starter Packs, Demo-Repo `chublets-wikibase-demo`, RDFS-Brücke; S7c bis S7g offen).
+Arbeitsplan für `n4o-rse/wikibase-static`. Wird zu Beginn jedes Chats hochgeladen (Bundle, siehe A5) und am Ende zurückgeschrieben. Stand: 2026-10-21 (nach S7b: Modell des Starter Packs, Demo-Repo `chublets-wikibase-demo`, RDFS-Brücke; S7c bis S7g offen; neu geplant: S11 bis S15, CIDOC-CRM-Schicht und weitere Quellen, Befund 63).
 
 Sprache: dieses Dokument ist deutsch, alles andere im Repo (Code, Kommentare, README) ist britisches Englisch.
 
@@ -99,6 +99,7 @@ Was schon existiert und **kopiert** wird (nicht referenziert, siehe A3):
 60. **Rettungs-Grundsatz: eine Kopie darf nicht auf die Quelle zeigen** (Beschluss Florian 2026-10-21, ausgelöst von der Frage, was die Kopier-Schaltfläche bei `fuzzy-sl-static` kopiert; am selben Tag meldete `n4o-prov.wikibase.cloud` „temporarily unavailable due to emergency maintenance“, die API war also ebenso wenig erreichbar wie die Website): Eine statische Kopie, die einspringt, wenn die Wikibase weg ist, trägt ihre eigenen URIs. Für `fuzzy-sl-static` heißt das `rdf_base: https://n4o-rse.github.io/fuzzy-sl-static` in `site.yaml` (reine Konfiguration, kein Paketcode): alle URIs des Exports, die Konzept-URIs (`…/entity/Q20`, mit Weiterleitungsseiten wie im Demo) und die Schaltfläche „Copy concept URI“ sind dann dieselben wie im Demo; die alte Datei `dist/fuzzy-sl.wikibase.cloud.ttl` ist zu löschen. 0.6.3 zieht zwei Stellen nach, die sonst auf die Quelle zeigten: die Startseite des DCAT-Katalogs (`dcat:landingPage` ist die Site, die Quelle steht als `dcterms:source`) und der Kopfkommentar der Turtle-Dateien (Titel statt Quell-Adresse); beides nur, wenn die Basis-URI die `pages_url` ist, sonst unverändert. Geprüft an einer frischen Kopie von `fuzzy-sl-static`: 0 tote Links, 13 Abfragen laufen mit denselben Zeilen (173 Entitäten, 488 Statements, 12 456 Tripel), 173 Weiterleitungsseiten. Die Quelle bleibt als Herkunft genannt (Fußzeile mit Link, `dcterms:source`, Beschreibungstext, README); wer auch das tilgen will, braucht eine eigene Entscheidung. Neu außerdem: `update.cmd` in den Site-Repos (Neuinstallation, `--strict`, `git add -A`, Commit und Push nur bei Änderung; Windows-`cmd`).
 61. **Entscheidungen vom 2026-10-21 (Florian, im Dialog)** und was daraus folgt: (a) **Lizenz des Chublets-Demos: CC0** für die Daten (Tabellen, Seiten, RDF); das Logo ist ausgenommen und behält seine eigenen Bedingungen (chublets-visuals: MIT); offen bleibt, ob die CC-BY-Crosswalk von CodeMeta, auf der die Zuordnung aufbaut, eine Nennung verlangt (`background/sources.csv`). `site.yaml` des Demos trägt den `license`-Block, die Fußzeile und `cc:license` folgen. (b) **Kern-Properties tragen ihre Wikidata-Zwillinge im Kern** (0.6.4): `data/kernel/statements.csv` hat sieben `P4`-Zeilen mehr (P1 ↔ P279, P2 ↔ P31, P3 ↔ P1647, P5 ↔ P1630, P6 ↔ P854, P7 ↔ P813, P8 ↔ P248), ohne Belege (der Kern hat keine Belegtabelle). Das ersetzt Befund 54 („der Kern trägt kein P4 für sich selbst“); die Kern-Erkennung (`Site.has_kernel`) ändert das nicht, harvestete Wikibases (`fuzzy-sl`) bekommen den Kern nicht und sind nicht betroffen. Im Demo steigen die Statements von 407 auf 414. P4 und die Klassen Q1 bis Q3 und P9, P10 haben (noch) keinen Zwilling. (c) **Kein Release-Tag**: die Site-Repos bleiben bei `requirements.txt` ohne Tag auf `main`, Nachführung mit dem Einzeiler (A4). (d) **Domain und Range der 149 Properties**: ein Vorschlag von Claude zum Durchsehen (Tabelle `domain-range-proposal.csv`), noch nicht in die Tabellen übernommen; siehe Teil D.
 62. **Weitere Entscheidungen vom 2026-10-21 (Florian, im Dialog, abends)** und was daraus folgt: (a) **`chublet` bleibt Unterklasse von `research software`** (Q106 ⊂ Q101 bleibt, wie im Demo); die instance-of-Werte entfallen auf den Items, das ist beim Identity-Block in S7c zu beachten. (b) **Die acht Properties „distribution package ID P3112 …“ (P174 bis P181) werden aus Wikidata beschriftet.** Das geht aus der Sandbox nicht (Wikidata ist von hier nicht erreichbar, WebFetch und Websuche liefern die Seiten nicht): Florian führt `python tools/verify_wikidata.py` aus dem Starter Pack aus (nur Standardbibliothek, braucht Internet; schreibt `data/verification-report.csv` mit den Live-Labels aller Zwillinge im Pack) und gibt den Bericht her; daraus kommen die acht Labels und zugleich die Prüfung aller Wikidata-IDs und Datentypen, die bisher fehlte (Teil D). (c) **`P102` („equivalent schema.org term“) wird mit Werten gefüllt.** Vorschlag `schema-org-term-proposal.csv`: für 84 CodeMeta-Aussagen (P101) der schema.org-Begriff, abgeleitet aus dem JSON-LD-Kontext von CodeMeta (`codemeta.jsonld`, GitHub-Klon) und der Crosswalk: 61 sicher (Kontext bildet auf `schema:` ab oder die Crosswalk führt den Begriff unter einem schema.org-Typ), 23 von Hand zu prüfen (CodeMeta-eigene Begriffe ohne schema.org-Gegenstück oder nicht im Kontext und ohne schema.org-Elterntyp in der Crosswalk, darunter viele, die schema.org unter demselben Namen kennt: applicationSuite, featureList, funding, screenshot …). Noch nicht in die Tabellen übernommen; Florian prüft die CSV, dann kommen die Aussagen in `data/csv/statements.csv` und der RDF-Export kann `owl:equivalentProperty` schreiben (offen). (d) **Kein w3id-Präfix vorerst**: die URIs bleiben bei den Pages-Adressen; ändert sich das später, ändert sich `rdf_base` einmal und mit ihm alle URIs des Exports; Inhaltsverhandlung bleibt aus (Befund 58).
+63. **Weiterverwendung: CIDOC-CRM-Schicht, N4O-KG und weitere Quellen** (Wunsch Florian 2026-10-21, abends; Entscheidungen im Dialog, Plan S11 bis S15). Ausgangslage aus den gelesenen Repos (Klone, Stand 2026-10-21): `n4o-kg-profile` prüft Sammlungen mit einem SHACL-Tor auf DCAT, verankert Klassen in CRM über transitives `rdfs:subClassOf` auf Namensräume wie `crm:` und `crmsci:` (Liste `CRM_NAMESPACES` in `build/make_metadata.py`) und arbeitet mit drei Repos (Quelle → Sammlung → Profil); seine Action schreibt `docs/index.html` und `docs/query/` und überschreibt `profile/` und `build/`, was mit den Seiten dieses Pakets kollidieren würde. Eine Tabelle DCAT → CRM kennt das Profil nicht; sie ist neu (A4). `facem2lod` und `osm2lod` liefern bereits RDF mit CRM-Klassen, aber keine Wikibase; `bb-5kbc-public` zeigt die Anwendung des Profils. **Eingänge:** (1) Ernte einer Wikibase (`harvest`, auch Rettungen und Wikidata-Mengen), (2) CSV aus Konvertern (`osm2lod`, `facem2lod`, open-archaeo), (3) Chublets-CSV; **eine** CRM-Schicht darüber. **Entscheidungen:** (a) Die Zuordnung liegt in einer Overlay-Datei je Repo, die Rohdaten bleiben unberührt (A4 „CRM-Overlay“). (b) Vom N4O-Profil werden nur die Shapes übernommen; die Anmeldung beim KG ist getrennt und später (A4 „N4O-Anbindung“). (c) Erlaubt sind die Familien CIDOC CRM, CRMdig, CRMsci/CRMarchaeo und CRMgeo. (d) Reihenfolge: Chublets, dann Wikibase-Rettungen, dann Wikidata-Mengen, dann OSM und FACEM. **Zu entscheiden bei der Umsetzung (nicht vorweggenommen):** „Holy well“ als E22 (gefasster Brunnen) oder E26/E27 (Quelle als Ort oder Landschaftselement), je Wikidata-Klasse statt pauschal; `dcat:Resource → E1` ist als Zielklasse für SHACL zu offen und gilt nur als Rückfall mit Warnung; `dcat:Catalog` und `dcat:CatalogRecord` auf E31 sind von `dcat:Dataset` auf E73 nicht mehr zu unterscheiden, wenn nur CRM-Klassen zählen (bei Bedarf zusätzlicher `rdf:type`).
 
 ### A2 Zielbild
 
@@ -273,6 +274,11 @@ Das Ergebnis hat diese prüfbaren Eigenschaften:
 | Ziel-Wikibase, IDs | `chublets-wikibase.de` gilt als leer oder frisch (Angabe Florian 2026-10-21, ungeprüft). Der Push legt zuerst den Kern an (Items Q1 bis Q3, Properties P1 bis P10, je Typ in dieser Reihenfolge) und bricht ab, wenn eine vergebene ID von der CSV abweicht. Alle übrigen IDs vergibt die Wikibase; die Zuordnung CSV-ID → Ziel-ID steht in `idmap-<ziel>.csv` im Usecase-Ordner. Die statische Demo zeigt deshalb die CSV-IDs, die echte Wikibase ihre eigenen (Teil D) | Vorschlag 2026-10-21 (S7g) |
 | Wikidata-Werte beim Push | Stub in der CSV (`origin=wikidata-stub`, P4 trägt die Wikidata-ID); beim Push wird daraus der Wert `http://www.wikidata.org/entity/Q…` aus P4, der Stub entsteht in der Ziel-Wikibase nicht. Schalter je Ziel `values: federated` (Standard) oder `local` (Stubs werden dann wie Items angelegt). Ein in der CSV von Hand geschriebenes `wd:Q…` ist ebenfalls föderiert | 2026-10-21 (Wahl von Florian; Schalter Vorschlag) |
 | Properties beim Push | Nur lokal; P4 dokumentiert die Zuordnung an der Property, es entstehen keine Aussagen mit `wd:P…` (kein `local+federated`); der Schalter kann später dazukommen. Der Datentyp `url` fällt beim Push auf `string` zurück, wenn die Ziel-Wikibase ihn sperrt (Schalter `url_as_string`, wie auf der Instanz des Software-Usecases) | 2026-10-21 (Wahl von Florian: nur lokal; `url_as_string` Vorschlag) |
+| CRM-Overlay | Jedes Repo (Rettung, Wikidata-Menge, CSV-Quelle) bekommt `data/crm.csv` (Spalten `class, crm_class, note`; `class` = lokale ID oder Wikidata-ID des Klassen-Items, `crm_class` = Kurzform wie `crmdig:D14`, `note` = Begründung). Die Rohdaten (`data/raw/`, `data/csv/` der Quelle) bleiben unverändert. Items erben die Zuordnung über `P1` (`rdfs:subClassOf`) und `P2`; Mehrfachtypen ergeben mehrere CRM-Klassen. Klassen- und Entitätsseiten zeigen die Zuordnung; der RDF-Export schreibt `rdfs:subClassOf <crm-Klasse>` an der Klasse. Verworfen: eine Property „CIDOC CRM class“ im Modell (geht nur bei eigenen CSV-Daten, nicht bei Rettungen) und beides gemischt (mehr Aufwand, kein Gewinn) | 2026-10-21 (Wahl von Florian; Einzelheiten Vorschlag, S11) |
+| Erlaubte CRM-Familien | CIDOC CRM (E), CRMdig (D), CRMsci und CRMarchaeo (S, A), CRMgeo (SP). Die Namensräume stehen in einer Datei des Pakets und werden mit `CRM_NAMESPACES` aus `n4o-kg-profile/build/make_metadata.py` abgeglichen; die SHACL-Prüfung nutzt dieselbe Liste | 2026-10-21 (Wahl von Florian; Abgleich Vorschlag, S12) |
+| N4O-Anbindung | Nur die Shapes werden übernommen (S12); `n4o-kg-profile` selbst wird im static-Repo nicht eingebunden (seine Action überschreibt `docs/index.html`, `profile/`, `build/`). Das Bundle für den KG ist `dist/*.ttl`; die Anmeldung (Collection-Repo mit `metadata.yaml`) erfolgt getrennt und später | 2026-10-21 (Wahl von Florian) |
+| DCAT → CRM | Tabelle von Florian, als Datei im Paket (`data/dcat-crm.csv` mit Turtle-Ausgabe), Klassen von DCAT 3 auf CRM: `dcat:Resource` → E1 (nur Rückfall, Warnung), `dcat:Dataset` und `dcat:DatasetSeries` → E73, `dcat:Distribution` → D1, `dcat:Catalog` und `dcat:CatalogRecord` → E31 (plus D1, wenn digital), `dcat:Role` → E55, `dcat:DataService` und `dcat:Relationship` ohne direkte Entsprechung (offen markiert, E89 für `Relationship` nur als Vorschlag). Die Zeilen ohne Gegenstück werden nicht erzwungen | 2026-10-21 (Tabelle Florian; Umsetzung S12) |
+| Reihenfolge nach S7 | S11 CRM-Overlay mit Chublets, S12 DCAT → CRM und SHACL, S13 Wikibase-Rettungen, S14 Wikidata-Mengen, S15 OSM und FACEM. Je Schritt ein Chat | 2026-10-21 (Wahl von Florian) |
 
 ### A5 Was in welchem Chat hochgeladen wird
 
@@ -324,6 +330,11 @@ Das Repo veröffentlicht RDF (S6). Die RDF-Dateien verwenden die Konzept-URIs de
 | S8 | Pages-Workflow, Determinismus- und Linkcheck in CI | wikibase-static, fuzzy-sl-static | S3 | erledigt 2026-10-21 |
 | S9 | Template-Repo `wikibase-static-template` | wikibase-static-template | S3, S8 | offen |
 | S10 | Skill aus dem bewährten Repo | – | S9 | offen |
+| S11 | CRM-Overlay: `data/crm.csv`, Anzeige, Export, Zuordnung der Chublets-Klassen | wikibase-static, chublets-wikibase-demo | S7b | offen |
+| S12 | DCAT → CRM-Tabelle, SHACL-Shapes, Befehl `check-crm` | wikibase-static | S11 | offen |
+| S13 | Wikibase-Rettungen (`n4o-prov` u. a.) mit CRM-Overlay | neue Site-Repos | S11, S12 | offen |
+| S14 | Wikidata-Mengen (QID-Liste, z. B. Holy Wells), verallgemeinert aus S7d | wikibase-static, neue Site-Repos | S7d, S11 | offen |
+| S15 | Konverter OSM und FACEM → CSV | wikibase-static, neue Site-Repos | S11 | offen |
 
 S0 und S1 sind unabhängig voneinander. Nach S2 sind S3, S5, S6 und S7 voneinander unabhängig und können in beliebiger Reihenfolge laufen; S4 braucht nur das Zwischenformat aus S0 und kann schon vor S2 beginnen, weil `data/raw/` nur Rohdaten ablegt. S8 braucht mindestens S3. Ein Chat darf auf S4 starten, auch wenn S2 noch offen ist. Innerhalb von S7 ist S7a die Voraussetzung für alles; danach sind S7e und S7f unabhängig von den Importern, S7c und S7d unabhängig voneinander (beide brauchen das Modell aus S7b). S7g braucht S7a und S7b und läuft im Repo `wikibase-federation`; für den Anfang genügen Kern und Modell, die Importer sind keine Voraussetzung.
 
@@ -682,6 +693,48 @@ Inhalt (alles im Repo `wikibase-federation`, Usecase `usecases/chublets/`): `pip
 
 **Abnahme:** Der Skill erzeugt aus einer Beispiel-Wikibase eine Seite nach den Regeln aus A3.
 
+### S11 — CRM-Overlay
+
+**Ziel:** Jedes Element ist einer CRM-Klasse zugeordnet, und man sieht es im statischen Modell.
+
+**Uploads:** Bundle beider Repos; die Zuordnungen für die Chublets-Klassen, die Florian korrigiert (Vorschlag: Q100 `crmdig:D14`, was über D1 zu E73 führt; die übrigen Klassen nach Prüfung).
+
+Inhalt: Leser für `data/crm.csv` (A4 „CRM-Overlay“), Validierung gegen die erlaubten Familien, Anzeige auf Klassen- und Entitätsseiten, `rdfs:subClassOf <crm>` im RDF-Export, Standardabfrage „Klassen ohne CRM-Zuordnung“.
+
+**Abnahme:** Demo baut; jede der sieben Klassen zeigt ihre CRM-Klasse; eine Klasse ohne Zuordnung steht im Bericht; die Standardabfragen liefern dieselben Zeilen wie zuvor (Befund 51 gilt weiter).
+
+### S12 — DCAT → CRM und SHACL
+
+**Ziel:** Ein Befehl prüft, ob alles auf CRM verankert ist.
+
+Inhalt: `data/dcat-crm.csv` und Turtle (A4 „DCAT → CRM“), Shapes: jeder Typ eines Items führt transitiv über `rdfs:subClassOf` zu einer Klasse der erlaubten Familien; jede DCAT-Klasse des Exports ist abgebildet; `dcat:Resource → E1` nur als Warnung. Befehl `check-crm` (Tabelle der Verstöße, `--strict` bricht ab). Abgleich der Namensliste mit `n4o-kg-profile`.
+
+**Abnahme:** Demo ohne Verstöße; eine absichtlich unzugeordnete Klasse erzeugt genau einen Verstoß (Mutationsprobe); die Shapes laufen mit pySHACL über `dist/*.ttl`.
+
+### S13 — Wikibase-Rettungen
+
+**Ziel:** `n4o-prov.wikibase.cloud` und weitere kleine Instanzen als eigene Site-Repos nach dem Muster von `fuzzy-sl-static` (Befund 60), jeweils mit `data/crm.csv`.
+
+Voraussetzung: die Instanz antwortet (Probe `python main.py harvest --probe`); sonst Einlesen aus einem Dump (Teil D).
+
+**Abnahme:** wie bei `fuzzy-sl-static`: eigene URIs, kein Verweis auf die Quelle, `--strict` zweimal identisch.
+
+### S14 — Wikidata-Mengen
+
+**Ziel:** Eine Liste von QIDs (z. B. „Holy Wells“) wird zur Site; S7d wird dafür verallgemeinert.
+
+Inhalt: Seeds als QID-Liste, Labels der verknüpften Entitäten, CRM-Zuordnung über die Klassen im Overlay (A4 „CRM-Overlay“), Lückenbericht. Die Wikidata-Fixtures kommen von Florian (Befund 35).
+
+**Abnahme:** wie S7d, dazu `check-crm` ohne Verstöße für die Menge.
+
+### S15 — OSM und FACEM
+
+**Ziel:** Konverter machen aus den Ausgaben von `osm2lod` und `facem2lod` das CSV-Format dieses Pakets.
+
+Inhalt: Abbildung der schon CRM-getypten Klassen in `data/crm.csv`; FACEM erst, wenn `facem.at` wieder läuft.
+
+**Abnahme:** Rundlauf CSV → Site → RDF behält die CRM-Klassen der Quelle.
+
 ---
 
 ## Teil D — Offene Punkte
@@ -735,3 +788,9 @@ Inhalt (alles im Repo `wikibase-federation`, Usecase `usecases/chublets/`): `pip
 - **S7b, Pages und CI im Demo-Repo:** Nicht eingeschaltet, nicht gelaufen; der erste Lauf von `site.yml` auf GitHub ist die Probe (Python 3.13, Pyodide und rdflib im Browser wie bei `fuzzy-sl-static`, Teil D).
 - **S7b, `import_pack.py` nach Handänderungen:** Ein erneuter Lauf überschreibt Handänderungen an den Pack-Zeilen; das Skript merkt sich nur die Nummern (`idmap.csv`). Sobald die Tabellen von Hand gepflegt werden, wird es nicht mehr gebraucht (README sagt das); ein Schutz wie bei `to-csv` (Abbruch ohne `--force`) fehlt.
 - **S7b, Laufzeit der übrigen Standardabfragen bei größeren Beständen:** Nur `references` war ein Ausreißer (Befund 56); die anderen sieben liefen beim Demo unter 0,3 Sekunden. Bei den Software-Items aus S7c (mehr Aussagen und Tripel) ist jede Abfrage neu zu messen, im Browser unter Pyodide ebenso (Teil D „Laufzeit großer Exporte“).
+- **CRM, Klassen mit Auswahl (Befund 63):** „Holy well“ (E22 oder E26/E27) und ähnliche Klassen entscheidet Florian je Wikidata-Klasse; für die Zuordnung braucht S11 und S14 eine Liste der vorkommenden Klassen mit Vorschlag.
+- **CRM, `dcat:Catalog` und `dcat:CatalogRecord`:** Auf E31 sind sie von Datensätzen auf E73 nicht zu unterscheiden; ob zusätzlich ein eigener `rdf:type` geschrieben wird, ist offen (S12).
+- **CRM, `dcat:DataService` und `dcat:Relationship`:** ohne direkte Entsprechung; E89 für `Relationship` ist nur ein Vorschlag, für `DataService` gibt es keinen (S12).
+- **N4O-Registrierung:** Die Anmeldung bei `n4o-kg-profile` (Collection-Repo mit `metadata.yaml`) ist getrennt und später; offen ist, wer das je Sammlung anlegt und wie das Bundle `dist/*.ttl` dorthin kommt.
+- **Dump-Eingang für Rettungen:** Falls eine Wikibase länger ausfällt, wäre ein Lader für den Wikibase-JSON-Dump ein weiterer Eingang (siehe Eintrag „Rettungs-Repo“).
+- **Morgige Lieferung von Florian:** `domain-range-proposal.csv`, `schema-org-term-proposal.csv` (Spalten `decision`, `comment`) und `data/verification-report.csv` des Starter Packs; daraus ein Patch (Domain und Range P9, P10, Werte für P102, Labels P174 bis P181, Zwillingsprüfung). Die Wahl der fehlenden Klassen steht in der Vorschlagstabelle.
