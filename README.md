@@ -111,10 +111,24 @@ formatter_property: P1630        # property that holds the formatter URL of exte
 Offline tests (a fake Wikibase on localhost, no network needed):
 
 ```cmd
-python tests\test_harvest.py
-python tests\test_loader.py
-python tests\test_build.py
+python -m unittest discover -s tests
 ```
+
+## Continuous integration
+
+Two workflows live in `.github/workflows/`:
+
+- `ci.yml` guards this repository: the unit tests (Ubuntu with Python 3.10 and 3.13, Windows with 3.13), then
+  `python main.py --strict` twice, with `git status --porcelain` required to be empty after each run.
+- `site.yml` is a reusable workflow for a site repository (a demo, or a repository made from the template).
+  It runs the same strict pipeline twice, fails if the committed `docs/` and `dist/` differ from a fresh build,
+  and on the default branch publishes `docs/` to GitHub Pages. A dead internal link is a `WARN` line of the
+  build step, so `--strict` turns it into a red run.
+
+To use it in a site repository, copy [`examples/site-caller.yml`](examples/site-caller.yml) to
+`.github/workflows/site.yml` and set Settings → Pages → Source to "GitHub Actions". The repository's
+`requirements.txt` must install `wikibase-static`; `python main.py --strict` is the default command and can be
+changed with the `command` input.
 
 ## Layout
 
@@ -126,6 +140,8 @@ data/raw/                   harvested JSON, as obtained
 data/derived/               intermediates made from CSV
 dist/                       versioned products: RDF, pipeline report
 docs/                       the site, served by GitHub Pages
+.github/workflows/          ci.yml (this repository), site.yml (reusable, for site repositories)
+examples/                   site-caller.yml, the few lines a site repository needs to call site.yml
 PRIMER.md                   work plan and decisions (German)
 ```
 

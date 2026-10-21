@@ -1,0 +1,105 @@
+name: Site
+
+# Reusable workflow for a site repository (a demo such as fuzzy-sl-static, or a repository made
+# from wikibase-static-template). It checks the committed site and, on the default branch, publishes
+# docs/ to GitHub Pages. PRIMER.md, S8.
+#
+# What "check" means (PRIMER.md, A2 properties 3 and 4):
+#   1. `python main.py --strict` runs the whole pipeline; any WARN line, including a dead internal
+#      link from the linkcheck of the build step, makes it fail.
+#   2. `git status` must be clean afterwards: the committed docs/ and dist/ are what a fresh build makes.
+#   3. The pipeline runs a second time and the tree must still be clean: the build is deterministic.
+#
+# Call it like this (examples/site-caller.yml has the same text):
+#
+#   jobs:
+#     site:
+#       uses: n4o-rse/wikibase-static/.github/workflows/site.yml@main
+#
+# The calling job needs `permissions: { contents: read, pages: write, id-token: write }`, and the
+# repository's Pages source must be set to "GitHub Actions".
+
+on:
+  workflow_call:
+    inputs:
+      requirements:
+        description: "File with the pip requirements of the site repository (it installs wikibase-static)"
+        type: string
+        default: requirements.txt
+      command:
+        description: "Command that runs the pipeline in strict mode"
+        type: string
+        default: python main.py --strict
+      python-version:
+        type: string
+        default: "3.13"
+      deploy:
+        description: "Publish docs/ to GitHub Pages after a successful check (default branch only)"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: check (strict, run twice, tree clean)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    env:
+      REQUIREMENTS: ${{ inputs.requirements }}
+      COMMAND: ${{ inputs.command }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ inputs.python-version }}
+      - name: Install
+        run: python -m pip install -r "$REQUIREMENTS"
+
+      - name: Run 1
+        run: bash -c "$COMMAND"
+      - name: docs/ and dist/ are what a fresh build makes
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "::error::the committed site is out of date: run the pipeline locally and commit the result"
+            git status --short
+            git --no-pager diff --stat
+            exit 1
+          fi
+      - name: Run 2
+        run: bash -c "$COMMAND"
+      - name: The second run changed nothing
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "::error::run 2 differs from run 1: the pipeline is not deterministic"
+            git status --short
+            git --no-pager diff --stat
+            exit 1
+          fi
+
+  deploy:
+    name: deploy to GitHub Pages
+    needs: check
+    if: inputs.deploy && github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: docs
+      - id: deployment
+        uses: actions/deploy-pages@v4

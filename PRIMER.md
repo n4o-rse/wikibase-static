@@ -1,6 +1,6 @@
 # PRIMER — wikibase-static
 
-Arbeitsplan für `n4o-rse/wikibase-static`. Wird zu Beginn jedes Chats hochgeladen (Bundle, siehe A5) und am Ende zurückgeschrieben. Stand: 2026-10-21 (nach S3b).
+Arbeitsplan für `n4o-rse/wikibase-static`. Wird zu Beginn jedes Chats hochgeladen (Bundle, siehe A5) und am Ende zurückgeschrieben. Stand: 2026-10-21 (nach S8, Code; der grüne Lauf auf GitHub steht aus, siehe Teil D).
 
 Sprache: dieses Dokument ist deutsch, alles andere im Repo (Code, Kommentare, README) ist britisches Englisch.
 
@@ -16,7 +16,7 @@ Sprache: dieses Dokument ist deutsch, alles andere im Repo (Code, Kommentare, RE
 |---|---|---|
 | `n4o-rse/wikibase-static` | Paket, Orchestrator `main.py`, alle Schritte (dieses Repo) | neu, S1 |
 | `n4o-rse/wikibase-static-template` | GitHub-Template-Repo: `site.yaml`, Pages-Workflow, installiert `wikibase-static` per pip | geplant, S9 |
-| `n4o-rse/fuzzy-sl-static` | Demo 1: Rettung von `fuzzy-sl.wikibase.cloud` | angelegt 2026-10-20: `data/raw/` gefüllt (S4), dünnes Gerüst mit `main.py`-Wrapper; mit S3 kommen `site.yaml` und `docs/` (`python main.py build`); Workflow mit S8/S9 |
+| `n4o-rse/fuzzy-sl-static` | Demo 1: Rettung von `fuzzy-sl.wikibase.cloud` | angelegt 2026-10-20: `data/raw/` gefüllt (S4), dünnes Gerüst mit `main.py`-Wrapper; mit S3 kommen `site.yaml` und `docs/` (`python main.py build`); der Workflow-Aufrufer `examples/site-caller.yml` (S8) ist dort noch nicht eingelegt, der Orchestrator im Paket kommt mit S9 |
 | `n4o-rse/chublets-wikibase-demo` | Demo 2: Dummy-Wikibase aus CSV (Ideen von chublets.software, `open-archaeo/py`) | geplant, S7 |
 
 Was schon existiert und **kopiert** wird (nicht referenziert, siehe A3):
@@ -47,6 +47,8 @@ Was schon existiert und **kopiert** wird (nicht referenziert, siehe A3):
 11. Das npm-Paket `leaflet@1.9.4` bringt `LICENSE` und `dist/leaflet.css` mit **CRLF** (26 bzw. 661 Zeilen); `leaflet.js` hat LF (geprüft 2026-10-20). Beide Textdateien wurden beim Einchecken in `static/vendor/leaflet/` auf LF gebracht, sonst widersprechen sie der LF-Regel (A3). Die PNG-Bilder bleiben unverändert.
 12. Q131 hat zwei identische Koordinaten-Statements (gleiche Breite und Länge). Von den 62 Koordinaten der Echtdaten ergeben sich deshalb 61 verschiedene Kartenmarker auf 59 Seiten (geprüft 2026-10-20).
 13. **Fremder Bericht im Paket-Repo** (geprüft 2026-10-21, zweimal aufgetreten: Commits `4684ce4` und `f43d9bf`): Der eingecheckte `dist/pipeline_report.txt` zeigte Läufe mit den 173 Entitäten von `fuzzy-sl`, obwohl `data/raw/` des Paket-Repos leer ist. Ursache: In derselben `cmd`-Sitzung stand `WBS_ROOT` noch auf dem Demo-Repo (aus der Zeile `set WBS_ROOT=…&& python main.py harvest …`); `main.py` lud dann die Daten des Demo-Repos, schrieb den Bericht aber nach `dist/` des Paket-Repos. Behoben mit der neuen Regel in A3 und `tests/test_main.py`.
+14. **Der Linkcheck liest jede HTML-Datei in `docs/`** (geprüft 2026-10-21 am Code von `step_build.linkcheck` und mit `tests/test_ci.py`), nicht nur die erzeugten Seiten. Eine von Hand angelegte Seite wie `docs/impressum.html` mit einem Link auf eine fehlende Datei ist also ein toter Link (`WARN`, mit `--strict` Exit 1); die Seite selbst bleibt beim Bauen unberührt, denn nur Dateien nach dem Muster `Q…`/`P….html` gelten als erzeugt. Ein relatives `imprint` in `site.yaml` taugt dafür nicht: Es wird nur als Text gezeigt, nie als Link (`is_linkable`).
+15. **Der Determinismus-Check zeigt zugleich, ob das Eingecheckte aktuell ist** (geprüft 2026-10-21): Nach einem Lauf ist `git status --porcelain` nur dann leer, wenn `docs/` und `dist/` im Commit genau das sind, was ein frischer Lauf erzeugt, fehlende Seiten eingeschlossen (sie erscheinen als `??`). Ein zweiter Lauf fängt zusätzlich Ausgaben, die nur zufällig einmal gestimmt haben; die Probe mit wechselndem `PYTHONHASHSEED` macht das sichtbar.
 
 ### A2 Zielbild
 
@@ -83,6 +85,7 @@ Das Ergebnis hat diese prüfbaren Eigenschaften:
 - **Zeilenenden LF.** Jedes Repo der Familie hat eine `.gitattributes` mit `* text=auto eol=lf`; sonst weichen unter Windows die Hashes der Rohdaten ab (siehe S4, „Erledigt“).
 - **Zweimal laufen lassen, `git status` bleibt sauber.** `dist/pipeline_report.txt` enthält deshalb nur, was die Schritte sagen, keine Laufzeiten (die erscheinen nur im Terminal).
 - **Der Bericht gehört zum Repo seiner Daten.** `python main.py` schreibt `dist/pipeline_report.txt` nur bei einem vollständigen Lauf und nur, wenn `WBS_ROOT` nicht gesetzt ist oder auf das Repo selbst zeigt. Zeigt es auf ein Demo-Repo, laufen die Schritte dort, der Bericht des Paket-Repos bleibt unberührt, und das Terminal sagt „report not written“ (Befund 13). Vor einem Lauf im Paket-Repo steht in `cmd` `set WBS_ROOT=`, damit die Variable der Sitzung nicht nachwirkt.
+- **CI prüft, was lokal gilt.** Der Workflow ruft `python main.py --strict` zweimal auf und verlangt nach jedem Lauf ein leeres `git status --porcelain` (Befund 15); er enthält keine eigene Prüflogik, die lokal nicht läuft. Neue Prüfungen kommen in die Schritte (als `WARN`) und in `tests/`, nicht in die YAML-Datei.
 - **Netzwerk nur im Schritt `harvest`.** Alles andere läuft offline gegen die Daten auf der Platte. `harvest` ist nie Teil des Standardlaufs, sondern hat ein eigenes Verb: `python main.py harvest`.
 - **Höflicher Harvest.** Ehrlicher User-Agent mit Kontaktadresse, Pause zwischen Requests, `Retry-After` und `maxlag` beachten. Verlangt ein Host eine Bot-Challenge (z. B. Anubis), bricht `harvest` mit einer klaren Meldung ab. Es wird nicht versucht, sie zu lösen oder zu umgehen; der Weg ist dann `--from-dir` mit im Browser gesicherten JSON-Dateien.
 - **Die Seiten zeigen, was die Quelle sagt.** Werte werden formatiert, nicht repariert (ein Tippfehler in einer URL bleibt sichtbar, Befund 7). Zu einem Link werden nur `http://`, `https://`, `ftp://` und `ftps://`; alles andere (etwa `javascript:`) steht als Text.
@@ -150,6 +153,12 @@ Das Ergebnis hat diese prüfbaren Eigenschaften:
 | Sprachtabelle | Unter der Überschrift steht aufgeklappt „In other languages“ / „In weiteren Sprachen“ mit den Spalten Sprache, Bezeichnung, Beschreibung, Auch bekannt als. Zeilen: Standardsprache und zweite Sprache immer, dazu jede weitere Sprache, in der die Entität Label, Beschreibung oder Alias hat (nach Code sortiert). Fehlendes steht als „No label defined“ / „Keine Bezeichnung vorhanden“ (entsprechend bei der Beschreibung); Aliase sind mit ` \| ` verbunden. Sprachnamen kommen aus einer kleinen Tabelle (Englisch, Deutsch und gängige weitere), ein unbekannter Code steht als Code. Die Tabelle ersetzt den früheren Absatz „Auch bekannt als“ | 2026-10-21 (Wunsch Florian) |
 | Reiter und Werkzeuge | Reiter links: „Item“, „Property“ oder auf der Startseite „Home“; rechts „Read“ (aktuell) und „Original“ (Link auf die Konzept-URI `<Quelle>/entity/<ID>` in neuem Tab, nur mit Quelle). Der Sprachumschalter sitzt rechts in der Reiterzeile, dort hat Wikibase das Suchfeld (Platz für S5). In der Seitenleiste folgt unter Logo und Navigation der Abschnitt „Tools“ / „Werkzeuge“ mit „Referenced by“ / „Verwendet von“ als Sprung zum Block `#incoming`, nur wenn etwas auf die Seite zeigt. Die Fußzeile steht am Ende der Inhaltsspalte; die Seitenleiste ist grau, der Inhalt weiß | 2026-10-21 (Wunsch Florian) |
 | Logo von `fuzzy-sl` | `assets/logo.jpg` im Demo-Repo (1000 × 1000 Pixel, JPEG, 303 KB, unverändert von Florian geliefert 2026-10-21), `logo: assets/logo.jpg` in `site.yaml`; es wird nach `docs/assets/logo/` kopiert. Ein Logo mit deckend weißem Hintergrund fügt sich über `mix-blend-mode: multiply` in die graue Leiste ein | 2026-10-21 |
+| CI im Paket-Repo | `.github/workflows/ci.yml`: Tests (`python -m unittest discover -s tests`) auf Ubuntu mit Python 3.10 und 3.13 sowie Windows mit 3.13, dazu `python main.py --strict` zweimal, nach jedem Lauf muss `git status --porcelain` leer sein. Der eingecheckte `dist/pipeline_report.txt` ist damit mitgeprüft (Befund 13) | Vorschlag |
+| Workflow für Site-Repos | wiederverwendbar (`workflow_call`) in `.github/workflows/site.yml`. Eingaben: `requirements` (Standard `requirements.txt`), `command` (Standard `python main.py --strict`), `python-version`, `deploy` (Standard `true`). Job `check`: Lauf 1, Baum sauber, Lauf 2, Baum sauber. Job `deploy`: nur nach `check`, nur auf dem Standard-Branch, nie bei Pull Requests. Die Eingaben gehen über `env` in die Shell, nie in eine `run`-Zeile | Vorschlag |
+| Aufrufer im Site-Repo | `examples/site-caller.yml`; der aufrufende Job braucht `contents: read`, `pages: write`, `id-token: write`. Das Template (S9) legt ihn gleich mit an | Vorschlag |
+| Pages-Quelle | „GitHub Actions“ statt Branch `main`, Ordner `/docs`. Veröffentlicht wird der eingecheckte Ordner `docs/`, nachdem `check` gezeigt hat, dass er einem frischen Bau entspricht. Löst die frühere Annahme (Teil D) ab | Vorschlag |
+| Versionen der Actions | Tags der Hauptversion: `actions/checkout@v6`, `actions/setup-python@v6`, `actions/configure-pages@v5`, `actions/upload-pages-artifact@v4`, `actions/deploy-pages@v4` (Pages-Doku, geprüft 2026-10-21). Von `checkout` und `setup-python` gibt es auch v7; nicht eingesetzt, weil die Doku v6 zeigt und die Pages-Actions dort nicht dazugehören. `tests/test_ci.py` verlangt Tags der Hauptversion | Vorschlag |
+| Prüfung ohne Workflow-Logik | Jede Prüfung, die CI macht, läuft auch lokal (Schritte als `WARN`, Gate über `git status`); `tests/test_ci.py` führt dieselben Befehle gegen ein temporäres Site-Repo aus und prüft, dass die Workflow-Dateien sie noch enthalten | Vorschlag |
 
 ### A5 Was in welchem Chat hochgeladen wird
 
@@ -186,7 +195,7 @@ Das Repo veröffentlicht RDF (S6). Vorschlag: Die RDF-Dateien verwenden die Konz
 | S5 | Suche mit Autocomplete | wikibase-static | S2 | offen |
 | S6 | RDF-Export und SPARQL-Seite | wikibase-static | S2 | offen |
 | S7 | CSV-Import und Chublets-Demo | wikibase-static, chublets-wikibase-demo | S2 | offen |
-| S8 | Pages-Workflow, Determinismus- und Linkcheck in CI | wikibase-static | S3 | offen |
+| S8 | Pages-Workflow, Determinismus- und Linkcheck in CI | wikibase-static | S3 | Code und Tests fertig 2026-10-21; erledigt erst mit grünem und mit rotem Probelauf auf GitHub (Teil D) |
 | S9 | Template-Repo `wikibase-static-template` | wikibase-static-template | S3, S8 | offen |
 | S10 | Skill aus dem bewährten Repo | – | S9 | offen |
 
@@ -343,7 +352,20 @@ Inhalt: Client (aus `wbqs/client.py` übernommen, nur lesend), ID-Liste, `lastre
 
 **Ziel:** Ein Push baut `docs/` und prüft Determinismus und Linkcheck mit `python main.py --strict`.
 
-**Abnahme:** Der Workflow läuft grün; ein absichtlich toter Link lässt ihn rot werden.
+**Abnahme:** Der Workflow läuft grün; ein absichtlich toter Link lässt ihn rot werden. Ergänzt 2026-10-21: Beides gilt zuerst lokal (`tests/test_ci.py`) und dann auf GitHub, jeweils im Paket-Repo (`ci.yml`) und in einem Site-Repo (`site.yml` über den Aufrufer); die Probe mit totem Link läuft in einem Zweig, der nicht gemergt wird.
+
+### Erledigt 2026-10-21 (Code, Tests, Probe lokal; Lauf auf GitHub offen)
+
+**Gebaut:** `.github/workflows/ci.yml` (Tests und Pipeline zweimal), `.github/workflows/site.yml` (wiederverwendbar: `check` und `deploy`), `examples/site-caller.yml`, `tests/test_ci.py`; im README der Abschnitt „Continuous integration“ und das Layout. Am Code von `main.py` und den Schritten ändert sich nichts: Der Linkcheck war seit S3 ein `WARN` des Schritts `build`, `--strict` seit S1 die Umwandlung in Exit 1. S8 verdrahtet beides in CI und belegt es.
+
+**Befunde:**
+
+- 14 neue Tests, zusammen 101 (24 Loader, 10 Harvest, 48 Build, 5 Main, 14 CI). Sie führen aus, was der Workflow ausführt, gegen ein temporäres Site-Repo aus den Fixtures: sauberer Strict-Lauf (`0 dead`, kein `WARN`); handgeschriebene `docs/impressum.html` mit Link auf eine fehlende Datei gibt Exit 1 und die Zeile `WARN: [build] dead internal link impressum.html -> datenschutz.html`; ohne `--strict` nur Warnung (Exit 0); mit vorhandenem Ziel wieder grün (Befund 14). In einem echten Git-Repo: Lauf, Commit, danach zwei Läufe mit `PYTHONHASHSEED=2` und `=3` und leeres `git status --porcelain`; eine eingecheckte, von Hand veränderte Seite und eine fehlende Seite werden als Abweichung erkannt (Befund 15).
+- **Die Tests können rot werden** (zwei Mutationen, danach zurückgenommen, `git status` wieder wie vorher): Mit abgeschaltetem Linkcheck schlagen die beiden Tests zum toten Link fehl; mit einer vom Hash-Seed abhängigen Zeile in `docs/index.html` schlägt der Zwei-Läufe-Test fehl (` M docs/index.html`).
+- `actionlint` 1.7.12 meldet an `ci.yml`, `site.yml` und `examples/site-caller.yml` nichts. Der Job `pipeline` im Paket-Repo, lokal nachgestellt (`python main.py --strict` zweimal, `git status --porcelain`): beide Läufe Exit 0, Baum sauber, der eingecheckte `dist/pipeline_report.txt` bleibt unverändert.
+- Gesamtlauf `python -m unittest discover -s tests`: 101 Tests, OK, etwa 19 Sekunden.
+
+**Nicht geprüft:** ein Lauf auf GitHub (aus dieser Sitzung ist der Push abgelehnt, die Claude-GitHub-App hat in `n4o-rse/wikibase-static` keinen Schreibzugriff); Python 3.10 und Windows (lokal nur 3.13 unter Linux, beides läuft erstmals in der Matrix von `ci.yml`); `deploy` und `environment` (brauchen die Pages-Quelle „GitHub Actions“); der Aufruf aus einem Site-Repo, denn `fuzzy-sl-static` und dessen `main.py`-Wrapper waren nicht Teil dieser Sitzung.
 
 ### S9 — Template-Repo
 
@@ -362,7 +384,9 @@ Inhalt: Client (aus `wbqs/client.py` übernommen, nur lesend), ID-Liste, `lastre
 ## Teil D — Offene Punkte
 
 - **Anubis und die API:** `api.php` von `fuzzy-sl` ist für den Harvest erreichbar (Befund 7); `Special:EntityData` wurde nicht geprüft und wird nicht gebraucht. `--from-dir` bleibt der Fallback für Wikibases, die `api.php` schützen.
-- **Demo-Repo `fuzzy-sl-static`:** enthält `data/raw/`, ab S3 auch `site.yaml` und `docs/` (`python main.py build`). Der Harvest läuft mit `WBS_ROOT` im Demo-Repo, damit `data/raw/` des Paket-Repos leer bleibt. GitHub Pages ist noch nicht eingerichtet (Branch `main`, Ordner `/docs`); der Workflow kommt mit S8/S9.
+- **Demo-Repo `fuzzy-sl-static`:** enthält `data/raw/`, ab S3 auch `site.yaml` und `docs/` (`python main.py build`). Der Harvest läuft mit `WBS_ROOT` im Demo-Repo, damit `data/raw/` des Paket-Repos leer bleibt. GitHub Pages ist noch nicht eingerichtet; der Workflow dafür steht mit S8 bereit (`examples/site-caller.yml`, Quelle „GitHub Actions“, A4), eingelegt ist er dort noch nicht.
+- **S8, Probelauf auf GitHub (offen):** (1) `ci.yml` im Paket-Repo grün, einschließlich Python 3.10 und Windows, die erstmals dort laufen; (2) `examples/site-caller.yml` als `.github/workflows/site.yml` in `fuzzy-sl-static` einlegen, Pages-Quelle auf „GitHub Actions“, grüner Lauf mit Deploy; (3) in einem Zweig, der nicht gemergt wird, eine `docs/impressum.html` mit totem Link einchecken, der Lauf muss rot werden. Danach S8 in Teil B auf „erledigt“ setzen. Voraussetzungen, die ich nicht sehen konnte: der `main.py`-Wrapper im Demo-Repo muss `--strict` annehmen (sonst die Eingabe `command` setzen), und ist `n4o-rse/wikibase-static` nicht öffentlich (sichtbar war mir das nicht), muss es Zugriff auf seine Workflows für die Site-Repos freigeben (Settings → Actions → General → Access).
+- **Schreibzugriff der Claude-GitHub-App:** Pushes aus Chats werden für `n4o-rse/wikibase-static` abgelehnt; bis die App für die Organisation installiert ist, kommt jede Änderung als Patch-ZIP.
 - **Sichtprobe von S3 bei dir:** Eine Seite mit Karte (Kacheln) und einem Commons-Bild im eigenen Browser ansehen. In `fuzzy-sl` gibt es kein Bild; die Probe geht mit der Chublets-Demo (S7) oder einer Fixture mit echtem Dateinamen.
 - **Kartenkacheln:** Die Seiten laden Kacheln von `tile.openstreetmap.org`. Für Demos ist das üblich, für viel Verkehr verlangt die Nutzungsrichtlinie von OSM einen anderen Anbieter; dann wäre ein Schlüssel in `site.yaml` nötig.
 - **Suchfeld:** fehlt bis S5. Platz ist rechts in der Reiterzeile vor dem Sprachumschalter, dort hat die echte Wikibase es.

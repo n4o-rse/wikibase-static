@@ -1,0 +1,26 @@
+# Copy to .github/workflows/site.yml in a site repository (fuzzy-sl-static, or a repository made
+# from wikibase-static-template). It runs the check from wikibase-static on every push and pull
+# request, and publishes docs/ to GitHub Pages when the check passes on the default branch.
+#
+# Once per repository: Settings -> Pages -> Source: "GitHub Actions".
+# The site repository's requirements.txt must install wikibase-static, and `python main.py --strict`
+# must work there (see the `command` input if the repository starts the pipeline differently).
+
+name: Site
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  site:
+    uses: n4o-rse/wikibase-static/.github/workflows/site.yml@main
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    # with:
+    #   command: python main.py --strict   # default
+    #   deploy: false                      # check only, never publish

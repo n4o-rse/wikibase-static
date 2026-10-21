@@ -1,0 +1,78 @@
+name: CI
+
+# Guards the package repository itself: the tests, and the same two-run determinism
+# check that site repositories get from site.yml (PRIMER.md, S8).
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: tests (${{ matrix.os }}, Python ${{ matrix.python }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-latest, python: "3.10" }   # requires-python in pyproject.toml
+          - { os: ubuntu-latest, python: "3.13" }
+          - { os: windows-latest, python: "3.13" }  # the reference platform of the family
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+          cache-dependency-path: requirements.txt
+      - run: python -m pip install -r requirements.txt
+      - name: Unit tests
+        run: python -m unittest discover -s tests -v
+
+  pipeline:
+    name: pipeline, strict, run twice
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: requirements.txt
+      - run: python -m pip install -r requirements.txt
+
+      # The repository has no data of its own, so every step says "nothing to do" and the
+      # run rewrites dist/pipeline_report.txt. If the committed report differs (a report
+      # from somebody else's data, PRIMER.md A1 Befund 13), the check below shows it.
+      - name: Run 1
+        run: python main.py --strict
+      - name: Working tree is clean after run 1
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "::error::run 1 changed or added files; commit them, or fix the generator"
+            git status --short
+            git --no-pager diff --stat
+            exit 1
+          fi
+      - name: Run 2
+        run: python main.py --strict
+      - name: Working tree is clean after run 2
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "::error::run 2 differs from run 1: the pipeline is not deterministic"
+            git status --short
+            git --no-pager diff --stat
+            exit 1
+          fi
