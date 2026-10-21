@@ -38,6 +38,10 @@ html[data-lang="{{ second }}"] .l:not([lang="{{ second }}"]) { display: none; }
       <ul class="tabs-left">{% block tabs_left %}<li class="active"><span>{{ ui_home }}</span></li>{% endblock %}</ul>
       <div class="tabs-right">
         <ul class="tabs-view">{% block tabs_right %}{% endblock %}</ul>
+        <form class="search" role="search" action="#" hidden data-index="assets/search-index.js" data-default="{{ default }}" data-text="{{ search_texts }}">
+          <input type="search" name="q" autocomplete="off" spellcheck="false" placeholder="{{ search_text }}" aria-label="{{ search_text }}" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="wbs-search-list">
+          <ul class="search-results" id="wbs-search-list" role="listbox" aria-label="{{ search_text }}" hidden></ul>
+        </form>
         {% if second %}
         <div class="lang-switch" role="group" aria-label="{{ language_label }}">
           <button type="button" data-set-lang="{{ default }}">{{ default | upper }}</button><button type="button" data-set-lang="{{ second }}">{{ second | upper }}</button>
@@ -68,6 +72,7 @@ html[data-lang="{{ second }}"] .l:not([lang="{{ second }}"]) { display: none; }
   </div>
 </div>
 <script src="assets/app.js"></script>
+<script src="assets/search.js"></script>
 {% if map_points %}
 <script src="assets/vendor/leaflet/leaflet.js"></script>
 <script src="assets/map.js"></script>

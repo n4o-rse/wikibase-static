@@ -6,7 +6,7 @@ wikibase-static: from-csv -> load -> build -> search -> rdf -> sparql
 [build]
   [build] nothing to do: no entities in data/raw/entities or data/derived/entities
 [search]
-  [search] nothing to do: not implemented yet (PRIMER.md, S5)
+  [search] nothing to do: no entities in data/raw/entities or data/derived/entities
 [rdf]
   [rdf] nothing to do: not implemented yet (PRIMER.md, S6)
 [sparql]

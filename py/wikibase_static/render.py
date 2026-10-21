@@ -27,7 +27,7 @@ from urllib.parse import quote
 from markupsafe import Markup, escape
 
 from wikibase_static.loader import LabelResolver, Site
-from wikibase_static.model import Entity, Snak, Statement, id_sort_key
+from wikibase_static.model import Entity, Snak, Statement, id_sort_key, pick_text
 from wikibase_static.site_config import SiteConfig
 
 EARTH = "http://www.wikidata.org/entity/Q2"
@@ -59,6 +59,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "dt_external-id": "External identifier", "dt_url": "URL", "dt_commonsMedia": "Commons media file",
         "dt_time": "Point in time", "dt_quantity": "Quantity", "dt_monolingualtext": "Monolingual text",
         "dt_globe-coordinate": "Globe coordinate", "home": "Home", "unsupported": "Unsupported value",
+        "search": "Search", "search_none": "No results", "search_error": "The search index could not be loaded.",
     },
     "de": {
         "statements": "Aussagen", "no_statements": "Keine Aussagen.", "also_known_as": "Auch bekannt als",
@@ -78,6 +79,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "dt_external-id": "Externer Bezeichner", "dt_url": "URL", "dt_commonsMedia": "Commons-Mediendatei",
         "dt_time": "Zeitpunkt", "dt_quantity": "Größe", "dt_monolingualtext": "Einsprachiger Text",
         "dt_globe-coordinate": "Geokoordinate", "home": "Startseite", "unsupported": "Nicht unterstützter Wert",
+        "search": "Suche", "search_none": "Keine Treffer", "search_error": "Der Suchindex konnte nicht geladen werden.",
     },
 }
 
@@ -259,10 +261,7 @@ class Renderer:
         return self.bilingual(self.label_text(entity_id), self.label_text(entity_id, True) if self.second else None)
 
     def _pick(self, mapping: dict[str, str], languages: list[str]) -> str | None:
-        for language in languages:
-            if mapping.get(language):
-                return mapping[language]
-        return mapping[sorted(mapping)[0]] if mapping else None
+        return pick_text(mapping, languages)
 
     def description_text(self, entity: Entity) -> str | None:
         return self._pick(entity.descriptions, [self.default])
@@ -273,6 +272,17 @@ class Renderer:
             return None
         other = self._pick(entity.descriptions, [self.second, self.default]) if self.second else None
         return self.bilingual(first, other)
+
+    def search_texts_json(self) -> str:
+        """The texts of the search box for ``search.js``, one set per language of the site, as JSON.
+
+        The placeholder is an attribute and the "no results" line is made by script, so neither can use the
+        two-``<span>`` technique of the other texts; the script picks the set that matches ``data-lang``."""
+        texts = {}
+        for language in [self.default] + ([self.second] if self.second else []):
+            table = STRINGS.get(language, STRINGS["en"])
+            texts[language] = {"placeholder": table["search"], "none": table["search_none"], "error": table["search_error"]}
+        return json.dumps(texts, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
 
     def ui_plural(self, base: str, n: int) -> Markup:
         """``references_one`` for exactly one, ``references_other`` (with ``{n}``) otherwise."""

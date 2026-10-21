@@ -10,8 +10,8 @@ and references, clickable Q- and P-ids, external links in a new tab, maps for
 coordinates, Commons images, a search box and an in-browser SPARQL page. Nothing
 on the published site can be edited.
 
-> **Status.** `harvest` (S4), `load` (S2) and the page renderer `build` (S3) work. Search (S5),
-> the RDF export and SPARQL page (S6) and the CSV import (S7) are still skeleton steps that report
+> **Status.** `harvest` (S4), `load` (S2), the page renderer `build` (S3) and the search `search` (S5)
+> work. The RDF export and SPARQL page (S6) and the CSV import (S7) are still skeleton steps that report
 > "nothing to do". See [`PRIMER.md`](https://github.com/n4o-rse/wikibase-static/blob/main/PRIMER.md) (German) for the plan, the
 > decisions taken so far and the order of the steps.
 
@@ -87,6 +87,21 @@ entities and every internal link. Problems are `WARN` lines, `--strict` turns th
 python main.py build
 ```
 
+`search` writes the index for the search box that `build` puts into the tab row of every page
+(`docs/assets/search-index.js`). Run it after `build`; the default run does. The box finds an entity by
+its label, by an alias (in any language, not only the two of the site) or by its id (`Q97`, `q9`), ignoring
+case and accents; "uber" finds "Über". It offers up to ten hits, labels ahead of aliases and whole strings
+ahead of parts, and shows the matching alias next to the label when that is why an entity appears. Arrow
+keys and Enter work as in any combobox, and the list follows the language switch. Descriptions are shown
+but not searched. The index is a script file that is loaded the first time the box is used, so a page that
+is only read costs nothing, and the search works when `docs/` is opened from a disk (`file://`). The index
+depends on the data and the two languages of `site.yaml` and on nothing else, so two runs give the same
+bytes. Without JavaScript the box is not shown. If the site has no entities, the step does nothing.
+
+```
+python main.py search
+```
+
 `site.yaml` in the repository root is optional; every key has a default:
 
 ```yaml
@@ -114,6 +129,9 @@ Offline tests (a fake Wikibase on localhost, no network needed):
 python -m unittest discover -s tests
 ```
 
+The tests of the search box run the matching code of `search.js` under Node.js; where `node` is not on the
+path they are skipped, and the other tests are unaffected.
+
 ## Continuous integration
 
 Two workflows live in `.github/workflows/`:
@@ -135,7 +153,8 @@ changed with the `command` input.
 ```
 main.py                     the only entry point
 py/wikibase_static/         the package (one module per step, utils.py, model.py, loader.py, render.py,
-                            site_config.py, templates/, static/ with a copy of Leaflet 1.9.4)
+                            site_config.py, templates/, static/ with app.js, search.js, map.js, style.css
+                            and a copy of Leaflet 1.9.4)
 data/raw/                   harvested JSON, as obtained
 data/derived/               intermediates made from CSV
 dist/                       versioned products: RDF, pipeline report

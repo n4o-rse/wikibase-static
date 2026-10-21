@@ -33,11 +33,33 @@ code { font-size: 0.9em; background: var(--page); padding: 0 0.25em; border-radi
 /* ---- tabs (the language switch sits where Wikibase has its search box) */
 .tabs { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; padding: 0.5rem 1.2rem 0;
   border-bottom: 1px solid var(--soft-border); background: linear-gradient(#fff, #f4f7fb); }
-.tabs ul { list-style: none; margin: 0; padding: 0; display: flex; }
-.tabs li a, .tabs li span { display: block; padding: 0.45rem 0.85rem 0.4rem; font-size: 0.84rem; border: 1px solid transparent; border-bottom: 0; }
-.tabs li.active span { background: var(--bg); border-color: var(--soft-border); position: relative; top: 1px; padding-bottom: 0.45rem; }
+/* Scoped to the two tab lists: a bare `.tabs ul` or `.tabs li a` would reach the list of search results too. */
+.tabs-left, .tabs-view { list-style: none; margin: 0; padding: 0; display: flex; }
+.tabs-left li a, .tabs-left li span, .tabs-view li a, .tabs-view li span { display: block; padding: 0.45rem 0.85rem 0.4rem; font-size: 0.84rem; border: 1px solid transparent; border-bottom: 0; }
+.tabs-left li.active span, .tabs-view li.active span { background: var(--bg); border-color: var(--soft-border); position: relative; top: 1px; padding-bottom: 0.45rem; }
 .tabs-right { display: flex; align-items: flex-end; gap: 0.8rem; }
 .lang-switch { margin-bottom: 0.4rem; }
+
+/* ---- search box (search.js): in the tab row, where Wikibase has it; the list opens below, right-aligned */
+.search { position: relative; margin-bottom: 0.4rem; }
+.search[hidden] { display: none; }
+.search input { width: 14rem; font: inherit; font-size: 0.85rem; padding: 0.22rem 0.5rem; color: var(--text);
+  background: var(--bg); border: 1px solid var(--soft-border); border-radius: 3px; }
+.search input:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: var(--accent); }
+/* z-index above Leaflet's zoom control (1000), which would otherwise paint over a list that reaches onto the map */
+.search-results { position: absolute; z-index: 2000; top: 100%; right: 0; width: 26rem; max-width: calc(100vw - 2rem);
+  max-height: 24rem; overflow-y: auto; margin: 0.15rem 0 0; padding: 0; list-style: none;
+  background: var(--bg); border: 1px solid var(--border); box-shadow: 0 3px 8px rgba(0, 0, 0, 0.18); }
+.search-results[hidden] { display: none; }
+.search-results li a, .search-results li a:visited { display: block; padding: 0.35rem 0.65rem; color: var(--text); }
+.search-results li a:hover { text-decoration: none; }
+.search-results li a:hover, .search-results li[aria-selected="true"] a { background: var(--prop-bg); }
+.search-results li + li { border-top: 1px solid #eaecf0; }
+.sr-label { font-weight: 600; }
+.sr-id, .sr-via { color: var(--muted); }
+.sr-via { font-style: italic; }
+.sr-desc { display: block; font-size: 0.82rem; color: var(--muted); }
+.search-message { padding: 0.5rem 0.65rem; font-size: 0.85rem; color: var(--muted); }
 .lang-switch button { font: inherit; font-size: 0.8rem; padding: 0.15rem 0.55rem; cursor: pointer;
   background: var(--bg); color: var(--text); border: 1px solid var(--soft-border); }
 .lang-switch button:first-child { border-radius: 3px 0 0 3px; }
@@ -119,7 +141,13 @@ table.list td.id { white-space: nowrap; }
   .nav-section { display: none; }
   .content { border-left: 0; }
   main { padding: 0.8rem 1rem; }
-  .tabs { padding: 0.4rem 1rem 0; }
+  /* The tabs stay on one row; the search box and the language switch take a second row when the first is full.
+     display: contents makes the children of .tabs-right items of .tabs, which is what lets them wrap on their own. */
+  .tabs { padding: 0.4rem 1rem 0; flex-wrap: wrap; row-gap: 0.3rem; position: relative; }
+  .tabs-right { display: contents; }
+  .search { position: static; flex: 1 1 10rem; }
+  .search input { width: 100%; }
+  .search-results { left: 1rem; right: 1rem; width: auto; max-width: none; }
 }
 @media (max-width: 40rem) {
   .claim-group { flex-direction: column; }

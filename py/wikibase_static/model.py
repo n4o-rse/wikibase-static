@@ -52,6 +52,18 @@ def id_sort_key(entity_id: str) -> tuple[int, int, str]:
     return (0 if match.group(1) == "Q" else 1, int(match.group(2)), entity_id)
 
 
+def pick_text(mapping: dict[str, str], languages: list[str]) -> str | None:
+    """The text in the first of ``languages`` that has one; else the one in the alphabetically first language.
+
+    ``None`` for an empty mapping. The pages and the search index both use this, so what the index
+    shows for a label or a description is what the page shows (PRIMER.md, A4 "Label-Auflösung").
+    """
+    for language in languages:
+        if mapping.get(language):
+            return mapping[language]
+    return mapping[sorted(mapping)[0]] if mapping else None
+
+
 @dataclass(frozen=True)
 class Snak:
     """One property-value pair: the main value, a qualifier or a reference part."""

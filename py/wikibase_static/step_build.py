@@ -163,6 +163,7 @@ def main(argv: list[str] | None = None) -> int:
             "ui_license": r.ui("license"), "ui_license_missing": r.ui("license_missing"),
             "ui_imprint": r.ui("imprint"), "ui_generated": r.ui("generated"),
             "ui_home": r.ui("home"), "ui_home_text": r.ui_text("home"), "ui_items": r.ui("items"), "ui_properties": r.ui("properties"),
+            "search_text": r.ui_text("search"), "search_texts": r.search_texts_json(),
             "has_items": bool(site.items), "has_properties": bool(site.properties),
         }
 
