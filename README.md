@@ -10,19 +10,19 @@ and references, clickable Q- and P-ids, external links in a new tab, maps for
 coordinates, Commons images, a search box and an in-browser SPARQL page. Nothing
 on the published site can be edited.
 
-> **Status.** `harvest` (S4), `load` (S2), the page renderer `build` (S3) and the search `search` (S5)
-> work. The RDF export and SPARQL page (S6) and the CSV import (S7) are still skeleton steps that report
+> **Status.** `harvest` (S4), `load` (S2), the page renderer `build` (S3), the search `search` (S5) and the
+> RDF export and query page `rdf`, `sparql` (S6) work. The CSV import (S7) is still a skeleton step that reports
 > "nothing to do". See [`PRIMER.md`](https://github.com/n4o-rse/wikibase-static/blob/main/PRIMER.md) (German) for the plan, the
 > decisions taken so far and the order of the steps.
 
-## Planned workflow
+## Workflow
 
 ```
 Wikibase (API)  --harvest-->  data/raw/      Wikibase JSON, unchanged, incremental
 CSV             --from-csv->  data/derived/  the same format for a dummy Wikibase
                                   |
                                   +--build-->  docs/   static pages, search index, map
-                                  +--rdf---->  dist/   RDF in the Wikibase data model
+                                  +--rdf---->  dist/   RDF in the Wikibase data model (+ DCAT), per-entity files in docs/
                                   +--sparql->  docs/   SPARQL page running in the browser
 ```
 
@@ -102,6 +102,47 @@ bytes. Without JavaScript the box is not shown. If the site has no entities, the
 python main.py search
 ```
 
+`rdf` writes the data as Turtle in the RDF model of Wikibase itself (`wd:`, `wdt:`, `p:`, `ps:`, `pq:`, `pr:`, value
+nodes, ranks; the mapping follows the RDF dump of Wikibase, so a query written for its Query Service runs on the
+file). The URIs are those of the real Wikibase (`source.url`, or `rdf_base` in `site.yaml`). The export describes
+itself with DCAT 3: one `dcat:Catalog` for the Wikibase (with a catalogue for the items and one for the properties),
+one `dcat:Dataset` for every entity record (the `data:Q1` node Wikibase already types as `schema:Dataset`) and one
+`dcat:Distribution` for each file that exists: the archived JSON, the HTML page and the Turtle file of that
+entity. Distributions need download URLs, so they appear when `pages_url` is set. Files:
+
+```
+dist/<host>.ttl                         everything (for https://example.wikibase.cloud: example.wikibase.cloud.ttl)
+docs/downloads/<host>.ttl               the same file, as published
+docs/downloads/wikibase-ontology.ttl    the Wikibase system ontology (CC0), converted from ontology.owl of Wikibase
+docs/ttl/Q1.ttl                         the triples of one entity with its DCAT description
+docs/json/Q1.json                       the entity as archived, byte for byte
+```
+
+The file is built as sorted N-Triples and written from there by the package's own Turtle writer, then read back
+with rdflib and compared; two runs give the same bytes. Values Wikibase cannot express in RDF (a decimal that is
+not a number, a language code that is not a tag) and data types the site cannot show are reported as `WARN`.
+Differences from a real dump (own hashes for reference and value nodes, no normalised `wdtn:` URIs, no sitelinks)
+are listed in `PRIMER.md`, A4.
+
+```
+python main.py rdf
+```
+
+`sparql` builds `docs/sparql.html`: example queries in editable boxes, Run and Reset, results as tables, every query
+also as a plain `.rq` file in `docs/downloads/queries/`. Nothing is loaded until somebody presses Run; then Pyodide
+(from cdn.jsdelivr.net) and rdflib (from PyPI) start in the browser, which fetches the Turtle file of the site and
+runs the query itself, so no endpoint is needed and nothing typed leaves the browser. The default queries fit every
+Wikibase (items, properties, how often a property is used, aliases, links between items, coordinates, qualifiers,
+references, ranks, the DCAT catalogues); a query for data the site does not have is left out. To use your own,
+write `queries.yaml` in the repository root (schema in `py/wikibase_static/sparql.py`; `@@lang@@` stands for the
+default language). **Every query is executed at build time, with the very Python the page runs, against the file the
+page serves, and a query that returns no rows is a `WARN`** (an error under `--strict`): SPARQL answers a mistyped
+IRI with no rows, so an empty example is the usual symptom of a broken export.
+
+```
+python main.py sparql
+```
+
 `site.yaml` in the repository root is optional; every key has a default:
 
 ```yaml
@@ -121,6 +162,7 @@ languages:
 imprint: https://example.org/imprint    # text or URL
 pages_url: https://example.github.io/repo/   # optional, for the canonical link
 formatter_property: P1630        # property that holds the formatter URL of external-id properties
+rdf_base: https://example.org    # optional: base URI of the RDF export; default is source.url
 ```
 
 Offline tests (a fake Wikibase on localhost, no network needed):
@@ -129,7 +171,7 @@ Offline tests (a fake Wikibase on localhost, no network needed):
 python -m unittest discover -s tests
 ```
 
-The tests of the search box run the matching code of `search.js` under Node.js; where `node` is not on the
+The tests of the search box and of the query page run the code of `search.js` and `sparql.js` under Node.js; where `node` is not on the
 path they are skipped, and the other tests are unaffected.
 
 ## Continuous integration
@@ -153,7 +195,8 @@ changed with the `command` input.
 ```
 main.py                     the only entry point
 py/wikibase_static/         the package (one module per step, utils.py, model.py, loader.py, render.py,
-                            site_config.py, templates/, static/ with app.js, search.js, map.js, style.css
+                            site_config.py, rdf.py, sparql.py, data/ (default queries, ontology), templates/,
+                            static/ with app.js, search.js, sparql.js, map.js, style.css
                             and a copy of Leaflet 1.9.4)
 data/raw/                   harvested JSON, as obtained
 data/derived/               intermediates made from CSV

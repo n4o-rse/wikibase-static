@@ -156,3 +156,29 @@ table.list td.id { white-space: nowrap; }
   .qval { margin-bottom: 0.3rem; }
   .wbs-map { height: 15rem; }
 }
+
+/* ---- query page (sparql.js, PRIMER.md S6) */
+.sparql .data-line { margin: 0.6rem 0; }
+.sparql .status { margin: 0.8rem 0 0.2rem; padding: 0.35rem 0.6rem; border-left: 4px solid var(--border); background: var(--page); font-size: 0.9rem; }
+.sparql .status[data-state="busy"] { border-left-color: #e0a800; }
+.sparql .status[data-state="ok"] { border-left-color: #2e7d32; }
+.sparql .status[data-state="err"] { border-left-color: #b00020; }
+.sparql details.prefixes { margin: 0.6rem 0 1rem; font-size: 0.85rem; }
+.sparql details.prefixes summary { cursor: pointer; color: var(--muted); }
+.sparql pre { overflow-x: auto; background: var(--page); border: 1px solid var(--soft-border); padding: 0.5rem 0.7rem; font-size: 0.82rem; }
+.sparql section.query { margin: 1.6rem 0; padding-top: 0.2rem; border-top: 1px solid var(--soft-border); }
+.sparql section.query h2 { margin-bottom: 0.3rem; }
+.sparql textarea { display: block; width: 100%; box-sizing: border-box; min-height: 4rem; resize: vertical; font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  font-size: 0.84rem; line-height: 1.4; padding: 0.5rem 0.6rem; border: 1px solid var(--border); background: #fff; color: var(--text); tab-size: 2; }
+.sparql textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+.query-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem; margin: 0.5rem 0; font-size: 0.88rem; }
+.query-actions button { font: inherit; padding: 0.25rem 0.9rem; border: 1px solid var(--accent); background: var(--accent); color: #fff; cursor: pointer; border-radius: 2px; }
+.query-actions button.reset { background: transparent; color: var(--accent); }
+.query-actions button:disabled { opacity: 0.55; cursor: progress; }
+.query-stats { color: var(--muted); }
+.table-scroll { overflow-x: auto; }
+table.result td.nil { color: var(--muted); text-align: center; }
+table.result td.iri, table.result td.bnode { font-size: 0.86rem; white-space: nowrap; }
+table.result .lang { color: var(--muted); font-size: 0.8em; }
+.sparql .note { color: var(--muted); font-size: 0.85rem; }
+.sparql pre.error { border-color: #b00020; color: #7a0016; white-space: pre-wrap; }

@@ -1,0 +1,227 @@
+# Example queries that fit every Wikibase export (PRIMER.md, S6). A site replaces them with its own queries.yaml.
+# @@lang@@ is replaced by the default language of the site. A query with `requires` is left out when the site
+# has no such data; every query that stays must return at least one row, or the build fails.
+page:
+  title: {en: Query the data, de: Daten abfragen}
+  intro:
+    en: >-
+      The data of this site is a Turtle file in the RDF model of Wikibase, so queries written for the Query
+      Service of a Wikibase work here too. Edit a query and press Run.
+    de: >-
+      Die Daten dieser Seite liegen als Turtle-Datei im RDF-Modell von Wikibase vor. Abfragen, die für den
+      Query Service einer Wikibase geschrieben sind, laufen deshalb auch hier. Abfrage ändern, dann auf
+      Ausführen klicken.
+
+queries:
+  - id: items
+    title: {en: "Items with label and description", de: "Items mit Bezeichnung und Beschreibung"}
+    intro:
+      en: Every item with its label and, where there is one, its description in the same language.
+      de: Jedes Item mit Bezeichnung und, wo vorhanden, Beschreibung in derselben Sprache.
+    sparql: |
+      SELECT ?item ?label ?description WHERE {
+        ?item a wikibase:Item ;
+              rdfs:label ?label .
+        FILTER(LANG(?label) = "@@lang@@")
+        OPTIONAL {
+          ?item schema:description ?description .
+          FILTER(LANG(?description) = "@@lang@@")
+        }
+      }
+      ORDER BY ?label ?item
+
+  - id: properties
+    title: {en: "Properties and their data types", de: "Properties und ihre Datentypen"}
+    intro:
+      en: The vocabulary of the Wikibase. The data type decides which kind of value a property takes.
+      de: Das Vokabular der Wikibase. Der Datentyp bestimmt, welche Art von Wert eine Property hat.
+    sparql: |
+      SELECT ?property ?label ?datatype WHERE {
+        ?property a wikibase:Property ;
+                  wikibase:propertyType ?datatype ;
+                  rdfs:label ?label .
+        FILTER(LANG(?label) = "@@lang@@")
+      }
+      ORDER BY ?datatype ?label ?property
+
+  - id: statements-per-property
+    title: {en: "How often each property is used", de: "Wie oft jede Property verwendet wird"}
+    intro:
+      en: Statements per property, most used first. Properties without a statement do not appear.
+      de: Aussagen pro Property, die meistgenutzte zuerst. Properties ohne Aussage erscheinen nicht.
+    sparql: |
+      SELECT ?property ?label (COUNT(?statement) AS ?statements) WHERE {
+        ?property wikibase:claim ?claim ;
+                  rdfs:label ?label .
+        FILTER(LANG(?label) = "@@lang@@")
+        ?item ?claim ?statement .
+      }
+      GROUP BY ?property ?label
+      ORDER BY DESC(?statements) ?label ?property
+
+  - id: aliases
+    requires: [alias]
+    title: {en: "Alternative names", de: "Alternative Namen"}
+    intro:
+      en: Items that are also known under another name ("Also known as").
+      de: Items, die auch unter einem anderen Namen bekannt sind („Auch bekannt als“).
+    sparql: |
+      SELECT ?item ?label ?alias WHERE {
+        ?item skos:altLabel ?alias ;
+              rdfs:label ?label .
+        FILTER(LANG(?label) = "@@lang@@")
+      }
+      ORDER BY ?label ?alias ?item
+
+  - id: item-links
+    requires: [wikibase-item]
+    title: {en: "How items are linked", de: "Wie Items verknüpft sind"}
+    intro:
+      en: Statements whose value is another item, written as subject, property, object.
+      de: Aussagen, deren Wert ein anderes Item ist, als Subjekt, Property, Objekt.
+    sparql: |
+      SELECT ?subjectLabel ?propertyLabel ?objectLabel WHERE {
+        ?property wikibase:propertyType wikibase:WikibaseItem ;
+                  wikibase:directClaim ?direct ;
+                  rdfs:label ?propertyLabel .
+        FILTER(LANG(?propertyLabel) = "@@lang@@")
+        ?subject ?direct ?object .
+        OPTIONAL {
+          ?subject rdfs:label ?subjectLabel .
+          FILTER(LANG(?subjectLabel) = "@@lang@@")
+        }
+        OPTIONAL {
+          ?object rdfs:label ?objectLabel .
+          FILTER(LANG(?objectLabel) = "@@lang@@")
+        }
+      }
+      ORDER BY ?subjectLabel ?propertyLabel ?objectLabel
+      LIMIT 200
+
+  - id: most-used-items
+    requires: [wikibase-item]
+    title: {en: "Items used most often as a value", de: "Items, die am häufigsten als Wert vorkommen"}
+    intro:
+      en: The twenty items that other items point to most often.
+      de: Die zwanzig Items, auf die andere Items am häufigsten verweisen.
+    sparql: |
+      SELECT ?item ?label (COUNT(?subject) AS ?uses) WHERE {
+        ?property wikibase:propertyType wikibase:WikibaseItem ;
+                  wikibase:directClaim ?direct .
+        ?subject ?direct ?item .
+        ?item rdfs:label ?label .
+        FILTER(LANG(?label) = "@@lang@@")
+      }
+      GROUP BY ?item ?label
+      ORDER BY DESC(?uses) ?label ?item
+      LIMIT 20
+
+  - id: coordinates
+    requires: [globe-coordinate]
+    title: {en: "Items with coordinates", de: "Items mit Koordinaten"}
+    intro:
+      en: Globe coordinates as WKT, the form GeoSPARQL tools expect (longitude first).
+      de: Geokoordinaten als WKT, der Form, die GeoSPARQL-Werkzeuge erwarten (Länge zuerst).
+    sparql: |
+      SELECT ?item ?label ?coordinates WHERE {
+        ?property wikibase:propertyType wikibase:GlobeCoordinate ;
+                  wikibase:directClaim ?direct .
+        ?item ?direct ?coordinates ;
+              rdfs:label ?label .
+        FILTER(LANG(?label) = "@@lang@@")
+      }
+      ORDER BY ?label ?item
+      LIMIT 200
+
+  - id: qualifiers
+    requires: [qualifier]
+    title: {en: "Statements with qualifiers", de: "Aussagen mit Qualifiern"}
+    intro:
+      en: A statement can carry qualifiers that narrow it down. This lists the qualifier properties in use.
+      de: Eine Aussage kann Qualifier tragen, die sie eingrenzen. Hier stehen die verwendeten Qualifier-Properties.
+    sparql: |
+      SELECT ?qualifierLabel (COUNT(?statement) AS ?statements) WHERE {
+        ?qualifierProperty wikibase:qualifier ?qualifier ;
+                           rdfs:label ?qualifierLabel .
+        FILTER(LANG(?qualifierLabel) = "@@lang@@")
+        ?statement ?qualifier ?value .
+      }
+      GROUP BY ?qualifierLabel
+      ORDER BY DESC(?statements) ?qualifierLabel
+
+  - id: references
+    requires: [reference]
+    title: {en: "Statements with a reference", de: "Aussagen mit Fundstelle"}
+    intro:
+      en: Statements that say where they come from, with the property and value of the reference.
+      de: Aussagen, die angeben, woher sie stammen, mit Property und Wert der Fundstelle.
+    sparql: |
+      SELECT ?itemLabel ?propertyLabel ?sourceLabel ?source WHERE {
+        ?statement prov:wasDerivedFrom ?reference .
+        ?reference ?referenceProperty ?source .
+        ?sourceProperty wikibase:reference ?referenceProperty ;
+                        rdfs:label ?sourceLabel .
+        FILTER(LANG(?sourceLabel) = "@@lang@@")
+        ?property wikibase:claim ?claim ;
+                  rdfs:label ?propertyLabel .
+        FILTER(LANG(?propertyLabel) = "@@lang@@")
+        ?item ?claim ?statement .
+        OPTIONAL {
+          ?item rdfs:label ?itemLabel .
+          FILTER(LANG(?itemLabel) = "@@lang@@")
+        }
+      }
+      ORDER BY ?itemLabel ?propertyLabel ?sourceLabel ?source
+      LIMIT 200
+
+  - id: preferred-rank
+    requires: [preferred]
+    title: {en: "Statements with preferred rank", de: "Aussagen mit bevorzugtem Rang"}
+    intro:
+      en: Where a property has several statements, the preferred one is the one the direct property returns.
+      de: Hat eine Property mehrere Aussagen, ist die bevorzugte die, die die direkte Property liefert.
+    sparql: |
+      SELECT ?itemLabel ?propertyLabel ?statement WHERE {
+        ?statement wikibase:rank wikibase:PreferredRank .
+        ?property wikibase:claim ?claim ;
+                  rdfs:label ?propertyLabel .
+        FILTER(LANG(?propertyLabel) = "@@lang@@")
+        ?item ?claim ?statement .
+        OPTIONAL {
+          ?item rdfs:label ?itemLabel .
+          FILTER(LANG(?itemLabel) = "@@lang@@")
+        }
+      }
+      ORDER BY ?itemLabel ?propertyLabel ?statement
+
+  - id: catalogues
+    title: {en: "The catalogues of this export (DCAT)", de: "Die Kataloge dieses Exports (DCAT)"}
+    intro:
+      en: The export describes itself with DCAT 3. This lists the catalogues and how many datasets each holds.
+      de: Der Export beschreibt sich selbst mit DCAT 3. Hier stehen die Kataloge und wie viele Datasets jeder enthält.
+    sparql: |
+      SELECT ?catalog ?title (COUNT(?dataset) AS ?datasets) WHERE {
+        ?catalog a dcat:Catalog ;
+                 dcterms:title ?title ;
+                 dcat:dataset ?dataset .
+      }
+      GROUP BY ?catalog ?title
+      ORDER BY DESC(?datasets) ?catalog
+
+  - id: distributions
+    requires: [distribution]
+    title: {en: "Where to download each record (DCAT)", de: "Wo sich jeder Datensatz herunterladen lässt (DCAT)"}
+    intro:
+      en: Every entity is a dataset with a JSON, a Turtle and an HTML distribution. This lists the Turtle files.
+      de: Jede Entität ist ein Dataset mit einer JSON-, einer Turtle- und einer HTML-Distribution. Hier stehen die Turtle-Dateien.
+    sparql: |
+      SELECT ?dataset ?title ?download WHERE {
+        ?dataset a dcat:Dataset ;
+                 dcterms:title ?title ;
+                 dcat:distribution ?distribution .
+        FILTER(LANG(?title) = "@@lang@@")
+        ?distribution dcat:mediaType <https://www.iana.org/assignments/media-types/text/turtle> ;
+                      dcat:downloadURL ?download .
+      }
+      ORDER BY ?title ?dataset
+      LIMIT 100

@@ -30,6 +30,7 @@ html[data-lang="{{ second }}"] .l:not([lang="{{ second }}"]) { display: none; }
       <a href="index.html">{{ ui_home }}</a>
       {% if has_items %}<a href="index.html#items">{{ ui_items }}</a>{% endif %}
       {% if has_properties %}<a href="index.html#properties">{{ ui_properties }}</a>{% endif %}
+      {% if has_sparql %}<a href="sparql.html"{% if page_name == "sparql.html" %} aria-current="page"{% endif %}>{{ ui_sparql }}</a>{% endif %}
     </nav>
 {% block sidebar_tools %}{% endblock %}
   </aside>
@@ -77,5 +78,6 @@ html[data-lang="{{ second }}"] .l:not([lang="{{ second }}"]) { display: none; }
 <script src="assets/vendor/leaflet/leaflet.js"></script>
 <script src="assets/map.js"></script>
 {% endif %}
+{% block scripts %}{% endblock %}
 </body>
 </html>

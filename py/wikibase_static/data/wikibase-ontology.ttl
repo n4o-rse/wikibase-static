@@ -1,0 +1,321 @@
+# The Wikibase system ontology (wikiba.se/ontology), converted from docs/ontology.owl of
+# https://github.com/wikimedia/Wikibase (licence stated in the file: CC0 1.0). Unchanged apart from the syntax.
+@prefix cc: <http://creativecommons.org/ns#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix wikibase: <http://wikiba.se/ontology#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+wikibase: a owl:Ontology ;
+    rdfs:label "Wikibase system ontology" ;
+    cc:licence <http://creativecommons.org/publicdomain/zero/1.0/> ;
+    rdfs:comment "The system ontology of Wikibase" ;
+    rdfs:seeAlso <https://www.mediawiki.org/wiki/Wikibase/Indexing/RDF_Dump_Format> .
+
+wikibase:BestRank a owl:Class ;
+    rdfs:label "BestRank" ;
+    rdfs:comment "This class marks statement that has the best rank for its property." .
+
+wikibase:CommonsMedia a wikibase:PropertyType,
+        owl:NamedIndividual ;
+    rdfs:label "CommonsMedia" ;
+    rdfs:comment "Wikimedia Commons reference type." .
+
+wikibase:DeprecatedRank a wikibase:Rank,
+        owl:NamedIndividual ;
+    rdfs:label "DeprecatedRank" ;
+    rdfs:comment "Deprecated statement rank." .
+
+wikibase:Dump a owl:Class ;
+    rdfs:label "Dump" ;
+    rdfs:comment "A dump of wikidata content." .
+
+wikibase:ExternalId a wikibase:PropertyType,
+        owl:NamedIndividual ;
+    rdfs:label "WikibaseExternalId" ;
+    rdfs:comment "Type for referring to ID defined by external authority." .
+
+wikibase:GeoAutoPrecision a owl:Class ;
+    rdfs:label "GeoAutoPrecision" ;
+    rdfs:comment "This coordinate value uses automatic precision since the user did not specify one." .
+
+wikibase:GeoShape a wikibase:PropertyType,
+        owl:NamedIndividual ;
+    rdfs:label "GeoShape" ;
+    rdfs:comment "Type for storing links to geoshape data." .
+
+wikibase:Globecoordinate a wikibase:PropertyType,
+        owl:NamedIndividual ;
+    rdfs:label "Globecoordinate" ;
+    rdfs:comment "Coordinate type." .
+
+wikibase:Math a wikibase:PropertyType,
+        owl:NamedIndividual ;
+    rdfs:label "Mathematical expression" ;
+    rdfs:comment "Type for mathematical expressions as supported by the Math extension." .
+
+wikibase:Monolingualtext a wikibase:PropertyType,
+        owl:NamedIndividual ;
+    rdfs:label "Monolingualtext" ;
+    rdfs:comment "Type for text in single language." .
+
+wikibase:MusicalNotation a wikibase:PropertyType,
+        owl:NamedIndividual ;
+    rdfs:label "MusicalNotation" ;
+    rdfs:comment "Type for storing musical scores written in LilyPond notation as supported by the Score extension." .
+
+wikibase:NormalRank a wikibase:Rank,
+        owl:NamedIndividual ;
+    rdfs:label "NormalRank" ;
+    rdfs:comment "Normal statement rank." .
+
+wikibase:PreferredRank a wikibase:Rank,
+        owl:NamedIndividual ;
+    rdfs:label "PreferredRank" ;
+    rdfs:comment "Preferred statement rank." .
+
+wikibase:Quantity a wikibase:PropertyType,
+        owl:NamedIndividual ;
+    rdfs:label "Quantity" ;
+    rdfs:comment "Type for numerical quantity." .
+
+wikibase:Reference a owl:Class ;
+    rdfs:label "Reference" ;
+    rdfs:comment "A reference to sources supporting the claim." .
+
+wikibase:String a wikibase:PropertyType,
+        owl:NamedIndividual ;
+    rdfs:label "String" ;
+    rdfs:comment "Basic string type." .
+
+wikibase:TabularData a wikibase:PropertyType,
+        owl:NamedIndividual ;
+    rdfs:label "TabularData" ;
+    rdfs:comment "Type for storing links to tabular data." .
+
+wikibase:Time a wikibase:PropertyType,
+        owl:NamedIndividual ;
+    rdfs:label "Time" ;
+    rdfs:comment "Date and time value type." .
+
+wikibase:Url a wikibase:PropertyType,
+        owl:NamedIndividual ;
+    rdfs:label "Url" ;
+    rdfs:comment "URL link type." .
+
+wikibase:WikibaseItem a wikibase:PropertyType,
+        owl:NamedIndividual ;
+    rdfs:label "WikibaseItem" ;
+    rdfs:comment "Type for referring to another Wikibase item." .
+
+wikibase:WikibaseProperty a wikibase:PropertyType,
+        owl:NamedIndividual ;
+    rdfs:label "WikibaseProperty" ;
+    rdfs:comment "Type for referring to a Wikibase property." .
+
+wikibase:badge a owl:ObjectProperty ;
+    rdfs:label "badge" ;
+    rdfs:comment "Badge on the Wiki page." ;
+    rdfs:range wikibase:Item .
+
+wikibase:claim a owl:ObjectProperty ;
+    rdfs:label "claim" ;
+    rdfs:comment "Link between Wikibase Property and claim predicate." ;
+    rdfs:domain wikibase:Property .
+
+wikibase:directClaim a owl:ObjectProperty ;
+    rdfs:label "directClaim" ;
+    rdfs:comment "Link between Wikibase Property and direct claim predicate." ;
+    rdfs:domain wikibase:Property .
+
+wikibase:directClaimNormalized a owl:ObjectProperty ;
+    rdfs:label "directClaimNormalized" ;
+    rdfs:comment "Link between Wikibase Property and normalized direct claim predicate." ;
+    rdfs:domain wikibase:Property .
+
+wikibase:geoGlobe a owl:ObjectProperty ;
+    rdfs:label "geoGlobe" ;
+    rdfs:comment "Globe reference URL." ;
+    rdfs:domain wikibase:GlobecoordinateValue ;
+    rdfs:range wikibase:Item .
+
+wikibase:geoLatitude a owl:DatatypeProperty ;
+    rdfs:label "geoLatitude" ;
+    rdfs:comment "Coordinate latitude." ;
+    rdfs:domain wikibase:GlobecoordinateValue ;
+    rdfs:range xsd:decimal .
+
+wikibase:geoLongitude a owl:DatatypeProperty ;
+    rdfs:label "geoLongitude" ;
+    rdfs:comment "Coordinate longitude." ;
+    rdfs:domain wikibase:GlobecoordinateValue ;
+    rdfs:range xsd:decimal .
+
+wikibase:geoPrecision a owl:DatatypeProperty ;
+    rdfs:label "geoPrecision" ;
+    rdfs:comment "Coordinate precision." ;
+    rdfs:domain wikibase:GlobecoordinateValue ;
+    rdfs:range xsd:decimal .
+
+wikibase:novalue a owl:ObjectProperty ;
+    rdfs:label "novalue" ;
+    rdfs:comment "Link between Wikibase Property and no value class." ;
+    rdfs:domain wikibase:Property .
+
+wikibase:qualifier a owl:ObjectProperty ;
+    rdfs:label "qualifier" ;
+    rdfs:comment "Link between Wikibase Property and qualifier predicate." ;
+    rdfs:domain wikibase:Property .
+
+wikibase:qualifierValue a owl:ObjectProperty ;
+    rdfs:label "qualifierValue" ;
+    rdfs:comment "Link between Wikibase Property and qualifier value predicate." ;
+    rdfs:domain wikibase:Property .
+
+wikibase:qualifierValueNormalized a owl:ObjectProperty ;
+    rdfs:label "qualifierValueNormalized" ;
+    rdfs:comment "Link between Wikibase Property and qualifier normalized value predicate." ;
+    rdfs:domain wikibase:Property .
+
+wikibase:quantityAmount a owl:DatatypeProperty ;
+    rdfs:label "quantityAmount" ;
+    rdfs:comment "Amount of quantity." ;
+    rdfs:domain wikibase:QuantityValue ;
+    rdfs:range xsd:decimal .
+
+wikibase:quantityLowerBound a owl:DatatypeProperty ;
+    rdfs:label "quantityLowerBound" ;
+    rdfs:comment "Lower bound of the value." ;
+    rdfs:domain wikibase:QuantityValue ;
+    rdfs:range xsd:decimal .
+
+wikibase:quantityNormalized a owl:ObjectProperty ;
+    rdfs:label "quantityNormalized" ;
+    rdfs:comment "Representation of this quantity in standard units." ;
+    rdfs:domain wikibase:QuantityValue ;
+    rdfs:range wikibase:QuantityValue .
+
+wikibase:quantityUnit a owl:ObjectProperty ;
+    rdfs:label "quantityUnit" ;
+    rdfs:comment "Unit of measurement." ;
+    rdfs:domain wikibase:QuantityValue ;
+    rdfs:range wikibase:Item .
+
+wikibase:quantityUpperBound a owl:DatatypeProperty ;
+    rdfs:label "quantityUpperBound" ;
+    rdfs:comment "Upper bound of the value." ;
+    rdfs:domain wikibase:QuantityValue ;
+    rdfs:range xsd:decimal .
+
+wikibase:rank a owl:ObjectProperty ;
+    rdfs:label "rank" ;
+    rdfs:comment "Statement rank." ;
+    rdfs:domain wikibase:Statement ;
+    rdfs:range wikibase:Rank .
+
+wikibase:reference a owl:ObjectProperty ;
+    rdfs:label "reference" ;
+    rdfs:comment "Link between Wikibase Property and reference predicate." ;
+    rdfs:domain wikibase:Property .
+
+wikibase:referenceValue a owl:ObjectProperty ;
+    rdfs:label "referenceValue" ;
+    rdfs:comment "Link between Wikibase Property and reference value predicate." ;
+    rdfs:domain wikibase:Property .
+
+wikibase:referenceValueNormalized a owl:ObjectProperty ;
+    rdfs:label "referenceValueNormalized" ;
+    rdfs:comment "Link between Wikibase Property and reference normalized value predicate." ;
+    rdfs:domain wikibase:Property .
+
+wikibase:statementProperty a owl:ObjectProperty ;
+    rdfs:label "statementProperty" ;
+    rdfs:comment "Link between Wikibase Property and statement property predicate." ;
+    rdfs:domain wikibase:Property .
+
+wikibase:statementValue a owl:ObjectProperty ;
+    rdfs:label "statementValue" ;
+    rdfs:comment "Link between Wikibase Property and statement value predicate." ;
+    rdfs:domain wikibase:Property .
+
+wikibase:statementValueNormalized a owl:ObjectProperty ;
+    rdfs:label "statementValueNormalized" ;
+    rdfs:comment "Link between Wikibase Property and statement normalized value predicate." ;
+    rdfs:domain wikibase:Property .
+
+wikibase:timeCalendarModel a owl:ObjectProperty ;
+    rdfs:label "timeCalendarModel" ;
+    rdfs:comment "Preferred calendar used to display this date to the user." ;
+    rdfs:domain wikibase:TimeValue ;
+    rdfs:range wikibase:Item .
+
+wikibase:timePrecision a owl:DatatypeProperty ;
+    rdfs:label "timePrecision" ;
+    rdfs:comment "Datetime precision." ;
+    rdfs:domain wikibase:TimeValue ;
+    rdfs:range xsd:nonNegativeInteger .
+
+wikibase:timeTimezone a owl:DatatypeProperty ;
+    rdfs:label "timeTimezone" ;
+    rdfs:comment "Timezone offset from UTC in minutes." ;
+    rdfs:domain wikibase:TimeValue ;
+    rdfs:range xsd:decimal .
+
+wikibase:timeValue a owl:DatatypeProperty ;
+    rdfs:label "timeValue" ;
+    rdfs:comment "Time value as datetime literal." ;
+    rdfs:domain wikibase:TimeValue ;
+    rdfs:range xsd:dateTime .
+
+wikibase:wikiGroup a owl:DatatypeProperty ;
+    rdfs:label "wikiGroup" ;
+    rdfs:comment "Wiki group that the site belongs to." .
+
+wikibase:Statement a owl:Class ;
+    rdfs:label "Statement" ;
+    rdfs:comment "A reified statement." .
+
+wikibase:Entity a owl:Class ;
+    rdfs:label "Entity" ;
+    rdfs:comment "Wikibase entity." .
+
+wikibase:Value a owl:Class ;
+    rdfs:label "Value" ;
+    rdfs:comment "Wikibase extended value." .
+
+wikibase:GlobecoordinateValue a owl:Class ;
+    rdfs:label "GlobecoordinateValue" ;
+    rdfs:comment "Wikibase extended value representing geographic coordinate." ;
+    rdfs:subClassOf wikibase:Value .
+
+wikibase:Rank a owl:Class ;
+    rdfs:label "Rank" ;
+    rdfs:comment "Wikibase statement rank." .
+
+wikibase:TimeValue a owl:Class ;
+    rdfs:label "TimeValue" ;
+    rdfs:comment "Wikibase extended value representing time." ;
+    rdfs:subClassOf wikibase:Value .
+
+wikibase:Item a owl:Class ;
+    rdfs:label "Item" ;
+    rdfs:comment "Wikibase item." ;
+    rdfs:subClassOf wikibase:Entity .
+
+wikibase:QuantityValue a owl:Class ;
+    rdfs:label "QuantityValue" ;
+    rdfs:comment "Wikibase extended value representing quantity." ;
+    rdfs:subClassOf wikibase:Value .
+
+wikibase:Property a owl:Class ;
+    rdfs:label "Property" ;
+    rdfs:comment "Wikibase property." ;
+    rdfs:subClassOf wikibase:Entity .
+
+wikibase:PropertyType a owl:Class ;
+    rdfs:label "PropertyType" ;
+    rdfs:comment "Type of a wikibase property." .
+
+[] a owl:AllDisjointClasses ;
+    owl:members ( wikibase:Item wikibase:Property ) .

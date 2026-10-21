@@ -523,7 +523,7 @@ class LinkcheckTests(unittest.TestCase):
         case.setUp()
         original = step_build.linkcheck
         try:
-            step_build.linkcheck = lambda docs: (5, ["Q1.html -> Q99.html"])
+            step_build.linkcheck = lambda docs, pending=(): (5, ["Q1.html -> Q99.html"])
             code, out = case.build()
         finally:
             step_build.linkcheck = original

@@ -18,6 +18,8 @@ Keys (all optional; a missing file gives the defaults and one note)::
     pages_url: https://example.github.io/repo/   # optional, for the canonical link
     formatter_property: P18           # property that holds the formatter URL of external-id
                                       # properties ($1 is replaced); Wikidata uses P1630
+    rdf_base: https://example.org/    # optional; base URI of the RDF export (wd:, wdt:, ...). Default: source.url,
+                                      # so that the Turtle file uses the URIs of the real Wikibase
 
 ``load_config()`` never raises: unusable values become messages (printed as
 ``WARN`` by the build step) and fall back to the default.
@@ -36,7 +38,7 @@ PROPERTY = re.compile(r"^P[1-9][0-9]*$")
 DEFAULT_COLOUR = "#336699"
 DEFAULT_LICENSE = ("CC0 1.0", "https://creativecommons.org/publicdomain/zero/1.0/")   # PRIMER.md, A4
 KNOWN_KEYS = {"title", "description", "logo", "colour", "source", "license", "languages",
-              "imprint", "pages_url", "formatter_property"}
+              "imprint", "pages_url", "formatter_property", "rdf_base"}
 
 
 @dataclass
@@ -53,6 +55,7 @@ class SiteConfig:
     second_language: str | None = None
     imprint: str | None = None
     pages_url: str | None = None
+    rdf_base: str | None = None
     formatter_property: str = "P1630"
     present: bool = False                      # was there a site.yaml at all
     problems: list[str] = field(default_factory=list)
@@ -142,6 +145,13 @@ def load_config(path: Path, manifest_source: str | None = None) -> SiteConfig:
             problems.append("site.yaml: languages.second equals languages.default; ignored")
         else:
             cfg.second_language = second
+
+    rdf_base = _text(data.get("rdf_base"), "rdf_base", problems)
+    if rdf_base:
+        if re.match(r"^https?://[^\s/]+(/[^\s?#]*)?$", rdf_base):
+            cfg.rdf_base = rdf_base.rstrip("/")
+        else:
+            problems.append(f"site.yaml: rdf_base {rdf_base!r} is not an http(s) URL without query or fragment; ignored")
 
     formatter = _text(data.get("formatter_property"), "formatter_property", problems)
     if formatter:

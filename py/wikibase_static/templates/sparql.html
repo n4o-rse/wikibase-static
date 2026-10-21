@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block tabs_left %}<li class="active"><span>{{ ui_sparql }}</span></li>{% endblock %}
+{% block main %}
+<article class="sparql">
+  <h1>{{ heading }}</h1>
+  {% if intro %}
+  <p class="description">{{ intro }}</p>
+  {% endif %}
+  <p class="data-line">
+    <strong>{{ ui_sq_data }}</strong>
+    {{ ui_sq_data_text }}
+    <a href="{{ graph_url }}">{{ graph_name }}</a>{% if ontology_url %} &middot; <a href="{{ ontology_url }}">{{ ui_sq_ontology }}</a>{% endif %}
+  </p>
+  {% if pages_known %}
+  <p class="muted"><strong>{{ ui_sq_files }}</strong> {{ ui_sq_files_text }}</p>
+  {% endif %}
+  <p id="wbs-sparql-status" class="status" role="status" aria-live="polite">{{ ui_sq_start }}</p>
+  <noscript><p class="note">{{ ui_sq_noscript }}</p></noscript>
+  <p class="muted">{{ ui_sq_note }}</p>
+  <details class="prefixes">
+    <summary>{{ ui_sq_prefixes }}</summary>
+    <pre>{{ prefix_text }}</pre>
+  </details>
+  {% for q in queries %}
+  <section class="query" id="{{ q.id }}">
+    <h2>{{ q.title }}</h2>
+    {% if q.intro %}<p>{{ q.intro }}</p>{% endif %}
+    <textarea spellcheck="false" aria-label="{{ q.title_text }}" rows="{{ q.lines }}">{{ q.sparql }}</textarea>
+    <div class="query-actions">
+      <button type="button" class="run">{{ ui_sq_run }}</button>
+      <button type="button" class="reset">{{ ui_sq_reset }}</button>
+      <a href="{{ q.rq }}" download>{{ ui_sq_rq }}</a>
+      <span class="query-stats" aria-live="polite"></span>
+    </div>
+    <div class="query-result"></div>
+  </section>
+  {% endfor %}
+</article>
+<script type="application/json" id="wbs-sparql-config">{{ config_json | safe }}</script>
+<script type="application/json" id="wbs-sparql-runner">{{ runner_json | safe }}</script>
+{% endblock %}
+{% block scripts %}
+<script src="assets/sparql.js"></script>
+{% endblock %}

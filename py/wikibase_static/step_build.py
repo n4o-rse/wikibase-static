@@ -73,8 +73,10 @@ def internal_targets(html: str) -> list[str]:
     return found
 
 
-def linkcheck(docs: Path) -> tuple[int, list[str]]:
-    """(links checked, dead links as ``page -> target``) over every HTML file directly in ``docs``."""
+def linkcheck(docs: Path, pending: tuple[str, ...] = ()) -> tuple[int, list[str]]:
+    """(links checked, dead links as ``page -> target``) over every HTML file directly in ``docs``.
+
+    ``pending`` names files a later step writes (``sparql.html``): a link to one of them is not dead yet."""
     checked = 0
     dead: list[str] = []
     for page in sorted(docs.glob("*.html")):
@@ -83,6 +85,8 @@ def linkcheck(docs: Path) -> tuple[int, list[str]]:
             resolved = posixpath.normpath(target)
             if resolved.startswith(".."):
                 dead.append(f"{page.name} -> {target} (outside docs/)")
+            elif resolved in pending:
+                continue
             elif not (docs / resolved).is_file():
                 dead.append(f"{page.name} -> {target}")
     return checked, sorted(set(dead))
@@ -102,6 +106,47 @@ def copy_assets(docs: Path) -> int:
             target.write_bytes(data)
         count += 1
     return count
+
+
+def make_env():
+    """The Jinja environment of all pages (also used by the SPARQL step)."""
+    import jinja2
+    return jinja2.Environment(
+        loader=jinja2.FileSystemLoader(str(TEMPLATES)), autoescape=True, undefined=jinja2.StrictUndefined,
+        trim_blocks=True, lstrip_blocks=True, keep_trailing_newline=True,
+    )
+
+
+def logo_href(logo: str | None) -> str | None:
+    """The href for the header logo without copying anything (the build step has placed the file already)."""
+    if not logo:
+        return None
+    if logo.lower().startswith(("http://", "https://")):
+        return logo
+    source = (utils.ROOT / logo).resolve()
+    return f"assets/logo/{source.name}" if source.is_relative_to(utils.ROOT) and source.is_file() else None
+
+
+def page_context(site: Any, cfg: Any, r: Any, logo: str | None):
+    """The function that makes the context every page shares (title, strings, navigation, footer)."""
+    base_url = (cfg.pages_url.rstrip("/") + "/") if cfg.pages_url else None
+
+    def common(page: str, title: str, description: str | None, footer: dict[str, Any],
+               map_points: list[Any] | None = None) -> dict[str, Any]:
+        return {
+            "default": cfg.default_language, "second": cfg.second_language, "colour": cfg.colour, "logo": logo,
+            "site_title": cfg.title, "language_label": r.ui_text("language"),
+            "canonical": f"{base_url}{page}" if base_url else None,
+            "title": title, "description": description, "footer": footer, "map_points": map_points or [],
+            "ui_source": r.ui("source"), "ui_original": r.ui("open_original"), "ui_as_of": r.ui("as_of"),
+            "ui_license": r.ui("license"), "ui_license_missing": r.ui("license_missing"),
+            "ui_imprint": r.ui("imprint"), "ui_generated": r.ui("generated"),
+            "ui_home": r.ui("home"), "ui_home_text": r.ui_text("home"), "ui_items": r.ui("items"), "ui_properties": r.ui("properties"),
+            "ui_sparql": r.ui("sparql"), "has_sparql": True, "page_name": page,
+            "search_text": r.ui_text("search"), "search_texts": r.search_texts_json(),
+            "has_items": bool(site.items), "has_properties": bool(site.properties),
+        }
+    return common
 
 
 def place_logo(logo: str | None, docs: Path, problems: list[str]) -> str | None:
@@ -132,7 +177,6 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     # Heavy imports only now, so that --list, --dry-run and an empty repository never need them.
-    import jinja2
     from wikibase_static.render import Renderer
     from wikibase_static.site_config import load_config
 
@@ -145,27 +189,9 @@ def main(argv: list[str] | None = None) -> int:
     assets = copy_assets(docs)
     logo = place_logo(cfg.logo, docs, problems)
 
-    env = jinja2.Environment(
-        loader=jinja2.FileSystemLoader(str(TEMPLATES)), autoescape=True, undefined=jinja2.StrictUndefined,
-        trim_blocks=True, lstrip_blocks=True, keep_trailing_newline=True,
-    )
+    env = make_env()
     r = Renderer(site, cfg, __version__)
-    base_url = (cfg.pages_url.rstrip("/") + "/") if cfg.pages_url else None
-
-    def common(page: str, title: str, description: str | None, footer: dict[str, Any],
-               map_points: list[Any] | None = None) -> dict[str, Any]:
-        return {
-            "default": cfg.default_language, "second": cfg.second_language, "colour": cfg.colour, "logo": logo,
-            "site_title": cfg.title, "language_label": r.ui_text("language"),
-            "canonical": f"{base_url}{page}" if base_url else None,
-            "title": title, "description": description, "footer": footer, "map_points": map_points or [],
-            "ui_source": r.ui("source"), "ui_original": r.ui("open_original"), "ui_as_of": r.ui("as_of"),
-            "ui_license": r.ui("license"), "ui_license_missing": r.ui("license_missing"),
-            "ui_imprint": r.ui("imprint"), "ui_generated": r.ui("generated"),
-            "ui_home": r.ui("home"), "ui_home_text": r.ui_text("home"), "ui_items": r.ui("items"), "ui_properties": r.ui("properties"),
-            "search_text": r.ui_text("search"), "search_texts": r.search_texts_json(),
-            "has_items": bool(site.items), "has_properties": bool(site.properties),
-        }
+    common = page_context(site, cfg, r, logo)
 
     expected: set[str] = set()
     pages_with_map = markers = 0
@@ -223,7 +249,7 @@ def main(argv: list[str] | None = None) -> int:
 
     entity_pages = sorted(p.name for p in docs.glob("*.html") if ENTITY_PAGE.match(p.name))
     missing = sorted(f"{e}.html" for e in site.entities if f"{e}.html" not in entity_pages)
-    checked, dead = linkcheck(docs)
+    checked, dead = linkcheck(docs, pending=("sparql.html",))
 
     print(f"[{STEP}] {len(site.entities)} entities -> {len(entity_pages)} entity pages + index.html in docs/ "
           f"(difference {len(site.entities) - len(entity_pages)}), {assets} asset files")

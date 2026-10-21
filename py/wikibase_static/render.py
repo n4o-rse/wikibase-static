@@ -60,6 +60,22 @@ STRINGS: dict[str, dict[str, str]] = {
         "dt_time": "Point in time", "dt_quantity": "Quantity", "dt_monolingualtext": "Monolingual text",
         "dt_globe-coordinate": "Globe coordinate", "home": "Home", "unsupported": "Unsupported value",
         "search": "Search", "search_none": "No results", "search_error": "The search index could not be loaded.",
+        "sparql": "SPARQL", "sq_run": "Run", "sq_reset": "Reset", "sq_rq": "Download as .rq",
+        "sq_prefixes": "Prefixes (put in front of every query)", "sq_data": "The data",
+        "sq_data_text": "A Turtle file in the RDF model of Wikibase with {n} triples:",
+        "sq_ontology": "Wikibase ontology", "sq_files": "Every record on its own:",
+        "sq_files_text": "each page has a Turtle file in ttl/ and the archived JSON in json/; the catalogue (DCAT) lists them.",
+        "sq_note": "The first run loads Python (Pyodide) from cdn.jsdelivr.net and rdflib from PyPI; after that everything runs in your browser and what you type does not leave it.",
+        "sq_noscript": "Running queries needs JavaScript.",
+        "sq_start": "Press Run to start. The first run takes a few seconds.",
+        "sq_js_loading_runtime": "Loading Python (Pyodide) ...", "sq_js_loading_rdflib": "Installing rdflib ...",
+        "sq_js_loading_graph": "Loading the data ...", "sq_js_ready": "Ready: {n} triples.",
+        "sq_js_start_failed": "Could not start: {error}", "sq_js_runtime_unreachable": "{url} cannot be reached (offline?)",
+        "sq_js_graph_unreachable": "The data file could not be fetched; open this page over http(s), not from a file.",
+        "sq_js_graph_http": "The data file answered with HTTP {status}.",
+        "sq_js_running": "Running ...", "sq_js_done": "{s} s over {n} triples", "sq_js_empty": "No results. The query is valid but matched nothing.",
+        "sq_js_capped": "Showing the first {shown} of {total} rows.", "sq_js_rows_one": "1 row.", "sq_js_rows_other": "{n} rows.",
+        "sq_js_unbound": "no value",
     },
     "de": {
         "statements": "Aussagen", "no_statements": "Keine Aussagen.", "also_known_as": "Auch bekannt als",
@@ -80,6 +96,22 @@ STRINGS: dict[str, dict[str, str]] = {
         "dt_time": "Zeitpunkt", "dt_quantity": "Größe", "dt_monolingualtext": "Einsprachiger Text",
         "dt_globe-coordinate": "Geokoordinate", "home": "Startseite", "unsupported": "Nicht unterstützter Wert",
         "search": "Suche", "search_none": "Keine Treffer", "search_error": "Der Suchindex konnte nicht geladen werden.",
+        "sparql": "SPARQL", "sq_run": "Ausführen", "sq_reset": "Zurücksetzen", "sq_rq": "Als .rq laden",
+        "sq_prefixes": "Präfixe (werden jeder Abfrage vorangestellt)", "sq_data": "Die Daten",
+        "sq_data_text": "Eine Turtle-Datei im RDF-Modell von Wikibase mit {n} Tripeln:",
+        "sq_ontology": "Wikibase-Ontologie", "sq_files": "Jeder Datensatz einzeln:",
+        "sq_files_text": "zu jeder Seite gibt es eine Turtle-Datei in ttl/ und das archivierte JSON in json/; der Katalog (DCAT) verzeichnet sie.",
+        "sq_note": "Der erste Lauf lädt Python (Pyodide) von cdn.jsdelivr.net und rdflib von PyPI; danach läuft alles in Ihrem Browser, und was Sie eintippen, verlässt ihn nicht.",
+        "sq_noscript": "Zum Ausführen von Abfragen wird JavaScript benötigt.",
+        "sq_start": "Auf „Ausführen“ klicken, um zu starten. Der erste Lauf dauert einige Sekunden.",
+        "sq_js_loading_runtime": "Python (Pyodide) wird geladen ...", "sq_js_loading_rdflib": "rdflib wird installiert ...",
+        "sq_js_loading_graph": "Daten werden geladen ...", "sq_js_ready": "Bereit: {n} Tripel.",
+        "sq_js_start_failed": "Start nicht möglich: {error}", "sq_js_runtime_unreachable": "{url} ist nicht erreichbar (offline?)",
+        "sq_js_graph_unreachable": "Die Datendatei ließ sich nicht abrufen; die Seite bitte über http(s) öffnen, nicht aus einer Datei.",
+        "sq_js_graph_http": "Die Datendatei antwortete mit HTTP {status}.",
+        "sq_js_running": "Läuft ...", "sq_js_done": "{s} s über {n} Tripel", "sq_js_empty": "Keine Ergebnisse. Die Abfrage ist gültig, hat aber nichts gefunden.",
+        "sq_js_capped": "Gezeigt werden die ersten {shown} von {total} Zeilen.", "sq_js_rows_one": "1 Zeile.", "sq_js_rows_other": "{n} Zeilen.",
+        "sq_js_unbound": "kein Wert",
     },
 }
 
@@ -283,6 +315,15 @@ class Renderer:
             table = STRINGS.get(language, STRINGS["en"])
             texts[language] = {"placeholder": table["search"], "none": table["search_none"], "error": table["search_error"]}
         return json.dumps(texts, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
+
+    def sparql_texts(self) -> dict[str, dict[str, str]]:
+        """The messages of ``sparql.js`` (``sq_js_*`` in ``STRINGS``), one set per language of the site, keys without the prefix."""
+        texts = {}
+        for language in [self.default] + ([self.second] if self.second else []):
+            table = STRINGS.get(language, STRINGS["en"])
+            texts[language] = {key[len("sq_js_"):]: table.get(key, STRINGS["en"][key])
+                               for key in sorted(STRINGS["en"]) if key.startswith("sq_js_")}
+        return texts
 
     def ui_plural(self, base: str, n: int) -> Markup:
         """``references_one`` for exactly one, ``references_other`` (with ``{n}``) otherwise."""

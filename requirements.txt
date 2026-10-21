@@ -1,10 +1,10 @@
 # wikibase-static -- runtime dependencies.
 #
-# Steps S1, S2 and S4 need nothing beyond the standard library; S3 (build) needs the two below.
+# Steps S1, S2 and S4 need nothing beyond the standard library; S3 (build) needs the first two below, S6 the third.
 # Each later step adds its own dependency here when it first uses it,
 # so that `python main.py --list` never needs any of them.
 #
 PyYAML>=6      # S3: site.yaml
 Jinja2>=3.1    # S3: page templates
 # S4 (harvest) uses urllib from the standard library; no requests needed.
-# rdflib>=7      # S6: RDF export and verification of the example queries
+rdflib>=7      # S6: reads the Turtle back and runs the example queries of the query page
