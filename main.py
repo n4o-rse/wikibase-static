@@ -11,7 +11,8 @@
     python main.py harvest          a step that is not in the default run
 
 ``harvest`` is the only step that touches the network, so it is never part of
-the default run; give it its own verb. Anything main.py does not recognise is
+the default run; give it its own verb. ``to-csv`` and ``csv-fmt`` write source files
+(``data/csv/``) and have verbs of their own as well. Anything main.py does not recognise is
 passed on to the step when exactly one step is selected, e.g.
 ``python main.py harvest --probe``.
 
@@ -37,7 +38,9 @@ REPORT = ROOT / "dist" / "pipeline_report.txt"
 # (name, module, in default run, description)
 STEPS = [
     ("harvest", "step_harvest", False, "S4  fetch entities from a Wikibase (network, incremental)"),
-    ("from-csv", "step_from_csv", True, "S7  CSV -> Wikibase JSON for a dummy Wikibase"),
+    ("to-csv", "step_to_csv", False, "S7a harvested JSON -> CSV tables (writes data/csv)"),
+    ("csv-fmt", "step_csv_fmt", False, "S7a canonical form of data/csv (--check for CI)"),
+    ("from-csv", "step_from_csv", True, "S7a CSV tables + kernel -> Wikibase JSON in data/derived"),
     ("load", "step_load", True, "S2  read data/raw and data/derived, check them"),
     ("build", "step_build", True, "S3  render the static pages into docs/"),
     ("search", "step_search", True, "S5  build the search index"),

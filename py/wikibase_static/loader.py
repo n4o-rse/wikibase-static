@@ -23,7 +23,8 @@ from typing import Any
 
 from wikibase_static import utils
 from wikibase_static.model import (
-    ENTITY_ID, SUPPORTED_DATATYPES, VALUE_KEYS, VALUE_TYPE, Entity, Snak, Statement, id_sort_key,
+    ENTITY_ID, SUPPORTED_DATATYPES, VALUE_KEYS, VALUE_TYPE, Entity, Snak, Statement, federated_from_uri,
+    id_sort_key, is_federated,
 )
 
 MAX_REFERRERS = 5   # how many referring entities a "missing" message names
@@ -124,7 +125,7 @@ def _snak(raw: Any, where: str, problems: list[str]) -> Snak | None:
     if not isinstance(raw, dict) or not isinstance(raw.get("property"), str):
         problems.append(f"{where}: a snak without a property; skipped")
         return None
-    prop = raw["property"]
+    prop = federated_from_uri(raw["property"]) or raw["property"]     # a Wikidata property is kept as wd:P31
     snaktype = raw.get("snaktype", "value")
     datatype = raw.get("datatype")
     datavalue = raw.get("datavalue")
@@ -134,6 +135,8 @@ def _snak(raw: Any, where: str, problems: list[str]) -> Snak | None:
             problems.append(f"{where}: {prop} has snaktype value but no datavalue")
         else:
             vtype, value = datavalue.get("type"), datavalue["value"]
+            if vtype == "wikibase-entityid" and isinstance(value, dict) and federated_from_uri(value.get("id")):
+                value = {**value, "id": federated_from_uri(value["id"])}    # an entity of Wikidata, kept as wd:Q42
             expected = VALUE_TYPE.get(datatype or "")
             if expected and vtype != expected:
                 problems.append(f"{where}: {prop} has datatype {datatype} but a {vtype} value (expected {expected})")
@@ -168,8 +171,10 @@ def _statements(raw: Any, where: str, problems: list[str]) -> list[Statement]:
     statements: list[Statement] = []
     if not isinstance(raw, dict):
         return statements
-    for prop in sorted(raw, key=id_sort_key):
-        for claim in raw[prop] if isinstance(raw[prop], list) else []:
+    names = {key: (federated_from_uri(key) or key) for key in raw}
+    for key in sorted(raw, key=lambda k: id_sort_key(names[k])):
+        prop = names[key]
+        for claim in raw[key] if isinstance(raw[key], list) else []:
             if not isinstance(claim, dict):
                 problems.append(f"{where}: a statement of {prop} is not an object; skipped")
                 continue
@@ -293,7 +298,7 @@ def _check_references(site: Site) -> None:
     referrers: dict[str, set[str]] = {}
     for entity in site.entities.values():
         for target in entity.referenced_ids():
-            if target not in site.entities:
+            if target not in site.entities and not is_federated(target):     # wd:Q42 is only linked (A4)
                 referrers.setdefault(target, set()).add(entity.id)
     for target in sorted(referrers, key=id_sort_key):
         who = sorted(referrers[target], key=id_sort_key)

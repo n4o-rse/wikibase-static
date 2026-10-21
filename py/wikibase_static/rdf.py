@@ -37,7 +37,9 @@ from typing import Any, Iterable, Union
 from urllib.parse import quote, urlparse
 
 from wikibase_static.loader import Site
-from wikibase_static.model import SUPPORTED_DATATYPES, Entity, Snak, Statement, id_sort_key
+from wikibase_static.model import (
+    SUPPORTED_DATATYPES, Entity, Snak, Statement, federated_to_uri, id_sort_key, is_federated,
+)
 
 # --------------------------------------------------------------------------- vocabulary
 
@@ -328,6 +330,7 @@ class Rdf:
     by_entity: dict[str, set[Triple]] = field(default_factory=dict)   # the triples of each entity's own file
     notes: list[str] = field(default_factory=list)
     distributions: int = 0
+    federated: int = 0                                          # snaks of Wikidata properties (wd:P...), linked but not exported
 
 
 @dataclass
@@ -365,6 +368,8 @@ class _Builder:
             self.owner.add((s, p, o))
 
     def _wd(self, entity_id: str) -> Iri:
+        if is_federated(entity_id):         # an entity of Wikidata keeps its own URI
+            return Iri(federated_to_uri(entity_id))
         return Iri(self.ns.wd + entity_id)
 
     @staticmethod
@@ -391,7 +396,7 @@ class _Builder:
         where = f"{snak.property} ({datatype})"
         if datatype in ("wikibase-item", "wikibase-property"):
             target = snak.entity_id
-            if not target or not re.match(r"^[A-Za-z][0-9]+$", target):
+            if not target or not (re.match(r"^[A-Za-z][0-9]+$", target) or is_federated(target)):
                 self._problem(f"rdf: {where} value without a usable entity id; not written")
                 return None
             return self._wd(target), None
@@ -475,6 +480,9 @@ class _Builder:
     def snak(self, subject: Term, snak: Snak, kind: str, parent: str) -> None:
         """One snak on ``subject`` as direct (``wdt``), statement (``ps``), qualifier (``pq``) or reference (``pr``)."""
         ns = self.ns
+        if is_federated(snak.property):     # a Wikidata property has no p:/ps: namespace on this Wikibase
+            self.out.federated += 1
+            return
         predicate_ns, value_ns = {"direct": (ns.wdt, None), "statement": (ns.ps, ns.psv),
                                   "qualifier": (ns.pq, ns.pqv), "reference": (ns.pr, ns.prv)}[kind]
         if snak.snaktype == "novalue":
@@ -523,6 +531,9 @@ class _Builder:
         for position, statement in enumerate(entity.statements):
             by_property.setdefault(statement.mainsnak.property, []).append((position, statement))
         for prop, group in by_property.items():
+            if is_federated(prop):
+                self.out.federated += len(group)
+                continue
             ranks = [s.rank for _pos, s in group]
             best_rank = "preferred" if "preferred" in ranks else "normal"
             for position, statement in group:
@@ -761,6 +772,8 @@ def build(site: Site, ns: Namespaces, license_url: str | None = None, catalog: C
         builder.catalogue()
         if not catalog.pages_url:
             builder.out.notes.append("no pages_url in site.yaml: the datasets have no distributions (a distribution needs a download URL)")
+    if builder.out.federated:
+        builder.out.notes.append(f"{builder.out.federated} value(s) of Wikidata properties (wd:P...) are linked on the pages, not exported")
     problems = set(builder.problems)
     for prop, count in sorted(builder.out.skipped.items()):
         problems.add(f"rdf: {prop} has the datatype {builder.skipped_types[prop]}, which is not exported ({count} value(s) left out)")

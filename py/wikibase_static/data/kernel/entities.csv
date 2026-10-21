@@ -1,0 +1,14 @@
+id,kind,datatype,origin,label_en,label_de,description_en,description_de
+Q1,class,,,Class,Klasse,A set of things of the same kind; the type of every class.,Eine Menge gleichartiger Dinge; der Typ jeder Klasse.
+Q2,class,,,Property,Eigenschaft,A relation or attribute that links an entity to a value; the type of every property.,"Eine Beziehung oder ein Merkmal, das eine Entität mit einem Wert verbindet; der Typ jeder Eigenschaft."
+Q3,class,,,Instance,Instanz,The root of the class tree: everything described here is an instance of it.,Die Wurzel des Klassenbaums: alles hier Beschriebene ist eine Instanz davon.
+P1,property,wikibase-item,,subclass of,Unterklasse von,This class is a more specific form of the value class.,Diese Klasse ist eine speziellere Form der Wertklasse.
+P2,property,wikibase-item,,instance of,ist eine Instanz von,This entity is a member of the value class.,Diese Entität gehört zur Wertklasse.
+P3,property,wikibase-property,,subproperty of,Untereigenschaft von,This property is a more specific form of the value property.,Diese Eigenschaft ist eine speziellere Form der Wert-Eigenschaft.
+P4,property,external-id,,Wikidata equivalent,Wikidata-Entsprechung,The Wikidata item or property that corresponds to this entity (for example Q7397 or P275).,"Das Wikidata-Item oder die Wikidata-Property, die dieser Entität entspricht (zum Beispiel Q7397 oder P275)."
+P5,property,string,,formatter URL,URL-Muster,URL pattern of an identifier property; $1 stands for the identifier.,URL-Muster einer Identifikator-Eigenschaft; $1 steht für den Identifikator.
+P6,property,url,,reference URL,Beleg-URL,Web page that documents a statement.,"Webseite, die eine Aussage belegt."
+P7,property,time,,retrieved,abgerufen am,Date on which the source of a statement was read.,"Datum, an dem die Quelle einer Aussage gelesen wurde."
+P8,property,wikibase-item,,stated in,angegeben in,Item that names the source of a statement.,"Item, das die Quelle einer Aussage nennt."
+P9,property,wikibase-item,,domain,Definitionsbereich,Class the subject of a property's statements should belong to.,"Klasse, zu der das Subjekt der Aussagen einer Eigenschaft gehören soll."
+P10,property,wikibase-item,,range,Wertebereich,Class the values of a property should belong to.,"Klasse, zu der die Werte einer Eigenschaft gehören sollen."

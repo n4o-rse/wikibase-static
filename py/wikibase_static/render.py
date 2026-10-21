@@ -27,7 +27,7 @@ from urllib.parse import quote
 from markupsafe import Markup, escape
 
 from wikibase_static.loader import LabelResolver, Site
-from wikibase_static.model import Entity, Snak, Statement, id_sort_key, pick_text
+from wikibase_static.model import Entity, Snak, Statement, id_sort_key, is_federated, pick_text
 from wikibase_static.site_config import SiteConfig
 
 EARTH = "http://www.wikidata.org/entity/Q2"
@@ -394,6 +394,11 @@ class Renderer:
             text = self.label_with_id(entity_id) if show_id else self.label(entity_id)
             return Markup(f'<a href="{escape(entity_id)}.html">{text}</a>')
         title = self.ui_text("federated")
+        if is_federated(entity_id):     # wd:Q42 / wd:P31: the page is Q42 or Property:P31 on Wikidata, the text keeps the wd: prefix
+            short = entity_id[3:]
+            page = f"Property:{short}" if short.startswith("P") else short
+            return Markup(f'<a class="federated" href="{WIKIDATA}{page}" target="_blank" '
+                          f'rel="noopener" title="{escape(title)}">{escape(entity_id)}</a>')
         return Markup(f'<a class="federated" href="{WIKIDATA}{escape(entity_id)}" target="_blank" '
                       f'rel="noopener" title="{escape(title)}">{escape(entity_id)}</a>')
 
@@ -483,7 +488,9 @@ class Renderer:
                 "link": snak.property in self.site.entities, "value": self.value(snak)}
 
     def _property_label(self, property_id: str) -> Markup:
-        return self.label_with_id(property_id) if property_id in self.site.entities else Markup(escape(property_id))
+        if property_id in self.site.entities:
+            return self.label_with_id(property_id)
+        return self.entity_link(property_id) if is_federated(property_id) else Markup(escape(property_id))
 
     def statement_groups(self, entity: Entity) -> list[dict[str, Any]]:
         groups: list[dict[str, Any]] = []

@@ -1,6 +1,6 @@
 wikibase-static: from-csv -> load -> build -> search -> rdf -> sparql
 [from-csv]
-  [from-csv] nothing to do: not implemented yet (PRIMER.md, S7)
+  [from-csv] nothing to do: no CSV tables in data/csv
 [load]
   [load] nothing to do: no entities in data/raw/entities or data/derived/entities
 [build]

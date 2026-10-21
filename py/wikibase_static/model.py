@@ -43,6 +43,28 @@ VALUE_KEYS: dict[str, tuple[str, ...]] = {
 
 ENTITY_ID = re.compile(r"^([QP])([1-9][0-9]*)$")
 
+# A Wikidata entity used from another Wikibase (federation). In the model, in the CSV and in messages it is written
+# ``wd:Q42``; in Wikibase JSON it is the concept URI ``http://www.wikidata.org/entity/Q42`` (PRIMER.md, S7a).
+FEDERATED_ID = re.compile(r"^wd:([QP][1-9][0-9]*)$")
+WIKIDATA_ENTITY = "http://www.wikidata.org/entity/"
+WIKIDATA_URI = re.compile(r"^https?://www\.wikidata\.org/entity/([QP][1-9][0-9]*)$")
+
+
+def is_federated(entity_id: str) -> bool:
+    """True for ``wd:Q42`` and ``wd:P31``: an entity that lives on Wikidata, linked and never rendered here."""
+    return bool(FEDERATED_ID.match(entity_id))
+
+
+def federated_from_uri(uri: str) -> str | None:
+    """``wd:Q42`` for ``http://www.wikidata.org/entity/Q42`` (as Wikibase JSON writes it), else ``None``."""
+    match = WIKIDATA_URI.match(uri) if isinstance(uri, str) else None
+    return f"wd:{match.group(1)}" if match else None
+
+
+def federated_to_uri(entity_id: str) -> str:
+    """The concept URI of ``wd:Q42``."""
+    return WIKIDATA_ENTITY + entity_id[3:]
+
 
 def id_sort_key(entity_id: str) -> tuple[int, int, str]:
     """Items before properties, then numeric order (Q2 before Q10)."""
