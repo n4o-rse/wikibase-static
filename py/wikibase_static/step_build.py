@@ -137,12 +137,12 @@ def page_context(site: Any, cfg: Any, r: Any, logo: str | None):
             "default": cfg.default_language, "second": cfg.second_language, "colour": cfg.colour, "logo": logo,
             "site_title": cfg.title, "language_label": r.ui_text("language"),
             "canonical": f"{base_url}{page}" if base_url else None,
-            "title": title, "description": description, "footer": footer, "map_points": map_points or [],
+            "title": title, "description": description, "footer": footer, "map_points": map_points or [], "leaflet": False,
             "ui_source": r.ui("source"), "ui_original": r.ui("open_original"), "ui_as_of": r.ui("as_of"),
             "ui_license": r.ui("license"), "ui_license_missing": r.ui("license_missing"),
             "ui_imprint": r.ui("imprint"), "ui_generated": r.ui("generated"),
             "ui_home": r.ui("home"), "ui_home_text": r.ui_text("home"), "ui_items": r.ui("items"), "ui_properties": r.ui("properties"),
-            "ui_sparql": r.ui("sparql"), "has_sparql": True, "page_name": page,
+            "ui_sparql": r.ui("sparql"), "ui_query": r.ui("query"), "has_sparql": True, "page_name": page,
             "search_text": r.ui_text("search"), "search_texts": r.search_texts_json(),
             "has_items": bool(site.items), "has_properties": bool(site.properties),
         }
@@ -249,7 +249,7 @@ def main(argv: list[str] | None = None) -> int:
 
     entity_pages = sorted(p.name for p in docs.glob("*.html") if ENTITY_PAGE.match(p.name))
     missing = sorted(f"{e}.html" for e in site.entities if f"{e}.html" not in entity_pages)
-    checked, dead = linkcheck(docs, pending=("sparql.html",))
+    checked, dead = linkcheck(docs, pending=("sparql.html", "query.html"))
 
     print(f"[{STEP}] {len(site.entities)} entities -> {len(entity_pages)} entity pages + index.html in docs/ "
           f"(difference {len(site.entities) - len(entity_pages)}), {assets} asset files")

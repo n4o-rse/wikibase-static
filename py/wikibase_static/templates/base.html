@@ -11,7 +11,7 @@
 <link rel="canonical" href="{{ canonical }}">
 {% endif %}
 <link rel="stylesheet" href="assets/style.css">
-{% if map_points %}
+{% if map_points or leaflet %}
 <link rel="stylesheet" href="assets/vendor/leaflet/leaflet.css">
 {% endif %}
 <style>
@@ -31,6 +31,7 @@ html[data-lang="{{ second }}"] .l:not([lang="{{ second }}"]) { display: none; }
       {% if has_items %}<a href="index.html#items">{{ ui_items }}</a>{% endif %}
       {% if has_properties %}<a href="index.html#properties">{{ ui_properties }}</a>{% endif %}
       {% if has_sparql %}<a href="sparql.html"{% if page_name == "sparql.html" %} aria-current="page"{% endif %}>{{ ui_sparql }}</a>{% endif %}
+      {% if has_sparql %}<a href="query.html"{% if page_name == "query.html" %} aria-current="page"{% endif %}>{{ ui_query }}</a>{% endif %}
     </nav>
 {% block sidebar_tools %}{% endblock %}
   </aside>
@@ -74,7 +75,7 @@ html[data-lang="{{ second }}"] .l:not([lang="{{ second }}"]) { display: none; }
 </div>
 <script src="assets/app.js"></script>
 <script src="assets/search.js"></script>
-{% if map_points %}
+{% if map_points or leaflet %}
 <script src="assets/vendor/leaflet/leaflet.js"></script>
 <script src="assets/map.js"></script>
 {% endif %}

@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block tabs_left %}<li class="active"><span>{{ ui_query }}</span></li>{% endblock %}
+{% block main %}
+<article class="sparql editor-page">
+  <h1>{{ ui_q_heading }}</h1>
+  <p class="description">{{ ui_q_intro }}</p>
+  <p class="data-line">
+    <strong>{{ ui_sq_data }}</strong>
+    {{ ui_sq_data_text }}
+    <a href="{{ graph_url }}">{{ graph_name }}</a>{% if ontology_url %} &middot; <a href="{{ ontology_url }}">{{ ui_sq_ontology }}</a>{% endif %}
+  </p>
+  <p id="wbs-sparql-status" class="status" role="status" aria-live="polite">{{ ui_sq_start }}</p>
+  <noscript><p class="note">{{ ui_sq_noscript }}</p></noscript>
+  <p class="muted">{{ ui_sq_note }}</p>
+  <details class="prefixes">
+    <summary>{{ ui_sq_prefixes }}</summary>
+    <pre>{{ prefix_text }}</pre>
+  </details>
+  <div class="editor">
+    <label class="picker" for="wbs-q-examples">{{ ui_q_examples }}
+      <select id="wbs-q-examples"><option value="">{{ ui_q_pick_text }}</option></select>
+    </label>
+    <textarea id="wbs-q-editor" spellcheck="false" aria-label="{{ ui_q_editor_text }}" rows="14">{{ start_query }}</textarea>
+    <div class="query-actions">
+      <button type="button" id="wbs-q-run" class="run">{{ ui_q_run }}</button>
+      <button type="button" id="wbs-q-share" class="reset">{{ ui_q_share }}</button>
+      <span id="wbs-q-stats" class="query-stats" aria-live="polite"></span>
+    </div>
+    <p class="note">{{ ui_q_hint }}</p>
+  </div>
+  <section id="wbs-q-result" class="editor-result" hidden>
+    <div class="result-bar">
+      <div id="wbs-q-views" class="views" role="tablist" aria-label="{{ ui_q_views_text }}" hidden>
+        <button type="button" role="tab" data-view="table" aria-selected="true">{{ ui_q_table }}</button>
+        <button type="button" role="tab" data-view="map" aria-selected="false" hidden>{{ ui_q_map }}</button>
+        <button type="button" role="tab" data-view="images" aria-selected="false" hidden>{{ ui_q_images }}</button>
+      </div>
+      <span id="wbs-q-downloads" class="downloads" hidden>{{ ui_q_download }}
+        <button type="button" id="wbs-q-csv" class="link">CSV</button>
+        <button type="button" id="wbs-q-json" class="link">JSON</button>
+      </span>
+    </div>
+    <div id="wbs-q-table" class="query-result"></div>
+    <div id="wbs-q-map" class="wbs-qmap" role="img" aria-label="{{ ui_q_map_text }}" hidden></div>
+    <div id="wbs-q-images" class="query-result" hidden></div>
+  </section>
+</article>
+<script type="application/json" id="wbs-sparql-config">{{ config_json | safe }}</script>
+<script type="application/json" id="wbs-sparql-runner">{{ runner_json | safe }}</script>
+{% endblock %}
+{% block scripts %}
+<script src="assets/sparql.js"></script>
+{% endblock %}

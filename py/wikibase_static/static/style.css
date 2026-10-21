@@ -182,3 +182,32 @@ table.result td.iri, table.result td.bnode { font-size: 0.86rem; white-space: no
 table.result .lang { color: var(--muted); font-size: 0.8em; }
 .sparql .note { color: var(--muted); font-size: 0.85rem; }
 .sparql pre.error { border-color: #b00020; color: #7a0016; white-space: pre-wrap; }
+
+/* ---- free query editor (query.html) */
+.editor .picker { display: flex; align-items: center; gap: 0.6rem; margin: 0.8rem 0 0.4rem; font-size: 0.88rem; }
+.editor .picker select { font: inherit; padding: 0.2rem 0.4rem; max-width: 100%; border: 1px solid var(--border); background: #fff; color: var(--text); }
+.editor-result { margin: 1.2rem 0; padding-top: 0.6rem; border-top: 1px solid var(--soft-border); }
+.result-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.6rem; margin-bottom: 0.6rem; }
+.views { display: flex; gap: 0.2rem; }
+.views button { font: inherit; font-size: 0.88rem; padding: 0.25rem 0.9rem; border: 1px solid var(--border); background: transparent; color: var(--accent); cursor: pointer; border-radius: 2px; }
+.views button[aria-selected="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+.views button[hidden] { display: none; }
+.downloads { font-size: 0.88rem; color: var(--muted); }
+button.link { font: inherit; padding: 0; border: 0; background: none; color: var(--link); cursor: pointer; text-decoration: underline; margin-left: 0.4rem; }
+.wbs-qmap { height: 30rem; border: 1px solid var(--border); }
+.wbs-qmap[hidden], #wbs-q-images[hidden], #wbs-q-table[hidden] { display: none; }
+.gallery { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr)); gap: 0.9rem; }
+.gallery li { display: flex; flex-direction: column; gap: 0.3rem; font-size: 0.84rem; }
+.gallery img { width: 100%; height: 9rem; object-fit: cover; border: 1px solid var(--soft-border); background: var(--page); }
+.gallery span { overflow-wrap: anywhere; }
+.sparql .answer { font-size: 1.2rem; font-weight: 600; margin: 0.4rem 0; }
+.sparql .answer.yes { color: #2e7d32; }
+.sparql .answer.no { color: #b00020; }
+.sparql pre.turtle { max-height: 28rem; overflow: auto; }
+.query-actions a.to-editor { margin-left: 0.2rem; }
+.views[hidden], .downloads[hidden], .editor-result[hidden] { display: none; }
+@media (max-width: 48rem) {
+  .nav { flex-wrap: wrap; gap: 0.3rem 0.9rem; }
+  .editor .picker { flex-wrap: wrap; }
+  .editor .picker select { width: 100%; min-width: 0; }
+}

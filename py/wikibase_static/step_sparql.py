@@ -5,7 +5,8 @@
 Reads ``dist/<host>.ttl`` (made by ``rdf``), the queries (``queries.yaml`` of the site repository, else the
 package's default set) and ``site.yaml`` and writes::
 
-    docs/sparql.html                   the page: editable queries, Run, results as tables
+    docs/sparql.html                   the page: editable example queries, Run, results as tables
+    docs/query.html                    the free query editor: any query, result as table, map or pictures
     docs/downloads/queries/<id>.rq     every query as a plain file, with the prefixes it uses
 
 Every query is executed here, against the very file the page serves and with the Python the page runs, and
@@ -132,13 +133,38 @@ def main(argv: list[str] | None = None) -> int:
         "ui_sq_start": r.ui("sq_start"), "ui_sq_noscript": r.ui("sq_noscript"), "ui_sq_note": r.ui("sq_note"),
         "ui_sq_prefixes": r.ui("sq_prefixes"), "ui_sq_run": r.ui("sq_run"), "ui_sq_reset": r.ui("sq_reset"), "ui_sq_rq": r.ui("sq_rq"),
     })
+    context["ui_sq_to_editor"] = r.ui("sq_to_editor")
+    env = step_build.make_env()
     page = utils.DOCS / "sparql.html"
-    utils.write_text(page, step_build.make_env().get_template("sparql.html").render(context))
+    utils.write_text(page, env.get_template("sparql.html").render(context))
 
-    # Only the links of this page: the other pages were checked by the build step, and a dead link is reported once.
-    targets = step_build.internal_targets(page.read_text(encoding="utf-8"))
-    dead = sorted({f"sparql.html -> {t}" for t in targets if not (utils.DOCS / t).is_file()})
-    print(f"[{STEP}] docs/sparql.html: {len(rows)} queries, {triples} triples; linkcheck {len(targets)} internal links, {len(dead)} dead")
+    # ---- the free editor: the same queries as a list of examples, the first of them as the starting query
+    languages = [default] + ([second] if second else [])
+    editor_config = dict(config, examples=[
+        {"id": q.id, "title": {language: sparql.text_in(q.title, language, default) or q.id for language in languages},
+         "sparql": q.sparql.rstrip("\n")} for q in queries.queries])
+    editor = common("query.html", f"{r.ui_text('sq_q_heading')} – {cfg.title}", None, r.footer(None))
+    editor.update({key: value for key, value in context.items() if key.startswith(("ui_sq_", "graph_", "ontology_", "prefix_text", "runner_json"))})
+    editor.update({
+        "leaflet": True, "config_json": js_json(editor_config), "start_query": queries.queries[0].sparql.rstrip("\n"),
+        "ui_query": r.ui("query"),
+        **{f"ui_{key}": r.ui(f"sq_{key}") for key in ("q_heading", "q_intro", "q_examples", "q_run", "q_share", "q_table", "q_map",
+                                              "q_images", "q_download", "q_hint")},
+        **{f"ui_{key}_text": r.ui_text(f"sq_{key}") for key in ("q_pick", "q_editor", "q_views", "q_map")},
+    })
+    editor_page = utils.DOCS / "query.html"
+    utils.write_text(editor_page, env.get_template("query.html").render(editor))
+
+    # Only the links of these pages: the other pages were checked by the build step, and a dead link is reported once.
+    dead: list[str] = []
+    checked = 0
+    for name in ("sparql.html", "query.html"):
+        targets = step_build.internal_targets((utils.DOCS / name).read_text(encoding="utf-8"))
+        checked += len(targets)
+        dead += [f"{name} -> {t}" for t in sorted(set(targets)) if not (utils.DOCS / t).is_file()]
+    dead = sorted(set(dead))
+    print(f"[{STEP}] docs/sparql.html: {len(rows)} queries, {triples} triples; docs/query.html: editor with {len(rows)} examples")
+    print(f"[{STEP}] linkcheck {checked} internal links, {len(dead)} dead")
     for message in problems:
         utils.warn(STEP, message)
     for link in dead:

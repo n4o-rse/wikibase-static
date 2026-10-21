@@ -10,6 +10,8 @@ Python the page runs is the Python these tests run, see ``sparql.RUNNER_PY``.
 from __future__ import annotations
 
 import contextlib
+import copy
+import dataclasses
 import io
 import json
 import re
@@ -180,8 +182,47 @@ class RunTests(unittest.TestCase):
         self.assertTrue(self.run_one("SELECT ?s WHERE { ?s nope:x ?o }")["error"])
         self.assertTrue(self.run_one("SELECT ?s WHERE {")["error"])
 
-    def test_only_select_can_be_shown_as_a_table(self) -> None:
-        self.assertIn("SELECT", self.run_one("ASK { ?s ?p ?o }")["error"])
+    def test_a_site_has_images_when_a_statement_names_a_commons_file_or_an_image_url(self) -> None:
+        self.assertIn("image", sparql.site_features(self.site, None))
+        bare = copy.deepcopy(self.site)
+        for entity in bare.entities.values():
+            entity.statements = [st for st in entity.statements if st.mainsnak.datatype != "commonsMedia"]
+        self.assertNotIn("image", sparql.site_features(bare, None))
+        def with_value(value: str):
+            site = copy.deepcopy(bare)
+            some = next(e for e in site.entities.values() if e.statements)
+            some.statements[0] = dataclasses.replace(some.statements[0], mainsnak=dataclasses.replace(
+                some.statements[0].mainsnak, snaktype="value", datatype="url", value=value))
+            return site
+
+        self.assertIn("image", sparql.site_features(with_value("https://upload.example.org/a/b/Pic.PNG?x=1"), None))
+        self.assertNotIn("image", sparql.site_features(with_value("https://example.org/page.html"), None))
+
+    def test_ask_and_construct_are_answered_too(self) -> None:
+        ask = self.run_one("ASK { ?s ?p ?o }")
+        self.assertEqual((ask["kind"], ask["rows"], ask["error"]), ("ask", 1, None))
+        built = self.run_one("CONSTRUCT { ?s rdfs:label ?l } WHERE { ?s rdfs:label ?l }")
+        self.assertEqual((built["kind"], built["error"]), ("graph", None))
+        self.assertGreater(built["rows"], 0)
+
+    def test_the_runner_describes_each_kind_of_answer(self) -> None:
+        ns = {}
+        exec(compile(sparql.RUNNER_PY, "<runner>", "exec"), ns)
+        graph = ns["wbs_parse"](self.ttl)
+        head = sparql.prefix_block(self.prefixes)
+        ask = json.loads(ns["wbs_run"](graph, head + "ASK { wd:Q1 ?p ?o }", 5))
+        self.assertEqual((ask["kind"], ask["answer"]), ("ask", True))
+        no = json.loads(ns["wbs_run"](graph, head + "ASK { wd:Q999999 ?p ?o }", 5))
+        self.assertIs(no["answer"], False)
+        built = json.loads(ns["wbs_run"](graph, head + "CONSTRUCT { ?s rdfs:label ?l } WHERE { ?s rdfs:label ?l } LIMIT 3", 5))
+        self.assertEqual(built["kind"], "graph")
+        self.assertEqual(built["count"], 3)
+        self.assertIn("@prefix rdfs:", built["turtle"])
+        self.assertEqual(json.loads(ns["wbs_run"](graph, head + "SELECT ?s WHERE { ?s ?p ?o } LIMIT 1", 5))["kind"], "select")
+
+    def test_a_prefix_typed_by_hand_is_no_problem(self) -> None:
+        extra = 'PREFIX wd: <' + NS.wd + '>\nSELECT ?l WHERE { wd:Q1 rdfs:label ?l }'
+        self.assertEqual(self.run_one(extra)["rows"] > 0, True)
 
     def test_the_runner_caps_the_rows_but_counts_all(self) -> None:
         ns = {}
@@ -265,6 +306,42 @@ class StepTests(test_build.Site):
         self.assertEqual(code, 0)
         self.assertNotIn("WARN", out)
         self.assertFalse((self.docs / "sparql.html").exists())
+
+    def test_the_editor_page_has_the_examples_the_views_and_a_link_in_every_page(self) -> None:
+        self.site_yaml(self.SITE)
+        out = self.pipeline()
+        self.assertNotIn("WARN", out)
+        html = self.page("query.html")
+        for marker in ('id="wbs-q-editor"', 'id="wbs-q-examples"', 'data-view="map"', 'data-view="images"', 'id="wbs-q-csv"',
+                       'src="assets/vendor/leaflet/leaflet.js"', 'src="assets/sparql.js"', 'id="wbs-sparql-runner"'):
+            self.assertIn(marker, html)
+        config = json.loads(re.search(r'id="wbs-sparql-config">(.*?)</script>', html, re.S).group(1))
+        self.assertEqual([e["id"] for e in config["examples"]][:2], ["items", "properties"])
+        self.assertEqual(config["examples"][0]["title"], {"en": "Items with label and description", "de": "Items mit Bezeichnung und Beschreibung"})
+        self.assertIn("SELECT ?item ?label ?description", html.split('id="wbs-q-editor"')[1].split("</textarea>")[0])
+        for name in ("index.html", "Q1.html", "sparql.html", "query.html"):
+            self.assertIn('<a href="query.html"', self.page(name), name)
+        self.assertIn('aria-current="page"', html)
+        checked, dead = step_build.linkcheck(self.docs)
+        self.assertEqual(dead, [])
+
+    def test_the_first_build_does_not_report_the_not_yet_written_editor_page(self) -> None:
+        self.site_yaml(self.SITE)
+        code, out = run_step(self, step_build)
+        self.assertNotIn("WARN", out)
+        self.assertFalse((self.docs / "query.html").exists())
+
+    def test_the_example_page_offers_to_open_each_query_in_the_editor(self) -> None:
+        self.site_yaml(self.SITE)
+        self.pipeline()
+        html = self.page("sparql.html")
+        self.assertEqual(html.count('class="to-editor"'), html.count('<section class="query"'))
+
+    def test_the_map_and_image_examples_say_which_view_they_want(self) -> None:
+        qs = sparql.load_queries(None)
+        by_id = {q.id: q for q in qs.queries}
+        self.assertTrue(by_id["coordinates"].sparql.startswith("#defaultView:Map\n"))
+        self.assertTrue(by_id["images"].sparql.startswith("#defaultView:ImageGrid\n"))
 
     def test_the_page_has_every_query_in_both_languages_and_the_prefixes(self) -> None:
         self.site_yaml(self.SITE)
@@ -435,6 +512,98 @@ class ScriptTests(unittest.TestCase):
     def test_no_rows_says_so_and_a_capped_result_says_how_many_there_are(self) -> None:
         self.assertIn("No results", self.node(f'return m.resultHtml({{cols:["a"],rows:[],total:0}}, {self.CONFIG}, {self.TEXTS});'))
         self.assertIn("first 1 of 700", self.node(f'return m.resultHtml({{cols:["a"],rows:[[["l","x",""]]],total:700}}, {self.CONFIG}, {self.TEXTS});'))
+
+    # ---- views, downloads
+
+    VIEW_CONFIG = '{entityBase:"https://wb.example.org/entity/",prefixes:{wd:"https://wb.example.org/entity/"}}'
+    GEO = "http://www.opengis.net/ont/geosparql#wktLiteral"
+
+    def test_wikibase_coordinates_become_latitude_and_longitude(self) -> None:
+        self.assertEqual(self.node('return [m.wktPoint("Point(7.5 50.25)"), m.wktPoint("Point(-122.4 37.8)"), m.wktPoint("  point( 1e1 -2.5E0 ) "), '
+                                   'm.wktPoint("<http://www.wikidata.org/entity/Q2> Point(1 2)")];'),
+                         [[50.25, 7.5], [37.8, -122.4], [-2.5, 10.0], [2.0, 1.0]])
+
+    def test_things_that_are_no_earth_point_are_not_a_marker(self) -> None:
+        self.assertEqual(self.node('return ["Point(1)", "Point(1 2 3)", "Point(200 10)", "Point(10 95)", "POLYGON((1 2))", "hello", "<http://www.wikidata.org/entity/Q405> Point(1 2)", ""]'
+                                   '.map(m.wktPoint);'), [None] * 8)
+
+    def test_a_map_has_one_marker_for_each_row_with_a_label_and_a_link(self) -> None:
+        data = json.dumps({"kind": "select", "cols": ["item", "label", "c"], "total": 3, "rows": [
+            [["u", "https://wb.example.org/entity/Q1", ""], ["l", "Roman fort", "en"], ["l", "Point(7.5 50.25)", self.GEO]],
+            [["u", "https://wb.example.org/entity/Q2", ""], None, ["l", "Point(8 51)", self.GEO]],
+            [["u", "https://wb.example.org/entity/Q3", ""], ["l", "No place", "en"], None]]})
+        points = self.node(f"return m.extractPoints({data}, {self.VIEW_CONFIG});")
+        self.assertEqual(points, [
+            {"lat": 50.25, "lon": 7.5, "label": "Roman fort", "href": "Q1.html"},
+            {"lat": 51.0, "lon": 8.0, "label": "wd:Q2", "href": "Q2.html"}])
+
+    def test_images_are_found_by_their_file_name_and_commons_files_get_a_thumbnail_over_https(self) -> None:
+        data = json.dumps({"kind": "select", "cols": ["item", "label", "img", "other"], "total": 3, "rows": [
+            [["u", "https://wb.example.org/entity/Q1", ""], ["l", "Pot", "en"], ["u", "http://commons.wikimedia.org/wiki/Special:FilePath/A%20pot.JPG", ""], ["u", "https://example.org/page", ""]],
+            [["u", "https://wb.example.org/entity/Q2", ""], ["l", "Map", "en"], ["u", "https://up.example.org/x/map.svg?v=2", ""], None],
+            [["u", "https://wb.example.org/entity/Q3", ""], ["l", "Text", "en"], ["u", "https://example.org/notes.pdf", ""], None]]})
+        images = self.node(f"return m.extractImages({data}, {self.VIEW_CONFIG});")
+        self.assertEqual([i["label"] for i in images], ["Pot", "Map"])
+        self.assertEqual(images[0]["thumb"], "https://commons.wikimedia.org/wiki/Special:FilePath/A%20pot.JPG?width=360")
+        self.assertEqual(images[0]["full"], "https://commons.wikimedia.org/wiki/Special:FilePath/A%20pot.JPG")
+        self.assertEqual(images[1]["thumb"], "https://up.example.org/x/map.svg?v=2")
+        self.assertEqual(images[0]["href"], "Q1.html")
+
+    def test_which_views_a_result_offers(self) -> None:
+        views = lambda data: self.node(f"return m.availableViews({json.dumps(data)}, {self.VIEW_CONFIG});")
+        plain = {"kind": "select", "cols": ["a"], "total": 1, "rows": [[["l", "x", ""]]]}
+        self.assertEqual(views(plain), {"table": True, "map": False, "images": False})
+        geo = {"kind": "select", "cols": ["a"], "total": 1, "rows": [[["l", "Point(1 2)", self.GEO]]]}
+        self.assertEqual(views(geo), {"table": True, "map": True, "images": False})
+        pic = {"kind": "select", "cols": ["a"], "total": 1, "rows": [[["u", "https://e.org/a.png", ""]]]}
+        self.assertEqual(views(pic), {"table": True, "map": False, "images": True})
+        self.assertEqual(views({"kind": "ask", "answer": True}), {"table": True, "map": False, "images": False})
+        self.assertEqual(views({"kind": "graph", "count": 1, "turtle": ""}), {"table": True, "map": False, "images": False})
+
+    def test_a_default_view_comment_names_the_view(self) -> None:
+        self.assertEqual(self.node('return ["#defaultView:Map\\nSELECT * {}", "# defaultView : ImageGrid", "#defaultView:Table", "#defaultView:BubbleChart", "SELECT * { } # defaultView:Map", "SELECT * {}"].map(m.parseDefaultView);'),
+                         ["map", "images", "table", None, None, None])
+
+    def test_the_table_downloads_as_csv_with_quoting(self) -> None:
+        data = json.dumps({"kind": "select", "cols": ["a", "b,c"], "total": 2, "rows": [
+            [["l", 'say "hi"', "en"], None], [["u", "https://e.org/x", ""], ["l", "line\nbreak", ""]]]})
+        self.assertEqual(self.node(f"return m.toCsv({data});"), 'a,"b,c"\r\n"say ""hi""",\r\nhttps://e.org/x,"line\nbreak"\r\n')
+        self.assertEqual(self.node('return m.toCsv({kind:"ask", answer:false});'), "answer\r\nfalse\r\n")
+
+    def test_the_table_downloads_as_sparql_results_json(self) -> None:
+        data = json.dumps({"kind": "select", "cols": ["s", "l", "n", "x"], "total": 1, "rows": [
+            [["u", "https://e.org/s", ""], ["l", "Haus", "de"], ["l", "5", "http://www.w3.org/2001/XMLSchema#integer"], None]]})
+        result = json.loads(self.node(f"return m.toSparqlJson({data});"))
+        self.assertEqual(result["head"], {"vars": ["s", "l", "n", "x"]})
+        self.assertEqual(result["results"]["bindings"], [{
+            "s": {"type": "uri", "value": "https://e.org/s"}, "l": {"type": "literal", "value": "Haus", "xml:lang": "de"},
+            "n": {"type": "literal", "value": "5", "datatype": "http://www.w3.org/2001/XMLSchema#integer"}}])
+        self.assertEqual(json.loads(self.node('return m.toSparqlJson({kind:"ask", answer:true});')), {"head": {}, "boolean": True})
+
+    def test_error_positions_do_not_count_the_prefixes_the_page_added(self) -> None:
+        text = self.node('return m.errorText("Expected SelectQuery, found \'nonsense\'  (at char 1543), (line:29, col:8)", "PREFIX a: <x>\\n".repeat(28));')
+        self.assertEqual(text, "Expected SelectQuery, found 'nonsense'  (at char %d), (line:1, col:8)" % (1543 - 14 * 28))
+        self.assertEqual(self.node('return m.errorText("no position here", "PREFIX a: <x>\\n");'), "no position here")
+
+    ANSWER_TEXTS = '{ask_true:"true",ask_false:"false",graph_count:"{n} triples",images_capped:"first {shown} of {total}",empty:"none"}'
+
+    def test_an_ask_and_a_construct_render_without_a_table(self) -> None:
+        self.assertEqual(self.node(f'return m.resultHtml({{kind:"ask", answer:true}}, {self.VIEW_CONFIG}, {self.ANSWER_TEXTS});'), '<p class="answer yes">true</p>')
+        html = self.node(f'return m.resultHtml({{kind:"graph", count:2, turtle:"<x> <y> \\"<b>\\" ."}}, {self.VIEW_CONFIG}, {self.ANSWER_TEXTS});')
+        self.assertIn('<pre class="turtle">', html)
+        self.assertNotIn("<b>", html)
+        self.assertIn("2 triples", html)
+
+    def test_the_picture_grid_escapes_what_comes_from_the_data(self) -> None:
+        images = json.dumps([{"thumb": 'https://e.org/a.png"onload="x', "full": "https://e.org/a.png", "label": "<i>x</i>", "href": "Q1.html"}])
+        html = self.node(f"return m.imagesHtml({images}, {self.ANSWER_TEXTS});")
+        self.assertNotIn("<i>", html)
+        self.assertNotIn('"onload="', html)
+        self.assertIn('target="_blank" rel="noopener"', html)
+        many = json.dumps([{"thumb": f"https://e.org/{i}.png", "full": f"https://e.org/{i}.png", "label": "", "href": None} for i in range(250)])
+        html = self.node(f"return m.imagesHtml({many}, {self.ANSWER_TEXTS});")
+        self.assertEqual(html.count("<li>"), 200)
+        self.assertIn("first 200 of 250", html)
 
     def test_real_results_of_the_runner_render(self) -> None:
         """What Python produces is what the script renders: the fixture's first query, end to end."""

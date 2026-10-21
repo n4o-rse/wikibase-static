@@ -7,11 +7,11 @@ Wikibase Cloud) through its public API, or builds a dummy Wikibase from CSV,
 and publishes the result as a static site on GitHub Pages. The site looks and
 navigates like a Wikibase: item and property pages, statements with qualifiers
 and references, clickable Q- and P-ids, external links in a new tab, maps for
-coordinates, Commons images, a search box and an in-browser SPARQL page. Nothing
+coordinates, Commons images, a search box and an in-browser SPARQL query editor with table, map and image views. Nothing
 on the published site can be edited.
 
 > **Status.** `harvest` (S4), `load` (S2), the page renderer `build` (S3), the search `search` (S5) and the
-> RDF export and query page `rdf`, `sparql` (S6) work. The CSV import (S7) is still a skeleton step that reports
+> RDF export, example queries and query editor `rdf`, `sparql` (S6) work. The CSV import (S7) is still a skeleton step that reports
 > "nothing to do". See [`PRIMER.md`](https://github.com/n4o-rse/wikibase-static/blob/main/PRIMER.md) (German) for the plan, the
 > decisions taken so far and the order of the steps.
 
@@ -23,7 +23,7 @@ CSV             --from-csv->  data/derived/  the same format for a dummy Wikibas
                                   |
                                   +--build-->  docs/   static pages, search index, map
                                   +--rdf---->  dist/   RDF in the Wikibase data model (+ DCAT), per-entity files in docs/
-                                  +--sparql->  docs/   SPARQL page running in the browser
+                                  +--sparql->  docs/   example queries and query editor, running in the browser
 ```
 
 Two properties are part of the design and are checked, not hoped for:
@@ -138,6 +138,14 @@ write `queries.yaml` in the repository root (schema in `py/wikibase_static/sparq
 default language). **Every query is executed at build time, with the very Python the page runs, against the file the
 page serves, and a query that returns no rows is a `WARN`** (an error under `--strict`): SPARQL answers a mistyped
 IRI with no rows, so an empty example is the usual symptom of a broken export.
+
+`docs/query.html` is the free editor, in the manner of the Query Service of Wikidata (without its chart types). It holds
+any SPARQL query (`SELECT`, `ASK`, `CONSTRUCT`; Ctrl+Enter runs it) and a list of the example queries to start from. A result is
+a table; it is also a **map** when a column holds `Point(longitude latitude)` values (Wikibase coordinates), and **pictures** when a
+column holds image files (a Commons file, or any URL that ends in `.jpg`, `.png`, `.svg` and the like). A comment line
+`#defaultView:Map`, `#defaultView:ImageGrid` or `#defaultView:Table` at the top of a query chooses the view that opens first. A
+table can be downloaded as CSV or as SPARQL Results JSON, and "Copy link to this query" puts the query into the address
+(`query.html#q=...`) so it can be sent around. Each example on `sparql.html` has a link that opens it in the editor.
 
 ```
 python main.py sparql

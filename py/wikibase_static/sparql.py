@@ -18,7 +18,10 @@ Queries come from ``queries.yaml`` in the site repository when it exists, else f
           SELECT ... WHERE { ... }     # without PREFIX lines: they are added from the namespaces of the export
 
 ``requires`` names a property datatype (``globe-coordinate``, ``time``, ...) or one of ``reference``,
-``qualifier``, ``alias``, ``preferred``, ``somevalue``, ``distribution`` (the site states ``pages_url``).
+``qualifier``, ``alias``, ``preferred``, ``somevalue``, ``image`` (a Commons file, or a URL that ends in .jpg, .png and the like),
+``distribution`` (the site states ``pages_url``).
+
+A comment line ``#defaultView:Map`` (or ``ImageGrid``, ``Table``) at the top of a query names the view of the query editor that opens first.
 ``@@lang@@`` in a query is replaced by the default language of the site. A query that is kept must return at least one row, or the
 build fails: SPARQL answers a mistyped IRI with no rows, so an empty result is the usual symptom of a broken
 export (PRIMER.md, S6).
@@ -40,10 +43,12 @@ MAX_ROWS = 500
 PACKAGE = Path(__file__).resolve().parent
 DEFAULT_QUERIES = PACKAGE / "data" / "queries.default.yaml"
 SLUG = re.compile(r"^[a-z0-9][a-z0-9-]*$")
-FEATURES = {"reference", "qualifier", "alias", "preferred", "somevalue"}
+FEATURES = {"reference", "qualifier", "alias", "preferred", "somevalue", "image"}
+IMAGE_FILE = re.compile(r"\.(jpe?g|png|gif|svg|webp|tiff?)$", re.IGNORECASE)
 
 # Executed by the page (Pyodide) and by the build (CPython), unchanged. ``wbs_run`` returns JSON text:
-# {"cols": [...], "rows": [[cell, ...]], "total": n, "triples": n}; a cell is null (unbound) or [kind, text, extra]
+# {"kind": "select", "cols": [...], "rows": [[cell, ...]], "total": n, "triples": n}, or {"kind": "ask", "answer": bool, ...},
+# or {"kind": "graph", "count": n, "turtle": "..."} for CONSTRUCT and DESCRIBE; a cell is null (unbound) or [kind, text, extra]
 # with kind "u" (IRI), "l" (literal; extra is the language tag or the datatype IRI, or "") or "b" (blank node).
 RUNNER_PY = '''\
 import json
@@ -69,16 +74,24 @@ def wbs_cell(term):
 
 def wbs_run(g, query, max_rows):
     res = g.query(query)
-    if res.type != "SELECT":
-        raise ValueError("Only SELECT queries can be shown as a table.")
-    cols = [str(v) for v in res.vars]
-    rows = []
-    total = 0
-    for row in res:
-        total += 1
-        if total <= max_rows:
-            rows.append([wbs_cell(row[i]) for i in range(len(cols))])
-    return json.dumps({"cols": cols, "rows": rows, "total": total, "triples": len(g)})
+    out = {"triples": len(g)}
+    if res.type == "ASK":
+        out.update(kind="ask", answer=bool(res.askAnswer))
+    elif res.type == "SELECT":
+        cols = [str(v) for v in res.vars]
+        rows = []
+        total = 0
+        for row in res:
+            total += 1
+            if total <= max_rows:
+                rows.append([wbs_cell(row[i]) for i in range(len(cols))])
+        out.update(kind="select", cols=cols, rows=rows, total=total)
+    else:
+        result = res.graph
+        for prefix, namespace in g.namespaces():
+            result.bind(prefix, namespace, override=False)
+        out.update(kind="graph", count=len(result), turtle=result.serialize(format="turtle"))
+    return json.dumps(out)
 '''
 
 
@@ -188,6 +201,10 @@ def site_features(site: Site, pages_url: str | None = None) -> set[str]:
                 found.add("preferred")
             if statement.mainsnak.snaktype == "somevalue":
                 found.add("somevalue")
+            snak = statement.mainsnak
+            if snak.snaktype == "value" and isinstance(snak.value, str) and (
+                    snak.datatype == "commonsMedia" or (snak.datatype == "url" and IMAGE_FILE.search(snak.value.split("?")[0]))):
+                found.add("image")
     return found
 
 
@@ -237,7 +254,9 @@ def run_all(ttl_text: str, queries: list[Query], prefixes: dict[str, str]) -> li
         entry: dict[str, Any] = {"id": query.id, "rows": 0, "error": None, "cols": []}
         try:
             data = json.loads(namespace["wbs_run"](graph, full + query.sparql, MAX_ROWS))
-            entry["rows"], entry["cols"], entry["triples"] = data["total"], data["cols"], data["triples"]
+            entry["kind"] = data["kind"]
+            entry["rows"] = data["total"] if data["kind"] == "select" else (data["count"] if data["kind"] == "graph" else 1)
+            entry["cols"], entry["triples"] = data.get("cols", []), data["triples"]
         except Exception as err:   # a bad query is the author's mistake: report, do not abort
             entry["error"] = (str(err).splitlines() or [type(err).__name__])[0][:200]
         results.append(entry)

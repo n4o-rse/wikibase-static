@@ -123,12 +123,37 @@ queries:
       en: Globe coordinates as WKT, the form GeoSPARQL tools expect (longitude first).
       de: Geokoordinaten als WKT, der Form, die GeoSPARQL-Werkzeuge erwarten (Länge zuerst).
     sparql: |
+      #defaultView:Map
       SELECT ?item ?label ?coordinates WHERE {
         ?property wikibase:propertyType wikibase:GlobeCoordinate ;
                   wikibase:directClaim ?direct .
         ?item ?direct ?coordinates ;
               rdfs:label ?label .
         FILTER(LANG(?label) = "@@lang@@")
+      }
+      ORDER BY ?label ?item
+      LIMIT 200
+
+  - id: images
+    requires: [image]
+    title: {en: "Items with an image", de: "Items mit Bild"}
+    intro:
+      en: >-
+        Image files, from Commons files and from URLs that end in .jpg, .png and the like, shown as pictures in the
+        query editor (the line starting with # chooses the view).
+      de: >-
+        Bilddateien, aus Commons-Dateien und aus URLs, die auf .jpg, .png und ähnlich enden, im Abfrage-Editor als Bilder
+        gezeigt (die Zeile mit # wählt die Ansicht).
+    sparql: |
+      #defaultView:ImageGrid
+      SELECT ?item ?label ?image WHERE {
+        ?property wikibase:directClaim ?direct .
+        ?item ?direct ?image .
+        FILTER(isIRI(?image) && REGEX(STR(?image), "\\.(jpe?g|png|gif|svg|webp|tiff?)$", "i"))
+        OPTIONAL {
+          ?item rdfs:label ?label .
+          FILTER(LANG(?label) = "@@lang@@")
+        }
       }
       ORDER BY ?label ?item
       LIMIT 200
