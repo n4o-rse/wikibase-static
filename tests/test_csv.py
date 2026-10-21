@@ -245,6 +245,13 @@ class KernelTests(Workspace):
             self.assertEqual(entity.get("datatype"), datatype, entity_id)
             self.assertTrue(entity["labels"]["en"]["value"] and entity["labels"]["de"]["value"], entity_id)
 
+    def test_the_kernel_properties_carry_their_wikidata_twins(self) -> None:
+        import csv
+        with (csvbuild.KERNEL_DIR / "statements.csv").open(encoding="utf-8", newline="") as handle:
+            rows = list(csv.DictReader(handle))
+        twins = {r["subject"]: r["value"] for r in rows if r["property"] == "P4"}
+        self.assertEqual(twins, {"P1": "P279", "P2": "P31", "P3": "P1647", "P5": "P1630", "P6": "P854", "P7": "P813", "P8": "P248"})
+
     def test_the_kernel_gives_wikidata_equivalent_its_formatter_url(self) -> None:
         built = self.build()
         claims = built.entities["P4"]["claims"]["P5"]
