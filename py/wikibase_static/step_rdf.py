@@ -153,7 +153,8 @@ def main(argv: list[str] | None = None) -> int:
         ontology_bytes=ONTOLOGY.stat().st_size)
     result = rdf.build(site, ns, cfg.license_url, catalog)
 
-    header = [f"RDF export of {cfg.source_url or cfg.title}, Wikibase data model; base URI {ns.base}",
+    own = bool(cfg.pages_url) and ns.base.rstrip("/") == cfg.pages_url.rstrip("/")     # URIs of this site: do not point to the source
+    header = [f"RDF export of {cfg.title if own else (cfg.source_url or cfg.title)}, Wikibase data model; base URI {ns.base}",
               f"Generated with wikibase-static {__version__}; data as of {site.latest_modified or 'unknown'}",
               f"Licence: {cfg.license_name or 'not stated'}"]
     text = rdf.to_turtle(result.triples, ns, "\n".join(header), (rdf.BRIDGE_TITLE, result.bridge) if result.bridge else None)

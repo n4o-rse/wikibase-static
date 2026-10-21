@@ -138,6 +138,14 @@ class PageTools(test_build.Site):
         head = self.page("Q1.html").split("</head>")[0]
         self.assertIn('<meta name="description" content="A set of things">', head)
 
+    def test_a_copy_with_its_own_uris_does_not_point_to_its_source_in_the_turtle_files(self) -> None:
+        self.site_yaml("pages_url: https://example.org/copy/\nrdf_base: https://example.org/copy\nsource:\n  url: https://wb.example\n")
+        self.build()
+        self.run_step(step_rdf)
+        turtle = (self.docs / "ttl" / "Q1.ttl").read_text(encoding="utf-8")
+        self.assertNotIn("wb.example/entity", turtle)
+        self.assertNotIn("# Q1: the part of the RDF export of https://wb.example", turtle)
+
     def test_the_index_has_no_tools(self) -> None:
         self.site_yaml("pages_url: https://example.org/\nrdf_base: https://example.org\n")
         self.build()

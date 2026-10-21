@@ -322,6 +322,22 @@ class DcatTests(unittest.TestCase):
         self.assertEqual(len(list(g.objects(U(NS.cat + "properties"), U(rdf.DCAT + "dataset")))), 10)
         self.assertIn((root, U(rdf.DCTERMS + "conformsTo"), U(rdf.WIKIBASE_ONTOLOGY)), g)
 
+    def test_a_site_with_its_own_uris_has_itself_as_landing_page_and_the_wikibase_only_as_source(self) -> None:
+        own = "https://pages.example.org/site"
+        info = rdf.CatalogInfo(title="Copy", source_url="https://wb.example.org", pages_url=own + "/", json_sizes={},
+                               export_file="downloads/x.ttl", ontology_file="downloads/wikibase-ontology.ttl", ontology_bytes=5)
+        ns = rdf.Namespaces(own)
+        result = rdf.build(self.site, ns, None, info)
+        triples = {(s.value, p.value, o.value) for s, p, o in result.triples if all(isinstance(x, rdf.Iri) for x in (s, p, o))}
+        root = own + "/catalog"
+        self.assertIn((root, rdf.DCAT + "landingPage", own + "/"), triples)
+        self.assertIn((root, rdf.DCTERMS + "source", "https://wb.example.org"), triples)
+        self.assertNotIn((root, rdf.DCAT + "landingPage", "https://wb.example.org"), triples)
+
+    def test_a_site_with_the_wikibase_uris_keeps_the_wikibase_as_landing_page(self) -> None:
+        triples = {(s.value, p.value, o.value) for s, p, o in self.result.triples if all(isinstance(x, rdf.Iri) for x in (s, p, o))}
+        self.assertIn((BASE + "/catalog", rdf.DCAT + "landingPage", BASE), triples)
+
     def test_every_entity_record_is_a_dataset_beside_its_wikibase_type(self) -> None:
         g = self.graph
         q1 = U(NS.data + "Q1")

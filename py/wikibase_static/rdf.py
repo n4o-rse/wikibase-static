@@ -718,7 +718,13 @@ class _Builder:
             self.add(root, self._dct("license"), iri(info.license_url))
         if info.modified:
             self.add(root, self._dct("modified"), Lit(info.modified, XSD + "dateTime"))
-        if info.source_url:
+        if info.pages_url and ns.base.rstrip("/") == info.pages_url.rstrip("/"):
+            # the URIs are this site's own (a copy that must stand without its source): the landing page is the site,
+            # the source Wikibase is only named as the source
+            self.add(root, self._dcat("landingPage"), iri(info.pages_url))
+            if info.source_url:
+                self.add(root, self._dct("source"), iri(info.source_url))
+        elif info.source_url:
             self.add(root, self._dcat("landingPage"), iri(info.source_url))
         self.add(root, self._dct("conformsTo"), iri(WIKIBASE_ONTOLOGY))
         for key, title, entities in kinds:
