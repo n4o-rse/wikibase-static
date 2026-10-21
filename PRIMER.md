@@ -1,6 +1,6 @@
 # PRIMER — wikibase-static
 
-Arbeitsplan für `n4o-rse/wikibase-static`. Wird zu Beginn jedes Chats hochgeladen (Bundle, siehe A5) und am Ende zurückgeschrieben. Stand: 2026-10-21 (nach S6b, dem Abfrage-Editor).
+Arbeitsplan für `n4o-rse/wikibase-static`. Wird zu Beginn jedes Chats hochgeladen (Bundle, siehe A5) und am Ende zurückgeschrieben. Stand: 2026-10-21 (nach S6b, dem Abfrage-Editor; S7 als Konzept beschlossen, in S7a bis S7g geteilt, noch kein Code).
 
 Sprache: dieses Dokument ist deutsch, alles andere im Repo (Code, Kommentare, README) ist britisches Englisch.
 
@@ -17,7 +17,9 @@ Sprache: dieses Dokument ist deutsch, alles andere im Repo (Code, Kommentare, RE
 | `n4o-rse/wikibase-static` | Paket, Orchestrator `main.py`, alle Schritte (dieses Repo) | neu, S1 |
 | `n4o-rse/wikibase-static-template` | GitHub-Template-Repo: `site.yaml`, Pages-Workflow, installiert `wikibase-static` per pip | geplant, S9 |
 | `n4o-rse/fuzzy-sl-static` | Demo 1: Rettung von `fuzzy-sl.wikibase.cloud` | angelegt 2026-10-20: `data/raw/` gefüllt (S4), dünnes Gerüst mit `main.py`-Wrapper; mit S3 kommen `site.yaml` und `docs/` (`python main.py build`); der Wrapper kennt `--strict` und den Schritt `load` und der Workflow-Aufrufer `.github/workflows/site.yml` sind eingecheckt (S8); die Seite ist live unter `https://n4o-rse.github.io/fuzzy-sl-static/` (Pages-Quelle „GitHub Actions“, 2026-10-21); mit S5 trägt jede Seite das Suchfeld (`docs/assets/search.js`, `search-index.js`) und der Seitenfuß nennt Paketversion 0.3.1; mit S6 kommen `dist/fuzzy-sl.wikibase.cloud.ttl`, `docs/sparql.html`, `docs/ttl/`, `docs/json/`, `docs/downloads/` und `pages_url` in `site.yaml`, mit S6b `docs/query.html`; der Orchestrator im Paket kommt mit S9 |
-| `n4o-rse/chublets-wikibase-demo` | Demo 2: Dummy-Wikibase aus CSV (Ideen von chublets.software, `open-archaeo/py`) | geplant, S7 |
+| `n4o-rse/chublets-wikibase-demo` | Demo 2: Dummy-Wikibase aus CSV (Ideen von chublets.software, `open-archaeo/py`) | geplant, S7b (Repo noch anzulegen, Florian legt es an; Gerüst kommt als Patch-ZIP) |
+| `n4o-rse/wikibase-federation` | Schreibweg in eine echte Wikibase (`wbqs`, Action API, föderierte Werte); ab S7g kommt dort ein Push aus `data/derived/` dazu | besteht; Usecase `chublets` neu, S7g |
+| `https://chublets-wikibase.de` | Ziel der echten Wikibase mit Federation; leer oder frisch (Florian 2026-10-21) | besteht; Zustand für mich ungeprüft |
 
 Was schon existiert und **kopiert** wird (nicht referenziert, siehe A3):
 
@@ -66,6 +68,16 @@ Was schon existiert und **kopiert** wird (nicht referenziert, siehe A3):
 30. **In `fuzzy-sl` gibt es keine Commons-Datei, aber eine Bild-URL** (S6b): Die Bildansicht hätte in der Demo nichts zu zeigen gehabt, wenn sie nur auf `commonsMedia` achtete. Sie erkennt deshalb jede http(s)-IRI, die auf `.jpg`, `.png`, `.gif`, `.svg`, `.webp` oder `.tif` endet, und die Standardabfrage `images` verlangt das Merkmal `image` (`site_features()`: eine `commonsMedia`-Aussage oder eine `url`-Aussage mit solchem Ende). In der Demo gibt sie eine Zeile (`Shepherd - Bruttium (Calabria) - 1911.png`). Commons-Dateien bekommen eine Vorschau mit `?width=360` und gehen über https, damit eine Pages-Seite keine gemischten Inhalte lädt.
 31. **Zwei Überläufe auf dem Handy** (S6b, gefunden mit Chromium bei 390 Pixel): Die Auswahl der Beispiele ließ die Seite 48 Pixel breiter werden, und fünf Navigationslinke liefen in der Kopfzeile über; die Navigation bricht jetzt um, die Auswahl nimmt die ganze Breite. Außerdem überschrieb `display: flex` das Attribut `hidden` der Ansichtsleiste; `[hidden]` gilt jetzt dort ausdrücklich.
 
+32. **Das Starter Pack ist die Modelltabelle** (gelesen 2026-10-21 aus `chublets-wikibase-starter-pack.zip`, gebaut 2026-10-21): `data/wikibase-property-set.csv` hat 153 Zeilen (37 `crosswalked`, 46 `codemeta-only`, 52 `wikidata-only`, 18 `chublets-addition`) mit den Spalten `status, phase, wb_label, datatype, wikidata_pid, codemeta_terms, …, confidence`; `data/wikibase-bootstrap-order.csv` nennt 11 Schritte (Instanz, Metadaten-Properties, alle Properties, Klassen, Vokabular, Personen, Beispiele, open-archaeo, Phasen 2 und 3, Export-Prüfung). Nach dem README des Packs wurde **nichts gegen Live-Wikidata geprüft** (Sandbox ohne Zugang); `docs/05-open-points.md` listet acht offene Punkte (Identity-Block in drei Varianten, 12 Registry-IDs fehlen, Q-IDs von Alligator und AMT unbekannt, Little Minion unklar, Lizenz offen, alle SPARQL- und QuickStatements-Dateien ungetestet). Was aus dem Pack kommt, trägt deshalb die Zuverlässigkeit „unverifiziert“, bis `tools/verify_wikidata.py` bei Florian gelaufen ist.
+33. **open-archaeo und der Software-Usecase** (gelesen 2026-10-21 am Klon von `n4o-rse/open-archaeo` und `n4o-rse/wikibase-federation`): `open-archaeo.csv` hat 562 Einträge, `py/transform.py` macht daraus `open-archaeo-software.csv` mit 22 Spalten und 416 Software-Einträgen (sechsstellige hexadezimale IDs wie `5700bb`); das Pack bringt `data/open-archaeo-columns.csv`, die Zuordnung Spalte → Wikidata-Property mit Qualifiern. `wikibase-federation/usecases/software` (`properties.json` mit 14 lokalen Properties, `software-crosswalk.md` als „FROZEN“) nutzt dasselbe Muster wie der hier geplante Kern: lokales P1 „instance of“ und eine String-Property „equivalent Wikidata property“ (dort P15), weil `P1628` den Datentyp `url` hat und `url` auf jener Instanz gesperrt war. Das Muster ist also erprobt; ob Wikibase Cloud `url` zulässt, ist hier nicht entscheidend, denn die statische Seite kennt kein Sperren.
+34. **Fremde IDs im Wert kollidieren mit lokalen** (Folgerung aus dem Loader, 2026-10-21): Ein Item-Wert `Q28865` (Python bei Wikidata) wird auf der statischen Seite zur lokalen `Q28865`, sobald es sie gibt; A4 „Entitätswert außerhalb der Daten“ verlinkt nur, wenn die ID in den Daten fehlt. Der Wikidata-Import legt deshalb für jede benutzte Entität eine lokale ID an (Stub mit Zwilling in P4) und schreibt nie eine fremde ID in einen Wert. Für die echte Wikibase mit Federation gilt das Gegenteil: dort ist ein `wd:Q…`-Wert der Normalfall; der Push übersetzt jeden Stub deshalb in den föderierten Wert (A4 „Wikidata-Werte beim Push“).
+35. **Wikidata ist aus der Sandbox nicht erreichbar** (geprüft 2026-10-21: `curl` auf `https://www.wikidata.org/w/api.php` endet mit HTTP-Code 000; GitHub-Klone gehen). Der Wikidata-Importer (S7d) wird deshalb mit Fixtures getestet, der echte Lauf geschieht bei Florian.
+36. **`step_from_csv.py` ist ein Platzhalter** (gelesen 2026-10-21): `main()` ruft nur `utils.nothing_to_do`. Der Loader liest `data/derived/entities/*.json` bereits (A4 „Ladeorte“); S7 muss also kein Format erfinden, sondern CSV in das Format übersetzen, das `harvest` ablegt.
+37. **QuickStatements-Syntax im Pack** (gelesen 2026-10-21 in `examples/alligator.qs`): tabulatorgetrennt, `CREATE`/`LAST`, Zeit als `+2021-06-04T00:00:00Z/11`, Qualifier als weitere Paare hinter dem Wert. Das Pack nennt alle `.qs`-Dateien ungetestet. Koordinaten (`@lat/lon`), Monolingual (`de:"Text"`), Entfernen mit `-` und Belege mit `S`-Präfix sind hier **aus dem Gedächtnis**, nicht aus einer Quelle geprüft; vor S7e gegen die QuickStatements-Hilfe lesen. Der Dialekt von `wbqs/parser.py` (gelesen 2026-10-21) ist enger: drei Spalten; Items als `Q…`, `wd:Q…` oder Entity-URI, dazu String, URL, External-ID und Koordinaten; keine Qualifier, Belege, Labels, Zeit; `wd:` für föderierte Properties und Werte. Der Update-Kanal übernimmt dessen `wd:`-Schreibweise.
+38. **`wikibase-federation` schreibt, aber nicht alles** (gelesen 2026-10-21 am Klon): `wbqs` meldet sich per Action API an und schreibt mit Wiederholung bei Fehlern; Anlegen und Wiederverwenden von Properties (bei Label-Konflikt wird die vorhandene benutzt) ist im Usecase `software` mit `properties.json` und `items.json` idempotent gelöst, die Anmeldedaten stehen in einer nicht eingecheckten `config.ini`. Föderierte Werte laufen über `wbcreateclaim` mit voller Entity-URI als `id` (README „Why the API and not QuickStatements?“; nach dem README noch alpha). Qualifier, Belege, Labels und Zeit gibt es nicht (Befund 37).
+39. **Das JSON in `data/derived/` ist die Eingabe, die `wbeditentity` kennt** (Folgerung, 2026-10-21; **nicht gegen eine Wikibase ausprobiert**): Das Format ist das von `wbgetentities` und `Special:EntityData`; `wbeditentity` nimmt Entitätsdaten im selben Aufbau (Labels, Descriptions, Aliases, Claims mit Qualifiern und References) entgegen. Auszutauschen sind IDs der Entitäten und Werte (Zuordnung CSV-ID → Ziel-ID), Hashes und `lastrevid`. Ob die Ziel-Wikibase `url` zulässt und Federation eingeschaltet hat, ist ungeprüft (`https://chublets-wikibase.de/wiki/Main_Page` war aus der Sandbox nicht abrufbar, Fehler des Abrufdienstes).
+40. **Testlauf des Pakets in der Sandbox** (2026-10-21, frischer Klon von `main`, mit `rdflib` 7, PyYAML und Jinja2 installiert): 244 Tests, OK; `python main.py --strict` zweimal Exit 0. Ohne `rdflib` schlagen 31 der 200 laufenden Tests fehl (23 Fehler `No module named 'rdflib'`, 8 Abweichungen), unverändert mit und ohne diesen Patch; das ist ein Umgebungsfehler der Sandbox, keiner des Pakets.
+
 ### A2 Zielbild
 
 ```
@@ -102,7 +114,7 @@ Das Ergebnis hat diese prüfbaren Eigenschaften:
 - **Zweimal laufen lassen, `git status` bleibt sauber.** `dist/pipeline_report.txt` enthält deshalb nur, was die Schritte sagen, keine Laufzeiten (die erscheinen nur im Terminal).
 - **Der Bericht gehört zum Repo seiner Daten.** `python main.py` schreibt `dist/pipeline_report.txt` nur bei einem vollständigen Lauf und nur, wenn `WBS_ROOT` nicht gesetzt ist oder auf das Repo selbst zeigt. Zeigt es auf ein Demo-Repo, laufen die Schritte dort, der Bericht des Paket-Repos bleibt unberührt, und das Terminal sagt „report not written“ (Befund 13). Vor einem Lauf im Paket-Repo steht in `cmd` `set WBS_ROOT=`, damit die Variable der Sitzung nicht nachwirkt.
 - **CI prüft, was lokal gilt.** Der Workflow ruft `python main.py --strict` zweimal auf und verlangt nach jedem Lauf ein leeres `git status --porcelain` (Befund 15); er enthält keine eigene Prüflogik, die lokal nicht läuft. Neue Prüfungen kommen in die Schritte (als `WARN`) und in `tests/`, nicht in die YAML-Datei.
-- **Netzwerk nur im Schritt `harvest`.** Alles andere läuft offline gegen die Daten auf der Platte. `harvest` ist nie Teil des Standardlaufs, sondern hat ein eigenes Verb: `python main.py harvest`.
+- **Netzwerk nur in den Verben `harvest` und `import-wikidata`** (zweites Verb: Vorschlag 2026-10-21, S7d). Alles andere läuft offline gegen die Daten auf der Platte. Beide sind nie Teil des Standardlaufs, sondern haben ein eigenes Verb: `python main.py harvest`, `python main.py import-wikidata`.
 - **Höflicher Harvest.** Ehrlicher User-Agent mit Kontaktadresse, Pause zwischen Requests, `Retry-After` und `maxlag` beachten. Verlangt ein Host eine Bot-Challenge (z. B. Anubis), bricht `harvest` mit einer klaren Meldung ab. Es wird nicht versucht, sie zu lösen oder zu umgehen; der Weg ist dann `--from-dir` mit im Browser gesicherten JSON-Dateien.
 - **Die Seiten zeigen, was die Quelle sagt.** Werte werden formatiert, nicht repariert (ein Tippfehler in einer URL bleibt sichtbar, Befund 7). Zu einem Link werden nur `http://`, `https://`, `ftp://` und `ftps://`; alles andere (etwa `javascript:`) steht als Text.
 - Befehle für Windows `cmd`, jeder in **einer** Zeile, ohne Fortsetzungszeichen.
@@ -200,6 +212,26 @@ Das Ergebnis hat diese prüfbaren Eigenschaften:
 | Versionen der Actions | Tags der Hauptversion: `actions/checkout@v6`, `actions/setup-python@v6`, `actions/configure-pages@v5`, `actions/upload-pages-artifact@v4`, `actions/deploy-pages@v4` (Pages-Doku, geprüft 2026-10-21). Von `checkout` und `setup-python` gibt es auch v7; nicht eingesetzt, weil die Doku v6 zeigt und die Pages-Actions dort nicht dazugehören. `tests/test_ci.py` verlangt Tags der Hauptversion Lauf #2 und der Lauf im Demo-Repo waren grün; GitHub meldet, dass `configure-pages@v5`, `deploy-pages@v4` und die Upload-Action noch auf Node.js 20 zielen und auf Node 24 gezwungen werden (Teil D). | 2026-10-21 (bestätigt mit S8) |
 | Prüfung ohne Workflow-Logik | Jede Prüfung, die CI macht, läuft auch lokal (Schritte als `WARN`, Gate über `git status`); `tests/test_ci.py` führt dieselben Befehle gegen ein temporäres Site-Repo aus und prüft, dass die Workflow-Dateien sie noch enthalten | 2026-10-21 (bestätigt mit S8) |
 | Wrapper im Demo-Repo bis S9 | `main.py` des Demo-Repos nimmt `--strict` als erstes Argument, zählt `WARN`-Zeilen der Schritte und gibt dann Exit 1 (wie `main.py` hier) und führt `load` im Standardlauf; die Logik steht vorläufig doppelt und entfällt mit dem Orchestrator im Paket (S9, Zeile „Orchestrator im Paket“) | 2026-10-21 (bestätigt mit S8) |
+| CSV, Quelle der Wahrheit (S7) | Für die CSV-Variante ist `data/csv/` die einzige von Hand bearbeitete Quelle; `data/derived/` (Wikibase-JSON) ist Produkt. Vier Tabellen: `entities.csv` (`id, kind, datatype, origin, label_<lang>, description_<lang>, aliases_<lang>`; `origin` leer bei Handarbeit, sonst `open-archaeo`, `wikidata` oder `wikidata-stub`; `kind` = `class`, `property`, `item`; Sprachspalten beliebig erweiterbar), `statements.csv` (`sid, subject, property, value, rank, origin`), `qualifiers.csv` (`sid, property, value`), `references.csv` (`sid, group, property, value`). `sid` braucht nur ein Statement mit Qualifiern oder Belegen. `origin` bleibt bei Handarbeit leer. Die Property bestimmt, wie `value` gelesen wird (wie in Wikibase) | 2026-10-21 (Wahl „vier Tabellen“ von Florian bestätigt, Ergänzung um den Update-Kanal in der nächsten Zeile ist Vorschlag) |
+| CSV, Wertsyntax | Item und Property als ID; String, URL, External-ID und Commons-Datei als Text; Koordinate `lat,lon` (Dezimalgrad); Zeit `2021`, `2021-06`, `2021-06-04` (Genauigkeit aus der Länge, v. Chr. mit Minus); Menge `12` oder `12 Q<Einheit>`; Monolingual `de:Text`; `?` = unbekannter Wert, `-` = kein Wert. Ein Wertcodec im Paket liest und schreibt diese Form und die der QuickStatements-Zeilen (Zeile „Update-Kanal“); Zeilenfehler melden `datei:zeile` | Vorschlag 2026-10-21 (S7a) |
+| CSV, Update-Kanal | Anregung von Florian am 2026-10-21: Für den ersten Bestand CSV, für spätere Änderungen etwas wie QuickStatements. Entscheidung: **CSV bleibt der Zustand, QuickStatements ist die Änderungssprache.** `python main.py apply-qs <Datei>` liest eine `.qs`-Datei (Teilmenge von QuickStatements v1 in der Schreibweise von `wbqs`, Befund 37) mit ausdrücklichen lokalen IDs, schreibt die Änderungen in die CSV und legt Datei und Hash in `data/edits/applied.csv` ab; dieselbe Datei wirkt kein zweites Mal. Gründe: dieselbe Datei geht später in eine echte Wikibase, die Pack-Beispiele (`alligator.qs`) und der Importer in `wikibase-federation` sprechen schon so, und es gibt „Entfernen“, was eine CSV-Zeile nicht kann. Verworfen: die `.qs`-Dateien als Ereignisprotokoll zu behalten und beim Bau abzuspielen (dann gäbe es zwei Quellen und kein lesbares Bild des Zustands) | Vorschlag 2026-10-21 (S7e) |
+| CSV, kanonische Form | `csv-fmt` und der Schreiber der Importer: UTF-8 ohne BOM, LF, Spaltenfolge fest, Zeilen nach ID (Q vor P, numerisch), Anführungszeichen nur wo nötig. Damit gilt die Zwei-Läufe-Regel auch für die Quelle | Vorschlag 2026-10-21 (S7a) |
+| Kern (S7) | Immer vorhanden: **Q1 Class** (`instance of` Q1), **Q2 Property** (jede P-Entität ist `instance of` Q2; das Tool erzeugt es aus `kind=property`), **Q3 Instance** (Wurzel des Klassenbaums, `owl:Thing`-artig; jede Klasse hat über `subclass of` einen Weg nach Q3; Items werden über ihre Domänenklasse typisiert), **P1 subclass of**, **P2 instance of**, **P3 subproperty of** (Datentyp `wikibase-property`). Die RDFS-Lesart ist `rdfs:Class`, `rdf:Property`, `owl:Thing` und `rdfs:subClassOf`, `rdf:type`, `rdfs:subPropertyOf` | 2026-10-21 (Q1 bis Q3, P1 bis P3 und die Rolle von Q3 von Florian bestätigt) |
+| Kern, Zusatz | **P4 Wikidata equivalent** (external-id, `Q7397` oder `P275`; Schlüssel für Crosswalk und Reimport, ersetzt das String-P15 aus `wikibase-federation`), **P5 formatter URL** (string; für P4 `https://www.wikidata.org/entity/$1`; `formatter_property: P5`), **P6 reference URL** (url), **P7 retrieved** (time), **P8 stated in** (item), **P9 domain** (item, Klasse), **P10 range** (item, Klasse) | 2026-10-21 (alle Zusätze von Florian gewählt; die Nummern sind mein Vorschlag) |
+| Kern, Ablage und Nummern | Der Kern liegt als CSV im Paket (`data/kernel/`) und wird von `from-csv` eingemischt; eigene CSV dürfen für Kern-IDs nur Übersetzungen, Aliase und Beschreibungen ergänzen, alles andere ist `WARN`. IDs 1 bis 99 sind für den Kern reserviert, das Domänenmodell beginnt bei 100 (der Kern kann wachsen, ohne dass sich Domänen-IDs ändern) | Vorschlag 2026-10-21 (S7a) |
+| Kern, Validierung | `WARN`: Kern unvollständig oder verändert; Klasse ohne Weg nach Q3; Item (`kind=item`) ohne `instance of` auf eine Klasse; Klasse oder Property ohne `instance of` Q1 bzw. Q2 (nach dem Einmischen); Property ohne Datentyp; Aussage, deren Wert gegen `domain` oder `range` der Property verstößt (nur wenn gesetzt, geprüft über `subclass of`) | Vorschlag 2026-10-21 (S7a) |
+| RDFS-Brücke | Wenn der Kern vorhanden ist, ergänzt der Schritt `rdf` Tripel `wdt:P1 rdfs:subPropertyOf rdfs:subClassOf`, `wdt:P2 rdfs:subPropertyOf rdf:type`, `wdt:P3 rdfs:subPropertyOf rdfs:subPropertyOf` und `wd:Q1 owl:equivalentClass rdfs:Class`, `wd:Q2 owl:equivalentClass rdf:Property`, `wd:Q3 owl:equivalentClass owl:Thing`. Der Abschnitt steht in der Datei klar gekennzeichnet; ohne Kern entsteht nichts. Die Wirkung auf die Standardabfragen ist zu prüfen (S7b) | Vorschlag 2026-10-21 (S7b; Bedarf von Florian bestätigt) |
+| Importer schreiben in die CSV | Importer (open-archaeo, Wikidata) schreiben Zeilen in `data/csv/` mit `origin=open-archaeo` bzw. `origin=wikidata`, nie direkt nach `data/derived/`. Ein Reimport ersetzt nur Zeilen mit diesem `origin` für die betroffenen Subjekte; wer eine Zeile dauerhaft ändert, leert den `origin`-Wert, dann gilt sie als von Hand. Jede Importzeile trägt einen Beleg (P6 reference URL, P7 retrieved, bei Wikidata P8) | Vorschlag 2026-10-21 (S7c, S7d) |
+| IDs der Importer | `data/csv/idmap.csv` (`source, key, id`) hält die Zuordnung Quellschlüssel → lokale ID fest (open-archaeo-ID `5700bb`, Wikidata-Q-ID, GitHub-Name); neue IDs sind die nächste freie Nummer ab 100 je Typ, nie wiederverwendet, auch nach einer Löschung nicht. Die Datei ist versioniert | Vorschlag 2026-10-21 (S7c) |
+| Wikidata-Import | Seeds in `data/csv/seeds-wikidata.csv` (`qid, kind, note`); Abruf per `wbgetentities` (Batches zu 50, Client und Höflichkeitsregeln wie `harvest`), Roh-JSON unverändert in `data/raw/wikidata/`, `lastrevid` in dessen Manifest, nur Geändertes wird neu geholt. Properties werden über `wikidata_pid` im Modell zugeordnet; nicht zugeordnete erscheinen im Lückenbericht (Zahl und Liste), nicht in den Daten. Item-Werte: hat das Ziel einen lokalen Zwilling (P4), wird dessen ID benutzt, sonst entsteht ein Stub (Label, Beschreibung, P4) bis Tiefe 1; kein Wert enthält je eine fremde ID (Befund 34). „Retrieved“ ist das `modified` der Revision, nicht die Uhr (A3) | Vorschlag 2026-10-21 (S7d) |
+| open-archaeo-Import | Eingabe `data/raw/open-archaeo-software.csv` (Kopie der Ausgabe von `py/transform.py`, A3), Zuordnung `data/csv/mapping/open-archaeo.csv` (aus dem Pack, Spalten `column, property, qualifiers, rule`); Regeln wie `pipe-split`, `platform_role`-Auswahl und Registry-Auswahl stehen in der Zuordnung, nicht im Code. Offline, kein Teil des Standardlaufs (schreibt Quelldateien). Tags werden Vokabular-Items, Autoren Personen-Items; Abgleich mit Wikidata folgt über die Seeds | Vorschlag 2026-10-21 (S7c) |
+| Startumfang Chublets | Ausschnitt von etwa 100 Einträgen der 416 Software-Einträge (Parameter `--limit` oder `split.py`-Ausschnitt, die Wahl fällt in S7c); erst die Messung (Tripelzahl, Laufzeit der Abfragen im Browser), dann der volle Bestand | 2026-10-21 (von Florian gewählt) |
+| Reihenfolge S7 | S7a Kern, CSV, `from-csv`, `to-csv`, `csv-fmt`; S7b Modell und Demo-Repo; S7c open-archaeo; S7d Wikidata; S7e `apply-qs`; S7f Reiter „Source rows“; S7g Push in die echte Wikibase (Repo `wikibase-federation`). Je Schritt ein Chat. Die Aufteilung ersetzt die Fünfteilung aus dem Konzeptentwurf im Chat (dort war „Source rows“ S7e) | 2026-10-21 |
+| Zwei Ziele aus einer CSV | Anlass: Florian am 2026-10-21, die reale Wikibase `https://chublets-wikibase.de` (mit Federation) soll mit einem ähnlichen Prozess gefüllt werden. Die CSV in `data/csv/` ist die gemeinsame Quelle für (a) die statische Seite (dieses Repo, `from-csv`) und (b) die echte Wikibase (S7g). `data/derived/` ist die Schnittstelle zwischen beiden | 2026-10-21 |
+| Push-Weg | Wikibase-JSON per `wbeditentity`, als Schritt im Repo `wikibase-federation` (Anmeldedaten bleiben dort in der nicht eingecheckten `config.ini`; `wikibase-static` bekommt keinen Schreibzugriff). Liest `data/derived/entities/*.json` des Demo-Repos, zwei Durchläufe (erst Entitäten anlegen, dann Aussagen mit zugeordneten IDs), idempotent (vorhandene Aussagen werden über Property, Wert und Qualifier erkannt und übersprungen), Trockenlauf ist der Standard. Verworfen: den QS-Dialekt von `wbqs` um Qualifier, Belege, Labels und Zeit zu erweitern (mehr Arbeit im zweiten Repo, und das JSON trägt alles schon) | 2026-10-21 (Wahl von Florian; Einzelheiten Vorschlag, S7g) |
+| Ziel-Wikibase, IDs | `chublets-wikibase.de` gilt als leer oder frisch (Angabe Florian 2026-10-21, ungeprüft). Der Push legt zuerst den Kern an (Items Q1 bis Q3, Properties P1 bis P10, je Typ in dieser Reihenfolge) und bricht ab, wenn eine vergebene ID von der CSV abweicht. Alle übrigen IDs vergibt die Wikibase; die Zuordnung CSV-ID → Ziel-ID steht in `idmap-<ziel>.csv` im Usecase-Ordner. Die statische Demo zeigt deshalb die CSV-IDs, die echte Wikibase ihre eigenen (Teil D) | Vorschlag 2026-10-21 (S7g) |
+| Wikidata-Werte beim Push | Stub in der CSV (`origin=wikidata-stub`, P4 trägt die Wikidata-ID); beim Push wird daraus der Wert `http://www.wikidata.org/entity/Q…` aus P4, der Stub entsteht in der Ziel-Wikibase nicht. Schalter je Ziel `values: federated` (Standard) oder `local` (Stubs werden dann wie Items angelegt). Ein in der CSV von Hand geschriebenes `wd:Q…` ist ebenfalls föderiert | 2026-10-21 (Wahl von Florian; Schalter Vorschlag) |
+| Properties beim Push | Nur lokal; P4 dokumentiert die Zuordnung an der Property, es entstehen keine Aussagen mit `wd:P…` (kein `local+federated`); der Schalter kann später dazukommen. Der Datentyp `url` fällt beim Push auf `string` zurück, wenn die Ziel-Wikibase ihn sperrt (Schalter `url_as_string`, wie auf der Instanz des Software-Usecases) | 2026-10-21 (Wahl von Florian: nur lokal; `url_as_string` Vorschlag) |
 
 ### A5 Was in welchem Chat hochgeladen wird
 
@@ -209,7 +241,7 @@ Ein Bundle statt Einzeldateien. Mitnehmen: `PRIMER.md`, Quelltexte, kleine Daten
 robocopy . ..\wikibase-static-bundle /E /XD .git .venv __pycache__ build /XF config.local.ini config.local.json >nul & powershell -NoProfile -Command "Compress-Archive -Path ..\wikibase-static-bundle\* -DestinationPath ..\wikibase-static-bundle.zip -Force"
 ```
 
-(robocopy meldet Erfolg mit Exit-Code unter 8, das ist normal.) Für S4 zusätzlich ein paar im Browser gesicherte JSON-Dateien aus `fuzzy-sl`, falls Anubis den Abruf blockiert.
+(robocopy meldet Erfolg mit Exit-Code unter 8, das ist normal.) Für S7b und S7c zusätzlich `chublets-wikibase-starter-pack.zip` (Quelle des Modells, Befund 32) und ein Klon von `open-archaeo` (`open-archaeo-software.csv`, Befund 33), das Bundle des Demo-Repos erst ab S7b. Für S4 zusätzlich ein paar im Browser gesicherte JSON-Dateien aus `fuzzy-sl`, falls Anubis den Abruf blockiert.
 
 ### A6 IRI-Landkarte
 
@@ -240,12 +272,19 @@ Das Repo veröffentlicht RDF (S6). Die RDF-Dateien verwenden die Konzept-URIs de
 | S5 | Suche mit Autocomplete | wikibase-static, fuzzy-sl-static | S2 | erledigt 2026-10-21 (Windows und andere Browser als Chromium offen, Teil D) |
 | S6 | RDF-Export (mit DCAT 3, Turtle je Entität, Wikibase-Ontologie) und SPARQL-Seite | wikibase-static, fuzzy-sl-static | S2 | erledigt 2026-10-21 (Laden von Pyodide und rdflib im Browser bei dir offen, Teil D) |
 | S6b | Abfrage-Editor (`docs/query.html`) wie der Query Service: freies Feld, Tabelle, Karte, Bilder | wikibase-static, fuzzy-sl-static | S6 | erledigt 2026-10-21 (Pyodide und rdflib im Browser bei dir offen, Teil D) |
-| S7 | CSV-Import und Chublets-Demo | wikibase-static, chublets-wikibase-demo | S2 | offen |
+| S7 | CSV-Import und Chublets-Demo (Sammelschritt, geteilt in S7a bis S7f) | wikibase-static, chublets-wikibase-demo | S2 | Konzept beschlossen 2026-10-21, Code offen |
+| S7a | Kern, CSV-Format, `from-csv`, `to-csv`, `csv-fmt`, Wertcodec, Validator | wikibase-static | S2, S4 | offen |
+| S7b | Modell aus dem Starter Pack, Demo-Repo `chublets-wikibase-demo`, RDFS-Brücke | wikibase-static, chublets-wikibase-demo | S7a | offen |
+| S7c | open-archaeo-Importer (Ausschnitt etwa 100) | wikibase-static, chublets-wikibase-demo | S7b | offen |
+| S7d | Wikidata-Importer (`import-wikidata`, Seeds, Lückenbericht) | wikibase-static, chublets-wikibase-demo | S7b | offen |
+| S7e | Update-Kanal: `apply-qs` | wikibase-static | S7a | offen |
+| S7f | Reiter „Source rows“ auf den Entitätsseiten | wikibase-static | S7a | offen |
+| S7g | Push in `chublets-wikibase.de`: `wbeditentity`, `idmap`, Kern zuerst, Trockenlauf | wikibase-federation | S7a, S7b | offen |
 | S8 | Pages-Workflow, Determinismus- und Linkcheck in CI | wikibase-static, fuzzy-sl-static | S3 | erledigt 2026-10-21 |
 | S9 | Template-Repo `wikibase-static-template` | wikibase-static-template | S3, S8 | offen |
 | S10 | Skill aus dem bewährten Repo | – | S9 | offen |
 
-S0 und S1 sind unabhängig voneinander. Nach S2 sind S3, S5, S6 und S7 voneinander unabhängig und können in beliebiger Reihenfolge laufen; S4 braucht nur das Zwischenformat aus S0 und kann schon vor S2 beginnen, weil `data/raw/` nur Rohdaten ablegt. S8 braucht mindestens S3. Ein Chat darf auf S4 starten, auch wenn S2 noch offen ist.
+S0 und S1 sind unabhängig voneinander. Nach S2 sind S3, S5, S6 und S7 voneinander unabhängig und können in beliebiger Reihenfolge laufen; S4 braucht nur das Zwischenformat aus S0 und kann schon vor S2 beginnen, weil `data/raw/` nur Rohdaten ablegt. S8 braucht mindestens S3. Ein Chat darf auf S4 starten, auch wenn S2 noch offen ist. Innerhalb von S7 ist S7a die Voraussetzung für alles; danach sind S7e und S7f unabhängig von den Importern, S7c und S7d unabhängig voneinander (beide brauchen das Modell aus S7b). S7g braucht S7a und S7b und läuft im Repo `wikibase-federation`; für den Anfang genügen Kern und Modell, die Importer sind keine Voraussetzung.
 
 ---
 
@@ -432,11 +471,112 @@ Inhalt: Client (aus `wbqs/client.py` übernommen, nur lesend), ID-Liste, `lastre
 
 ### S7 — CSV-Import und Chublets-Demo
 
-**Ziel:** Aus CSV und einer Mapping-Datei entsteht Wikibase-JSON in `data/derived/`, das derselbe Renderer verarbeitet.
+**Ziel:** Aus CSV entsteht Wikibase-JSON in `data/derived/`, das derselbe Renderer verarbeitet; die Chublets-Demo importiert a) das Datenmodell und b) Items aus Wikidata und aus open-archaeo. Dieselbe CSV füllt außerdem die echte Wikibase `chublets-wikibase.de` mit Federation (S7g). Der Schritt ist ein Sammelschritt; gearbeitet wird in S7a bis S7g, je Schritt ein Chat. Die Beschlüsse stehen in A4 (Zeilen „CSV …“, „Kern …“, „RDFS-Brücke“, „Importer …“, „Wikidata-Import“, „open-archaeo-Import“, „Startumfang Chublets“).
 
-**Uploads:** `open-archaeo/py` und die relevanten CSV-Dateien.
+```
+ Starter Pack            open-archaeo-software.csv        Wikidata (Netz)
+ (Modell: Properties,         (data/raw/)                 seeds-wikidata.csv
+  Klassen)                         │                           │ import-wikidata
+      │ S7b                        │ import-open-archaeo       ▼
+      ▼                            ▼                     data/raw/wikidata/ (unverändert)
+ ┌──────────────────────── data/csv/ ────────────────────────┐
+ │ entities.csv  statements.csv  qualifiers.csv  references.csv │ ◄── apply-qs  data/edits/*.qs (S7e)
+ │ idmap.csv     mapping/      seeds-wikidata.csv               │ ◄── von Hand (Calc, GitHub-Editor)
+ └───────────────────────────┬────────────────────────────────┘ ◄── to-csv  ◄ data/raw/ (Harvest, S7a)
+                             │ from-csv (offline, mit Kern aus dem Paket)
+                             ▼
+                    data/derived/entities/*.json  →  load → build → search → rdf → sparql
+```
 
-**Abnahme:** Die Demo baut ohne Netzwerk; Seiten, Suche und SPARQL funktionieren wie bei der gesicherten Wikibase.
+```
+ data/csv/ ──from-csv──► data/derived/*.json ──► statische Seite (dieses Repo)
+                                  │
+                                  └──push (S7g, wikibase-federation, wbeditentity)──► chublets-wikibase.de
+                                       idmap-<ziel>.csv: CSV-ID → Ziel-ID;  Stubs → wd:Q… aus P4
+```
+
+**Das Beispiel (so sieht die Quelle aus):**
+
+```
+entities.csv    Q100,class,,,chublet,Chublet,small research software nugget
+                Q101,item,,,Alligator,,statistical analysis and ontology tool
+                Q102,item,,wikidata-stub,Python,,programming language
+                P100,property,string,,source code repository,Quellcode-Repositorium
+statements.csv  ,Q100,P1,Q3,,
+                ,Q102,P4,Q28865,,wikidata
+                ,Q101,P2,Q100,,
+                s1,Q101,P100,https://github.com/leiza-rse/alligator,,open-archaeo
+references.csv  s1,1,P6,https://open-archaeo.info/post/alligator/
+                s1,1,P7,2021-06-04
+```
+
+#### S7a — Kern, CSV-Format, `from-csv`, `to-csv`, `csv-fmt`
+
+**Ziel:** Das Paket liest die vier Tabellen und den Kern und schreibt Wikibase-JSON; `to-csv` ist die Umkehrung für Harvest-Daten.
+
+**Uploads:** Standard-Bundle von `wikibase-static`; für die Abnahme ein Klon von `fuzzy-sl-static` (liegt auf GitHub).
+
+Inhalt: `data/kernel/` (Q1 bis Q3, P1 bis P10, A4 „Kern“ und „Kern, Zusatz“); `csv.py` mit dem Wertcodec (A4 „CSV, Wertsyntax“) und dem kanonischen Schreiber; `step_from_csv.py` (statt des Platzhalters), `step_to_csv.py`, `step_csv_fmt.py`; Loader und Wertcodec verstehen föderierte Werte und Properties (`wd:Q…` und `wd:P…` in der CSV; im Wikibase-JSON die Entity-URI `http://www.wikidata.org/entity/Q…` als `id` bzw. als Property-Schlüssel, Form wie in `wikibase-federation`), sie werden nur verlinkt (A4 „Föderierte Properties und Werte“, vorher nur im Renderer, jetzt auch im Loader und Validator ohne `WARN`); Spalte `origin` in `entities.csv`; Validator mit den `WARN`-Regeln aus A4 „Kern, Validierung“, jede mit `datei:zeile`; Eintrag im Orchestrator: `from-csv` steht im Standardlauf vor `load`, denn `load` liest `data/derived/` (Reihenfolge `from-csv`, `load`, `build`, …). `from-csv` löscht veraltete Dateien in `data/derived/entities/`, die keine CSV-Zeile mehr haben. Version 0.4.0 (Befund 21).
+
+**Abnahme:** (1) Rundlauf: `to-csv` auf `data/raw/` von `fuzzy-sl-static`, danach `from-csv` in ein leeres `data/derived/`; `load` meldet dieselben 173 Entitäten (137 Items, 36 Properties), 488 Statements und 41 Belege wie für `data/raw/`, und ein Vergleich der Entitäten nach Normalisierung (Schlüssel sortiert, `hash`, `id`, `lastrevid`, `modified` ausgenommen) findet keinen Unterschied. (2) Zwei Läufe hintereinander, `git status --porcelain` leer; `csv-fmt` auf einer kanonischen Datei ändert nichts. (3) Jede `WARN`-Regel hat einen Test mit einer absichtlich fehlerhaften Zeile (Kern verändert, Klasse ohne Weg nach Q3, Item ohne Klasse, Wert gegen Datentyp, Zeitformat, Doppelte ID, unbekannte Property). (4) Bestehende 244 Tests bleiben grün.
+
+#### S7b — Modell und Demo-Repo
+
+**Ziel:** `chublets-wikibase-demo` baut eine Seite, die nur das Modell des Starter Packs zeigt, und die RDFS-Brücke ist im Export.
+
+**Uploads:** Starter Pack, Bundle des Pakets (nach S7a); das Demo-Repo legt Florian vorher leer an.
+
+Inhalt: Gerüst des Demo-Repos (`main.py`-Wrapper, `requirements.txt`, `site.yaml` mit `rdf_base`, `pages_url`, `formatter_property: P5`, `.github/workflows/site.yml` als Aufrufer, `README.md`, `.gitignore`, `.gitattributes`); `data/csv/entities.csv` mit den 153 Properties aus `wikibase-property-set.csv` (`wb_label` → `label_en`, `datatype` → `datatype`, `wikidata_pid` → P4-Aussage mit Beleg; `status`, `phase`, `confidence` und `codemeta_terms` als Aussagen nur, wenn das Modell dafür Properties vorsieht, sonst in `docs/` des Demo-Repos als Hintergrund); Klassen aus `wikidata-entities.csv` und `bootstrap-order` Schritt 5 (chublet, Little Minion, research software, software library, application software, script file) mit Weg nach Q3 und P4-Zwillingen; Importskript `tools/import_pack.py` im Demo-Repo (einmalig, Ergebnis ist die CSV). RDFS-Brücke in `rdf.py` (A4). Entscheiden vor dem Bau: Kann P4 an Properties mehr als ein Ziel haben (Crosswalk 1:n)? Standard ist „ja, mehrere Aussagen“.
+
+**Abnahme:** Das Demo baut offline mit `python main.py --strict`; 0 `WARN`; Kern vollständig; die Seite zeigt Q1 bis Q3 und P1 bis P10 mit ihren Aussagen; die Standardabfragen des Pakets laufen (keine leere außer den mit `requires:` ausgelassenen); `rdf` enthält die Brückentripel nur mit Kern, der Test dazu ist rot, wenn man den Kern entfernt; zwei Läufe, `git status` sauber.
+
+#### S7c — open-archaeo-Importer
+
+**Ziel:** Ein Ausschnitt von etwa 100 Software-Einträgen steht als Items mit Belegen in der CSV.
+
+**Uploads:** Bundle beider Repos; `open-archaeo-software.csv` und `data/open-archaeo-columns.csv` aus dem Pack.
+
+Inhalt: `step_import_open_archaeo.py` mit Zuordnungstabelle (A4 „open-archaeo-Import“), `idmap.csv`, Tags und Autoren als Items. Die Entscheidungen des Packs (Identity-Block in drei Varianten, Teil D) werden hier gefällt, bevor der Importer läuft.
+
+**Abnahme:** Das Demo baut offline mit dem Ausschnitt; Seiten, Suche und SPARQL funktionieren wie bei der gesicherten Wikibase; der Bericht nennt die Zahl der Entitäten und Tripel (das ist die Messung für den vollen Bestand, Teil D); ein Reimport ändert nichts (`git status` sauber); ein von Hand geänderter und von `origin` befreiter Wert überlebt den Reimport.
+
+#### S7d — Wikidata-Importer
+
+**Ziel:** Items und Klassen aus Wikidata stehen mit lokalen IDs und Zwilling in der CSV.
+
+**Uploads:** Bundle beider Repos; Fixtures mit echten Wikidata-Antworten von Florian (`Special:EntityData/Q74003194.json` o. ä.), weil die Sandbox Wikidata nicht erreicht (Befund 35).
+
+Inhalt: `step_import_wikidata.py` (A4 „Wikidata-Import“), Fixture-Tests, Lückenbericht. Abgleich mit open-archaeo über die Repository-URL (`sparql/02-reconcile-by-repository.rq`) nur als Bericht, Zusammenführen später (Teil D).
+
+**Abnahme:** Mit den Fixtures: kein Item-Wert mit fremder ID (Test über alle Werte), Lückenbericht nennt Zahl und Liste der nicht zugeordneten Properties, zweiter Lauf schreibt nichts (Revisionsvergleich), „retrieved“ stammt aus den Daten. Bei Florian: ein echter Lauf mit drei Seeds, danach `python main.py --strict` und beide Läufe sauber.
+
+#### S7e — Update-Kanal `apply-qs`
+
+**Ziel:** Eine `.qs`-Datei ändert die CSV, ohne dass jemand eine Tabelle von Hand anfasst.
+
+**Uploads:** Bundle; die QuickStatements-Hilfe als Text oder Link (Befund 37).
+
+Inhalt: Parser für die Teilmenge (A4 „CSV, Update-Kanal“), Wertcodec in beide Richtungen, `data/edits/applied.csv`, Meldung aller nicht unterstützten Befehle als `WARN` mit Zeile.
+
+**Abnahme:** `alligator.qs` aus dem Pack (auf lokale IDs umgeschrieben) erzeugt die erwarteten Zeilen; dieselbe Datei ein zweites Mal wirkt nicht; `-`-Zeilen entfernen genau eine Aussage; ungültige Zeilen verändern nichts (alles oder nichts je Datei); die kanonische Form bleibt erhalten.
+
+#### S7f — Reiter „Source rows“
+
+**Ziel:** Jede Entitätsseite zeigt, in welchen CSV-Zeilen sie steht.
+
+Inhalt: Reiter neben „Original“ (nur bei CSV-Daten), Block mit den Zeilen der vier Tabellen als Text (Kopieren-Schaltfläche), Link auf die Datei im GitHub-Editor (`site.yaml`: `edit_url`, optional). Die Seite bleibt read-only; es gibt keinen Schreibzugriff aus dem Browser (kein Token, kein Backend).
+
+**Abnahme:** Linkcheck grün; der Block einer Seite stimmt zeichengenau mit den Zeilen der CSV überein (Test); ohne CSV-Daten kein Reiter, die Seiten der Harvest-Demos bleiben byte-gleich.
+
+#### S7g — Push in die echte Wikibase
+
+**Ziel:** `chublets-wikibase.de` bekommt Kern, Modell und Items aus derselben CSV wie die statische Seite.
+
+**Uploads:** Bundle von `wikibase-federation` (ohne `config.ini`), `data/derived/` des Demo-Repos (oder dessen Bundle), ein Bot-Zugang nur bei Florian lokal; Angabe, ob `url` auf dem Ziel erlaubt ist und ob Federation eingeschaltet ist.
+
+Inhalt (alles im Repo `wikibase-federation`, Usecase `usecases/chublets/`): `pipeline.py` im Muster des Software-Usecases (A4 „Push-Weg“, „Ziel-Wikibase, IDs“, „Wikidata-Werte beim Push“, „Properties beim Push“): (1) Kern anlegen und IDs prüfen, (2) Properties mit Datentyp, (3) Items mit Labels, Descriptions, Aliases, (4) Aussagen mit Qualifiern und Belegen über `wbeditentity`, IDs über `idmap-<ziel>.csv`; Schalter `values`, `url_as_string`; Trockenlauf als Standard mit Liste der Aufrufe; Bericht mit Zahl angelegter, übersprungener und fehlgeschlagener Entitäten und Aussagen. Die Tests laufen gegen eine Attrappe der API; echte Antworten von `chublets-wikibase.de` (`siteinfo`, ein `wbgetentities`) bringt Florian als Fixture mit.
+
+**Abnahme:** Trockenlauf mit Kern und drei Items: die Liste der Aufrufe stimmt mit dem Erwarteten (Test); `wd:`-Wert statt Stub; keine fremde ID in einem lokalen Wert; zweiter Trockenlauf nach einem echten Lauf meldet 0 Schreibaufrufe. Bei Florian: echter Lauf auf der leeren Wikibase; Q1 bis Q3 und P1 bis P10 haben die IDs der CSV (sonst Abbruch, wie vorgesehen); ein Item mit Qualifier, Beleg und föderiertem Wert erscheint in der Oberfläche; ein zweiter Lauf schreibt nichts.
 
 ### S8 — Pages-Workflow und CI
 
@@ -503,4 +643,14 @@ Inhalt: Client (aus `wbqs/client.py` übernommen, nur lesend), ID-Liste, `lastre
 - **Wikibase-Look, Feinheiten:** Die Sprachkennzeichen („Englisch“ klein hinter Label und Beschreibung) fehlen noch, ebenso eine Möglichkeit, eigene Farben außer dem Akzent zu setzen. Das CSS ist eine Annäherung, kein Pixel-Nachbau; Wünsche kommen als Screenshot mit Markierung.
 - **Lizenz der gesicherten Daten:** Entschieden ist CC0 als Standard (A4, 2026-10-20). Offen bleibt nur die Gegenprobe: Die Hosting-Seiten von wikibase.cloud ließen sich in der Sandbox nicht lesen (die Seite braucht JavaScript, der MediaWiki-Entwurf lieferte 404), und ein Erfahrungsbericht zu wikibase.cloud rät, eigene Nutzungsbedingungen anzugeben, statt von CC0 auszugehen. Für `fuzzy-sl` also beim Betreiber bestätigen; hat eine Wikibase eine andere Lizenz, steht sie als `license` in `site.yaml`.
 - **Mehrere Wikibases in einer Seite:** vorerst nicht vorgesehen.
+- **S7, Identity-Block** des Packs liegt in drei Varianten vor (`MAPPING.md`, `model.py`, WikiProject-Seite; `data/identity-block-variants.csv`): vor S7c festlegen, welche Aussagen jedes Software-Item mindestens trägt; als Formular im S7c-Chat.
+- **S7, Pack-Lücken:** 12 Registry-ID-Properties und 8 Distro-Paket-Labels fehlen (`tools/check_completeness.py` mit dem WikiProject-Text), alle Q-IDs und Labels „recalled“ sind unverifiziert (`tools/verify_wikidata.py` bei Florian). Wirkt auf S7b (Modell) und S7d (Zwillinge); bis dahin trägt das Modell die Zuverlässigkeit des Packs.
+- **S7, Größe des vollen Bestands:** Gemessen ist nur `fuzzy-sl` (12 456 Tripel, Abfragen längstens 5,7 Sekunden unter Pyodide in Node). 416 Software-Einträge mit Autoren und Tags ergeben vermutlich ein Mehrfaches; geschätzt, nicht gemessen. S7c liefert die Messung am Ausschnitt; erst danach entscheidet sich, ob der volle Bestand in den Browser passt (Teil D „Laufzeit großer Exporte“).
+- **S7, Zusammenführen von Wikidata und open-archaeo:** Software, die in beiden vorkommt, soll ein Item sein (Abgleich über die Repository-URL, P1324). Vorerst nur Bericht (S7d); das Zusammenführen und die Frage, welche Quelle bei Widerspruch gewinnt, sind offen.
+- **S7, Gleiches Muster für `wikibase-federation`:** Der Kern (P1 bis P10) und das Starter Pack könnten dort in den frozen Usecase zurückfließen oder ihn ablösen; Entscheidung von Florian, nicht Teil von S7.
+- **S7, echte Wikibase aus der CSV:** `export-qs` (CSV → QuickStatements mit Zuordnung lokale ID → neue ID) würde die Chublets-Wikibase auf Wikibase Cloud füllen; nicht in S7, aber das Format (Wertcodec, Update-Kanal) ist dafür gebaut.
+- **S7, Ontologie-Ergänzung:** Die Wikibase-Systemontologie kennt die vier Begriffe nicht, die der Dump benutzt (Befund 23); zusammen mit den Brückentripeln (A4 „RDFS-Brücke“) ein Anlass, über eine eigene Ergänzungsdatei neben der Originalontologie zu entscheiden.
+- **S7g, Gleiche IDs in Demo und echter Wikibase:** Nur der Kern bekommt auf einer leeren Wikibase dieselben IDs. Domänen-IDs ab 100 kann die Wikibase nicht verteilen; die statische Demo und `chublets-wikibase.de` zeigen also verschiedene Nummern für dasselbe Item. Mögliche Auswege (nicht entschieden): Füllentitäten bis 99 anlegen, nach dem ersten Push die Ziel-IDs in die CSV zurückschreiben (verletzt „IDs bleiben“ nicht, wenn es vor der ersten Veröffentlichung der Demo geschieht), oder die Demo anzeigen lassen, was `idmap` sagt.
+- **S7g, Ziel ungeprüft:** Version, Federation-Schalter, Datentyp `url` und Berechtigungen von `chublets-wikibase.de` sind ungeprüft (Befund 39); der erste Trockenlauf mit `siteinfo` klärt das.
+- **S7g, `wbeditentity` nicht erprobt:** Dass die Zwischenfürm ohne Umbau angenommen wird (Befund 39), ist eine Folgerung; die Probe mit Fixtures und dann bei Florian steht aus. Föderierte Werte sind laut README von `wikibase-federation` noch alpha.
 - **w3id-Präfix** für die Dummy-Wikibase und Content Negotiation: offen, erst relevant ab S9; die DCAT-IRIs (A6) wären dort ebenfalls zu verankern.
