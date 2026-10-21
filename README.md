@@ -73,11 +73,13 @@ python main.py load
 ```
 
 `build` renders the loaded entities into `docs/`: `index.html`, one flat page per entity (`Q123.html`,
-`P1.html`) and `assets/`. It needs no network. Pages look like a Wikibase (statements, qualifiers,
-references, links between Q- and P-ids that show the id behind the label, external links in a new tab),
-put the logo top left above a short navigation, show a map for every coordinate on Earth (Leaflet, OpenStreetMap tiles) and Commons images through `Special:FilePath`, and carry a
-footer with the source, the date of the last change and the licence (CC0 1.0, Public Domain, unless
-`site.yaml` says otherwise). With a second language in
+`P1.html`) and `assets/`. It needs no network. The pages are laid out like a Wikibase: a sidebar with the
+logo and a short navigation, tabs, a table of labels, descriptions and aliases per language, and one box
+per property with its statements (rank, value, qualifiers as label and value pairs, references behind a
+"N references" toggle). Links between Q- and P-ids show the id behind the label, external links open in a
+new tab. Every coordinate on Earth gets a map (Leaflet, OpenStreetMap tiles), Commons images are shown
+through `Special:FilePath`, and the footer carries the source, the date of the last change and the licence
+(CC0 1.0, Public Domain, unless `site.yaml` says otherwise). With a second language in
 `site.yaml` the pages have a language switch. The step then checks its own output: pages against
 entities and every internal link. Problems are `WARN` lines, `--strict` turns them into errors.
 
@@ -90,7 +92,8 @@ python main.py build
 ```yaml
 title: My Wikibase
 description: One line for the start page
-logo: assets/logo.png            # a file in the repository (copied to docs/assets/logo/), or a URL
+logo: assets/logo.png            # a file in the repository (copied to docs/assets/logo/), or a URL;
+                                 # a logo with a white background blends into the grey sidebar
 colour: "#336699"                # accent colour, hex
 source:
   url: https://example.wikibase.cloud   # must match data/raw/manifest.json

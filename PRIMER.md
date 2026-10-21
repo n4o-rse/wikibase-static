@@ -1,6 +1,6 @@
 # PRIMER — wikibase-static
 
-Arbeitsplan für `n4o-rse/wikibase-static`. Wird zu Beginn jedes Chats hochgeladen (Bundle, siehe A5) und am Ende zurückgeschrieben. Stand: 2026-10-20 (nach S3).
+Arbeitsplan für `n4o-rse/wikibase-static`. Wird zu Beginn jedes Chats hochgeladen (Bundle, siehe A5) und am Ende zurückgeschrieben. Stand: 2026-10-21 (nach S3b).
 
 Sprache: dieses Dokument ist deutsch, alles andere im Repo (Code, Kommentare, README) ist britisches Englisch.
 
@@ -46,6 +46,7 @@ Was schon existiert und **kopiert** wird (nicht referenziert, siehe A3):
 10. **Formatter-URL bei `fuzzy-sl`** (geprüft 2026-10-20 am Klon): Sie liegt nicht in Wikidatas P1630, sondern in der lokalen Property P18 („Formatter URL“, Datentyp String) an den External-ID-Properties: P19 (`https://wikibase.semantic-kompakkt.de/entity/$1`) und P34 (`http://www.wikidata.org/entity/$1`); P21 (ISO 639-1) hat keine. Drei External-ID-Werte (Q131: P19; Q74: P19 und P34). Der Renderer liest die Formatter-Property deshalb aus `site.yaml` (`formatter_property`, Standard P1630).
 11. Das npm-Paket `leaflet@1.9.4` bringt `LICENSE` und `dist/leaflet.css` mit **CRLF** (26 bzw. 661 Zeilen); `leaflet.js` hat LF (geprüft 2026-10-20). Beide Textdateien wurden beim Einchecken in `static/vendor/leaflet/` auf LF gebracht, sonst widersprechen sie der LF-Regel (A3). Die PNG-Bilder bleiben unverändert.
 12. Q131 hat zwei identische Koordinaten-Statements (gleiche Breite und Länge). Von den 62 Koordinaten der Echtdaten ergeben sich deshalb 61 verschiedene Kartenmarker auf 59 Seiten (geprüft 2026-10-20).
+13. **Fremder Bericht im Paket-Repo** (geprüft 2026-10-21, zweimal aufgetreten: Commits `4684ce4` und `f43d9bf`): Der eingecheckte `dist/pipeline_report.txt` zeigte Läufe mit den 173 Entitäten von `fuzzy-sl`, obwohl `data/raw/` des Paket-Repos leer ist. Ursache: In derselben `cmd`-Sitzung stand `WBS_ROOT` noch auf dem Demo-Repo (aus der Zeile `set WBS_ROOT=…&& python main.py harvest …`); `main.py` lud dann die Daten des Demo-Repos, schrieb den Bericht aber nach `dist/` des Paket-Repos. Behoben mit der neuen Regel in A3 und `tests/test_main.py`.
 
 ### A2 Zielbild
 
@@ -81,6 +82,7 @@ Das Ergebnis hat diese prüfbaren Eigenschaften:
 - **Keine Uhr im Output.** Kein Generator ruft `datetime.now()` auf. Datumsangaben kommen aus `RELEASE_DATE` (in `py/wikibase_static/utils.py`) oder aus den Quelldaten selbst.
 - **Zeilenenden LF.** Jedes Repo der Familie hat eine `.gitattributes` mit `* text=auto eol=lf`; sonst weichen unter Windows die Hashes der Rohdaten ab (siehe S4, „Erledigt“).
 - **Zweimal laufen lassen, `git status` bleibt sauber.** `dist/pipeline_report.txt` enthält deshalb nur, was die Schritte sagen, keine Laufzeiten (die erscheinen nur im Terminal).
+- **Der Bericht gehört zum Repo seiner Daten.** `python main.py` schreibt `dist/pipeline_report.txt` nur bei einem vollständigen Lauf und nur, wenn `WBS_ROOT` nicht gesetzt ist oder auf das Repo selbst zeigt. Zeigt es auf ein Demo-Repo, laufen die Schritte dort, der Bericht des Paket-Repos bleibt unberührt, und das Terminal sagt „report not written“ (Befund 13). Vor einem Lauf im Paket-Repo steht in `cmd` `set WBS_ROOT=`, damit die Variable der Sitzung nicht nachwirkt.
 - **Netzwerk nur im Schritt `harvest`.** Alles andere läuft offline gegen die Daten auf der Platte. `harvest` ist nie Teil des Standardlaufs, sondern hat ein eigenes Verb: `python main.py harvest`.
 - **Höflicher Harvest.** Ehrlicher User-Agent mit Kontaktadresse, Pause zwischen Requests, `Retry-After` und `maxlag` beachten. Verlangt ein Host eine Bot-Challenge (z. B. Anubis), bricht `harvest` mit einer klaren Meldung ab. Es wird nicht versucht, sie zu lösen oder zu umgehen; der Weg ist dann `--from-dir` mit im Browser gesicherten JSON-Dateien.
 - **Die Seiten zeigen, was die Quelle sagt.** Werte werden formatiert, nicht repariert (ein Tippfehler in einer URL bleibt sichtbar, Befund 7). Zu einem Link werden nur `http://`, `https://`, `ftp://` und `ftps://`; alles andere (etwa `javascript:`) steht als Text.
@@ -144,6 +146,10 @@ Das Ergebnis hat diese prüfbaren Eigenschaften:
 | Lizenz, Standard | Ohne `license` in `site.yaml` steht in der Fußzeile **CC0 1.0** (Public Domain) mit Link auf `https://creativecommons.org/publicdomain/zero/1.0/`. Eine andere Lizenz kommt als `license.name` (Text) und optional `license.url` in `site.yaml`; nur `name` wird als Text gezeigt, nur `url` als Link mit der URL als Text. Der Bericht nennt „(default)“, wenn der Standard gilt. Ob Wikibase Cloud selbst CC0 vorschreibt, ließ sich nicht an den Hosting-Seiten bestätigen (Teil D) | 2026-10-20 (Beschluss Florian) |
 | Logo und Seitenleiste | Das Logo steht oben links in einer Seitenleiste (höchstens 9 rem), darunter die Links Startseite, Items und Properties; ohne Logo steht dort der Titel als Text. `logo` ist eine Datei im Repository (wird nach `docs/assets/logo/` kopiert, das hält A2, Eigenschaft 2 ein) oder eine URL (dann lädt jede Seite das Bild von dort); auf kleinen Bildschirmen rutscht die Leiste über den Inhalt | 2026-10-20 (Wunsch Florian) |
 | Interne Links mit ID | Jeder interne Link zeigt Label und ID: `Archaeological Site (Q10)`, ebenso Properties vor Werten, in Qualifiern und Referenzen, in „Verwendet von“ und in der Überschrift. Die Startseite hat eine eigene ID-Spalte und zeigt im Link nur das Label; eine Entität ohne Label erscheint nur als ID, nicht doppelt | 2026-10-20 (Wunsch Florian) |
+| Wikibase-Look (S3b) | Eine Box je Property: links eine schattierte Spalte mit Label und ID, rechts die Statements. Jedes Statement hat ein Rangzeichen (zwei Punkte, bei `preferred` in der Akzentfarbe, bei `deprecated` rot; Titel „Rank: …“), den Wert (bei `preferred` und `deprecated` zusätzlich eine Marke), die Qualifier als zweispaltiges Raster (Label links, Wert rechts) und darunter den Beleg-Schalter. Der Schalter heißt „N references“ / „Eine Fundstelle“ / „N Fundstellen“ und klappt die Belege auf; ohne Belege steht „0 references“ / „0 Fundstellen“ ohne Aufklappen, wie in der echten Wikibase. Die Überschrift läuft über die ganze Breite, die Inhalte sind höchstens 56 rem breit | 2026-10-21 (Wunsch Florian) |
+| Sprachtabelle | Unter der Überschrift steht aufgeklappt „In other languages“ / „In weiteren Sprachen“ mit den Spalten Sprache, Bezeichnung, Beschreibung, Auch bekannt als. Zeilen: Standardsprache und zweite Sprache immer, dazu jede weitere Sprache, in der die Entität Label, Beschreibung oder Alias hat (nach Code sortiert). Fehlendes steht als „No label defined“ / „Keine Bezeichnung vorhanden“ (entsprechend bei der Beschreibung); Aliase sind mit ` \| ` verbunden. Sprachnamen kommen aus einer kleinen Tabelle (Englisch, Deutsch und gängige weitere), ein unbekannter Code steht als Code. Die Tabelle ersetzt den früheren Absatz „Auch bekannt als“ | 2026-10-21 (Wunsch Florian) |
+| Reiter und Werkzeuge | Reiter links: „Item“, „Property“ oder auf der Startseite „Home“; rechts „Read“ (aktuell) und „Original“ (Link auf die Konzept-URI `<Quelle>/entity/<ID>` in neuem Tab, nur mit Quelle). Der Sprachumschalter sitzt rechts in der Reiterzeile, dort hat Wikibase das Suchfeld (Platz für S5). In der Seitenleiste folgt unter Logo und Navigation der Abschnitt „Tools“ / „Werkzeuge“ mit „Referenced by“ / „Verwendet von“ als Sprung zum Block `#incoming`, nur wenn etwas auf die Seite zeigt. Die Fußzeile steht am Ende der Inhaltsspalte; die Seitenleiste ist grau, der Inhalt weiß | 2026-10-21 (Wunsch Florian) |
+| Logo von `fuzzy-sl` | `assets/logo.jpg` im Demo-Repo (1000 × 1000 Pixel, JPEG, 303 KB, unverändert von Florian geliefert 2026-10-21), `logo: assets/logo.jpg` in `site.yaml`; es wird nach `docs/assets/logo/` kopiert. Ein Logo mit deckend weißem Hintergrund fügt sich über `mix-blend-mode: multiply` in die graue Leiste ein | 2026-10-21 |
 
 ### A5 Was in welchem Chat hochgeladen wird
 
@@ -175,6 +181,7 @@ Das Repo veröffentlicht RDF (S6). Vorschlag: Die RDF-Dateien verwenden die Konz
 | S1 | Skeleton: Layout, `main.py`, `utils.py`, Lizenz, Citation | wikibase-static | – | erledigt 2026-10-20 |
 | S2 | Loader und Validator für das Zwischenformat, Label-Auflösung | wikibase-static | S0, S1 | erledigt 2026-10-20 |
 | S3 | Renderer: Item- und Property-Seiten im Wikibase-Look, Leaflet, Commons, Linkcheck | wikibase-static, fuzzy-sl-static | S2 | erledigt 2026-10-20 (Sichtprobe mit Commons-Bild und Kacheln bei dir offen, Teil D) |
+| S3b | Wikibase-Look: Boxen je Property, Sprachtabelle, Reiter, Seitenleiste mit Werkzeugen; Logo im Demo-Repo; Bericht nur für eigene Daten | wikibase-static, fuzzy-sl-static | S3 | erledigt 2026-10-21 |
 | S4 | Harvest, inkrementell, `--probe`, `--from-dir`; Test mit `fuzzy-sl` | wikibase-static, fuzzy-sl-static | S0, S1 | erledigt 2026-10-20 |
 | S5 | Suche mit Autocomplete | wikibase-static | S2 | offen |
 | S6 | RDF-Export und SPARQL-Seite | wikibase-static | S2 | offen |
@@ -259,6 +266,29 @@ Inhalt: Jinja2-Templates und ein CSS, Startseite aus `site.yaml`, Statements mit
 - Der eingecheckte `dist/pipeline_report.txt` (Commit `4684ce4`) zeigte noch einen Lauf mit den 173 Entitäten von `fuzzy-sl`, obwohl `data/raw/` des Paket-Repos leer ist (A3). Ein Lauf ohne Daten schreibt ihn auf „nothing to do“ zurück; das ist die richtige Fassung und kommt mit diesem Stand in den Commit.
 - Zeit-, Quantity-, Monolingual- und Commons-Werte sind nur an den Fixtures geprüft, nicht an echten Daten (die gibt es in `fuzzy-sl` nicht).
 
+### S3b — Wikibase-Look
+
+**Ziel:** Die Seiten sehen aus wie eine echte Wikibase: Seitenleiste mit Logo, Reiter, Sprachtabelle und je Property eine Box mit Statements, Qualifiern und Beleg-Schalter.
+
+**Uploads:** der Screenshot einer Originalseite (`Q97` von `fuzzy-sl`) und das Logo.
+
+Inhalt: neues `base.html` (Seitenleiste, Reiterzeile, Fußzeile in der Inhaltsspalte), `entity.html` (Sprachtabelle, Boxen, Raster für Qualifier und Belege), `style.css` neu; in `render.py` Pluralformen („1 reference“, „Eine Fundstelle“), `language_rows()` und Rang-Titel, die Methode `aliases()` entfällt; in `step_build.py` die neuen Kontextwerte. Dazu `main.py`: Bericht nur für eigene Daten (Befund 13, A3), `tests/test_main.py`. Im Demo-Repo `assets/logo.jpg` und `logo:` in `site.yaml`. Die Entscheidungen stehen in A4 (Zeilen „Wikibase-Look (S3b)“, „Sprachtabelle“, „Reiter und Werkzeuge“, „Logo von `fuzzy-sl`“).
+
+**Abnahme:** Entitätenzahl gleich Seitenzahl; 0 tote interne Links; zwei Läufe, `git status` sauber; `Q97` im Browser neben dem Original: Seitenleiste mit Logo oben links, Reiter, Sprachtabelle, eine Box je Property, Qualifier-Raster, „0 Fundstellen“; ein Lauf im Paket-Repo mit gesetztem `WBS_ROOT` lässt `dist/pipeline_report.txt` unberührt.
+
+### Erledigt 2026-10-21
+
+**Gebaut:** wie unter Inhalt. Das Muster der Boxen, der Sprachtabelle und des Beleg-Schalters stammt aus dem Screenshot von `Q97` (Wikibase Cloud, deutsche Oberfläche); die Texte sind eigene.
+
+**Befunde:**
+
+- 48 Tests in `tests/test_build.py` (neu: Plural der Belege in beiden Sprachen, Qualifier und Belege als Label-Wert-Paare, Rangzeichen mit Titel, Sprachtabelle mit Standard-, zweiter und weiteren Sprachen samt Escaping und unbekanntem Code, Reiter mit und ohne Quelle, Werkzeuge nur bei eingehenden Verweisen, Fußzeile in der Inhaltsspalte), 5 in `tests/test_main.py` (zwei davon schlagen mit dem alten `main.py` fehl), die 24 des Loaders und die 10 des Harvests unverändert.
+- **Gegen die echten Daten** (`fuzzy-sl-static`, Commit `88f63a9`, mit `assets/logo.jpg`): `173 entities -> 173 entity pages + index.html (difference 0)`, `4907 internal links checked, 0 dead`, 61 Koordinaten auf 59 Seiten, 0 `WARN`. Nach dem Commit der Seiten ist `git status` nach einem zweiten Lauf sauber; das Paket kam dabei aus einer neuen virtuellen Umgebung (`pip install` des frischen Klons).
+- Im Browser angesehen (Chromium ohne Netz): `Q97` (EN, und mit 420 Pixel Breite), `Q74` (DE, zwei Koordinaten, Rang `preferred`), `P19` (Property mit Formatter-URL), die Startseite. Das Logo steht oben links, der weiße JPEG-Hintergrund verschwindet in der grauen Leiste.
+- `Q97` trägt vier Boxen mit je einem Statement; bei Einträgen mit mehreren Werten (`P10` von `Q74`: vier URLs) stehen die Statements untereinander in einer Box.
+- **Nicht gesehen:** Kartenkacheln und Commons-Bilder (die Sandbox erreicht beide Hosts nicht), Windows und andere Browser als Chromium.
+- Nicht übernommen aus dem Original, weil statisch oder noch ohne Daten: Anmelden, Bearbeiten, Diskussion, Versionsgeschichte, Spracherkennung („Englisch“ hinter jedem Label), die Wikibase-Werkzeuge der Seitenleiste (Neues Item, Query Service, QuickStatements) und das Suchfeld (S5).
+
 ### S4 — Harvest
 
 **Ziel:** `python main.py harvest` sichert `fuzzy-sl` nach `data/raw/` und lädt beim zweiten Lauf nichts nach.
@@ -335,9 +365,8 @@ Inhalt: Client (aus `wbqs/client.py` übernommen, nur lesend), ID-Liste, `lastre
 - **Demo-Repo `fuzzy-sl-static`:** enthält `data/raw/`, ab S3 auch `site.yaml` und `docs/` (`python main.py build`). Der Harvest läuft mit `WBS_ROOT` im Demo-Repo, damit `data/raw/` des Paket-Repos leer bleibt. GitHub Pages ist noch nicht eingerichtet (Branch `main`, Ordner `/docs`); der Workflow kommt mit S8/S9.
 - **Sichtprobe von S3 bei dir:** Eine Seite mit Karte (Kacheln) und einem Commons-Bild im eigenen Browser ansehen. In `fuzzy-sl` gibt es kein Bild; die Probe geht mit der Chublets-Demo (S7) oder einer Fixture mit echtem Dateinamen.
 - **Kartenkacheln:** Die Seiten laden Kacheln von `tile.openstreetmap.org`. Für Demos ist das üblich, für viel Verkehr verlangt die Nutzungsrichtlinie von OSM einen anderen Anbieter; dann wäre ein Schlüssel in `site.yaml` nötig.
-- **Suchfeld im Kopf:** fehlt bis S5; die Kopfzeile hat dafür noch keinen Platz reserviert.
-- **Wikibase-Look:** Das CSS ist ein ruhiger Entwurf in Anlehnung an Wikibase, kein Pixel-Nachbau; Anpassungen (Farben, Schrift) gehen über `colour` und das CSS im Paket.
+- **Suchfeld:** fehlt bis S5. Platz ist rechts in der Reiterzeile vor dem Sprachumschalter, dort hat die echte Wikibase es.
+- **Wikibase-Look, Feinheiten:** Die Sprachkennzeichen („Englisch“ klein hinter Label und Beschreibung) fehlen noch, ebenso eine Möglichkeit, eigene Farben außer dem Akzent zu setzen. Das CSS ist eine Annäherung, kein Pixel-Nachbau; Wünsche kommen als Screenshot mit Markierung.
 - **Lizenz der gesicherten Daten:** Entschieden ist CC0 als Standard (A4, 2026-10-20). Offen bleibt nur die Gegenprobe: Die Hosting-Seiten von wikibase.cloud ließen sich in der Sandbox nicht lesen (die Seite braucht JavaScript, der MediaWiki-Entwurf lieferte 404), und ein Erfahrungsbericht zu wikibase.cloud rät, eigene Nutzungsbedingungen anzugeben, statt von CC0 auszugehen. Für `fuzzy-sl` also beim Betreiber bestätigen; hat eine Wikibase eine andere Lizenz, steht sie als `license` in `site.yaml`.
-- **Logo von `fuzzy-sl`:** Die Rohdaten enthalten kein Logo und die Sandbox erreicht den Host nicht. Die Datei kommt von Hand ins Demo-Repo und wird in `site.yaml` als `logo` eingetragen (kein Abruf von der Quell-Wikibase, A2).
 - **Mehrere Wikibases in einer Seite:** vorerst nicht vorgesehen.
 - **w3id-Präfix** für die Dummy-Wikibase und Content Negotiation: offen, erst relevant ab S6/S9.

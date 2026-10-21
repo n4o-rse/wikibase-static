@@ -31,12 +31,13 @@ html[data-lang="{{ second }}"] .l:not([lang="{{ second }}"]) { display: none; }
       {% if has_items %}<a href="index.html#items">{{ ui_items }}</a>{% endif %}
       {% if has_properties %}<a href="index.html#properties">{{ ui_properties }}</a>{% endif %}
     </nav>
+{% block sidebar_tools %}{% endblock %}
   </aside>
   <div class="content">
-    <div class="topbar">
-      {% if logo %}<span class="site-name">{{ site_title }}</span>{% endif %}
-      <div class="tools">
-        {% block tools %}{% endblock %}
+    <div class="tabs">
+      <ul class="tabs-left">{% block tabs_left %}<li class="active"><span>{{ ui_home }}</span></li>{% endblock %}</ul>
+      <div class="tabs-right">
+        <ul class="tabs-view">{% block tabs_right %}{% endblock %}</ul>
         {% if second %}
         <div class="lang-switch" role="group" aria-label="{{ language_label }}">
           <button type="button" data-set-lang="{{ default }}">{{ default | upper }}</button><button type="button" data-set-lang="{{ second }}">{{ second | upper }}</button>
@@ -47,27 +48,25 @@ html[data-lang="{{ second }}"] .l:not([lang="{{ second }}"]) { display: none; }
     <main>
 {% block main %}{% endblock %}
     </main>
+    <footer class="site-footer">
+      <p>
+        {% if footer.source_url %}
+        <span class="item">{{ ui_source }}: <a href="{{ footer.source_url }}" target="_blank" rel="noopener">{{ footer.source_text }}</a>{% if footer.original_url %} (<a href="{{ footer.original_url }}" target="_blank" rel="noopener">{{ ui_original }}</a>){% endif %}</span>
+        {% endif %}
+        {% if footer.modified %}
+        <span class="item">{{ ui_as_of }}: {{ footer.modified }}</span>
+        {% endif %}
+        <span class="item">{% if footer.license_name and footer.license_url %}{{ ui_license }}: <a href="{{ footer.license_url }}" target="_blank" rel="noopener">{{ footer.license_name }}</a>{% elif footer.license_name %}{{ ui_license }}: {{ footer.license_name }}{% else %}{{ ui_license_missing }}{% endif %}</span>
+        {% if footer.imprint_url %}
+        <span class="item"><a href="{{ footer.imprint_url }}" target="_blank" rel="noopener">{{ ui_imprint }}</a></span>
+        {% elif footer.imprint_text %}
+        <span class="item">{{ ui_imprint }}: {{ footer.imprint_text }}</span>
+        {% endif %}
+      </p>
+      <p class="generated">{{ ui_generated }} <a href="https://github.com/n4o-rse/wikibase-static" target="_blank" rel="noopener">wikibase-static</a> {{ footer.version }}</p>
+    </footer>
   </div>
 </div>
-<footer class="site-footer">
-  <div class="wrap">
-    <p>
-      {% if footer.source_url %}
-      <span class="item">{{ ui_source }}: <a href="{{ footer.source_url }}" target="_blank" rel="noopener">{{ footer.source_text }}</a>{% if footer.original_url %} (<a href="{{ footer.original_url }}" target="_blank" rel="noopener">{{ ui_original }}</a>){% endif %}</span>
-      {% endif %}
-      {% if footer.modified %}
-      <span class="item">{{ ui_as_of }}: {{ footer.modified }}</span>
-      {% endif %}
-      <span class="item">{% if footer.license_name and footer.license_url %}{{ ui_license }}: <a href="{{ footer.license_url }}" target="_blank" rel="noopener">{{ footer.license_name }}</a>{% elif footer.license_name %}{{ ui_license }}: {{ footer.license_name }}{% else %}{{ ui_license_missing }}{% endif %}</span>
-      {% if footer.imprint_url %}
-      <span class="item"><a href="{{ footer.imprint_url }}" target="_blank" rel="noopener">{{ ui_imprint }}</a></span>
-      {% elif footer.imprint_text %}
-      <span class="item">{{ ui_imprint }}: {{ footer.imprint_text }}</span>
-      {% endif %}
-    </p>
-    <p class="generated">{{ ui_generated }} <a href="https://github.com/n4o-rse/wikibase-static" target="_blank" rel="noopener">wikibase-static</a> {{ footer.version }}</p>
-  </div>
-</footer>
 <script src="assets/app.js"></script>
 {% if map_points %}
 <script src="assets/vendor/leaflet/leaflet.js"></script>

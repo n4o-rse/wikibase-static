@@ -43,7 +43,11 @@ JULIAN = "Q1985786"
 STRINGS: dict[str, dict[str, str]] = {
     "en": {
         "statements": "Statements", "no_statements": "No statements.", "also_known_as": "Also known as",
-        "no_description": "No description", "references_n": "{n} reference(s)", "unknown_value": "unknown value",
+        "no_description": "No description", "references_one": "1 reference", "references_other": "{n} references",
+        "unknown_value": "unknown value", "in_other_languages": "In other languages",
+        "no_label_yet": "No label defined", "no_description_yet": "No description defined",
+        "tools": "Tools", "referenced_by_short": "Referenced by", "tab_read": "Read", "tab_original": "Original",
+        "rank": "Rank", "rank_normal": "normal",
         "no_value": "no value", "rank_preferred": "preferred", "rank_deprecated": "deprecated",
         "datatype": "Data type", "referenced_by": "Referenced by ({n})", "items": "Items", "properties": "Properties",
         "id": "ID", "label": "Label", "description": "Description", "source": "Source", "as_of": "As of",
@@ -58,7 +62,11 @@ STRINGS: dict[str, dict[str, str]] = {
     },
     "de": {
         "statements": "Aussagen", "no_statements": "Keine Aussagen.", "also_known_as": "Auch bekannt als",
-        "no_description": "Keine Beschreibung", "references_n": "{n} Beleg(e)", "unknown_value": "unbekannter Wert",
+        "no_description": "Keine Beschreibung", "references_one": "Eine Fundstelle", "references_other": "{n} Fundstellen",
+        "unknown_value": "unbekannter Wert", "in_other_languages": "In weiteren Sprachen",
+        "no_label_yet": "Keine Bezeichnung vorhanden", "no_description_yet": "Keine Beschreibung vorhanden",
+        "tools": "Werkzeuge", "referenced_by_short": "Verwendet von", "tab_read": "Lesen", "tab_original": "Original",
+        "rank": "Rang", "rank_normal": "normal",
         "no_value": "kein Wert", "rank_preferred": "bevorzugt", "rank_deprecated": "veraltet",
         "datatype": "Datentyp", "referenced_by": "Verwendet von ({n})", "items": "Items", "properties": "Properties",
         "id": "ID", "label": "Bezeichnung", "description": "Beschreibung", "source": "Quelle", "as_of": "Stand",
@@ -71,6 +79,22 @@ STRINGS: dict[str, dict[str, str]] = {
         "dt_time": "Zeitpunkt", "dt_quantity": "Größe", "dt_monolingualtext": "Einsprachiger Text",
         "dt_globe-coordinate": "Geokoordinate", "home": "Startseite", "unsupported": "Nicht unterstützter Wert",
     },
+}
+
+
+# Names of languages, as (English, German); a code that is not listed is shown as it is.
+LANGUAGE_NAMES: dict[str, tuple[str, str]] = {
+    "en": ("English", "Englisch"), "de": ("German", "Deutsch"), "fr": ("French", "Französisch"),
+    "es": ("Spanish", "Spanisch"), "it": ("Italian", "Italienisch"), "nl": ("Dutch", "Niederländisch"),
+    "pt": ("Portuguese", "Portugiesisch"), "ru": ("Russian", "Russisch"), "pl": ("Polish", "Polnisch"),
+    "cs": ("Czech", "Tschechisch"), "sk": ("Slovak", "Slowakisch"), "sv": ("Swedish", "Schwedisch"),
+    "da": ("Danish", "Dänisch"), "no": ("Norwegian", "Norwegisch"), "nb": ("Norwegian Bokmål", "Norwegisch (Bokmål)"),
+    "fi": ("Finnish", "Finnisch"), "el": ("Greek", "Griechisch"), "la": ("Latin", "Latein"),
+    "tr": ("Turkish", "Türkisch"), "ja": ("Japanese", "Japanisch"), "zh": ("Chinese", "Chinesisch"),
+    "ar": ("Arabic", "Arabisch"), "he": ("Hebrew", "Hebräisch"), "ga": ("Irish", "Irisch"),
+    "cy": ("Welsh", "Walisisch"), "hu": ("Hungarian", "Ungarisch"), "ro": ("Romanian", "Rumänisch"),
+    "hr": ("Croatian", "Kroatisch"), "sl": ("Slovenian", "Slowenisch"), "bg": ("Bulgarian", "Bulgarisch"),
+    "uk": ("Ukrainian", "Ukrainisch"), "ca": ("Catalan", "Katalanisch"), "mul": ("Default for all languages", "Standard für alle Sprachen"),
 }
 
 
@@ -250,12 +274,36 @@ class Renderer:
         other = self._pick(entity.descriptions, [self.second, self.default]) if self.second else None
         return self.bilingual(first, other)
 
-    def aliases(self, entity: Entity) -> Markup | None:
-        first = entity.aliases.get(self.default) or []
-        other = (entity.aliases.get(self.second) or first) if self.second else []
-        if not first and not other:
-            return None
-        return self.bilingual(" | ".join(first), " | ".join(other) if self.second else None)
+    def ui_plural(self, base: str, n: int) -> Markup:
+        """``references_one`` for exactly one, ``references_other`` (with ``{n}``) otherwise."""
+        return self.ui(f"{base}_one" if n == 1 else f"{base}_other", n=n)
+
+    def language_name(self, code: str, language: str) -> str:
+        names = LANGUAGE_NAMES.get(code)
+        if not names:
+            return code
+        return names[1] if language == "de" else names[0]
+
+    def language_rows(self, entity: Entity) -> list[dict[str, Any]]:
+        """Rows of the table "in other languages": the default and the second language always, then every
+        other language the entity has a label, description or alias in (sorted by code). A missing text is
+        said to be missing, as Wikibase does."""
+        codes = [self.default] + ([self.second] if self.second else [])
+        present = set(entity.labels) | set(entity.descriptions) | set(entity.aliases)
+        codes += sorted(present - set(codes))
+        rows = []
+        for code in codes:
+            name = self.bilingual(self.language_name(code, self.default),
+                                  self.language_name(code, self.second) if self.second else None)
+            label, description = entity.labels.get(code), entity.descriptions.get(code)
+            aliases = entity.aliases.get(code) or []
+            rows.append({
+                "code": code, "name": name,
+                "label": Markup(escape(label)) if label else Markup(f'<span class="muted">{self.ui("no_label_yet")}</span>'),
+                "description": Markup(escape(description)) if description else Markup(f'<span class="muted">{self.ui("no_description_yet")}</span>'),
+                "aliases": Markup(" | ".join(str(escape(a)) for a in aliases)),
+            })
+        return rows
 
     def heading(self, entity_id: str) -> Markup:
         """``Label (Q1)`` for the page heading."""
@@ -380,9 +428,10 @@ class Renderer:
         return {
             "value": self.value(statement.mainsnak),
             "rank": statement.rank,
+            "rank_title": f"{self.ui_text('rank')}: {self.ui_text('rank_' + statement.rank) if 'rank_' + statement.rank in STRINGS['en'] else statement.rank}",
             "qualifiers": [self._snak_view(q) for q in statement.qualifiers],
             "references": [[self._snak_view(s) for s in reference] for reference in statement.references],
-            "references_label": self.ui("references_n", n=len(statement.references)) if statement.references else None,
+            "references_label": self.ui_plural("references", len(statement.references)),
         }
 
     def map_points(self, entity: Entity) -> list[MapPoint]:

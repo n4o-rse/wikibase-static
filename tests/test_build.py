@@ -193,7 +193,8 @@ class BuildTests(Site):
         self.assertIn("https://commons.wikimedia.org/wiki/Special:FilePath/Example.jpg?width=400", q1)
         self.assertIn('href="https://commons.wikimedia.org/wiki/File:Example.jpg" target="_blank"', q1)
         self.assertIn("qualifier text", q1)
-        self.assertIn("1 reference(s)", q1)
+        self.assertIn("<summary>1 reference</summary>", q1)                          # one reference: expandable
+        self.assertIn('<div class="references zero"><span class="toggle">0 references</span></div>', q1)   # none: shown as 0
         self.assertIn("https://example.org/source", q1)
 
     def test_map_is_added_only_where_there_is_a_coordinate(self) -> None:
@@ -329,6 +330,93 @@ class BuildTests(Site):
         self.assertIn('<a href="Q2.html">Q2</a>', q1)
         self.assertNotIn("Q2 <span", q1)
         self.assertIn("<h1>Q2</h1>", self.page("Q2.html"))
+
+    def test_references_are_counted_in_both_languages(self) -> None:
+        self.site_yaml("languages:\n  default: en\n  second: de\n")
+        self.build()
+        q1 = self.page("Q1.html")
+        self.assertIn('<summary><span class="l" lang="en">1 reference</span><span class="l" lang="de">Eine Fundstelle</span></summary>', q1)
+        self.assertIn('<span class="l" lang="en">0 references</span><span class="l" lang="de">0 Fundstellen</span>', q1)
+
+        def two(data: dict) -> None:
+            reference = data["claims"]["P1"][0]["references"][0]
+            data["claims"]["P1"][0]["references"] = [reference, {**reference, "hash": "y"}]
+        self.edit("Q1", two)
+        self.build()
+        self.assertIn('<span class="l" lang="de">2 Fundstellen</span>', self.page("Q1.html"))
+
+    def test_qualifiers_and_references_are_label_value_pairs(self) -> None:
+        self.build()
+        q1 = self.page("Q1.html")
+        self.assertIn('<div class="qprop"><a href="P2.html">text <span class="id">(P2)</span></a></div><div class="qval">qualifier text</div>', q1)
+        self.assertIn('<div class="reference">', q1)
+        self.assertIn('<div class="qprop"><a href="P4.html">website <span class="id">(P4)</span></a></div><div class="qval"><a href="https://example.org/source"', q1)
+
+    def test_every_statement_has_a_rank_icon_with_a_title(self) -> None:
+        self.build()
+        q1 = self.page("Q1.html")
+        self.assertIn('<span class="rank-icon rank-preferred" title="Rank: preferred"></span>', q1)
+        self.assertIn('<span class="rank-icon rank-normal" title="Rank: normal"></span>', q1)
+
+        def deprecated(data: dict) -> None:
+            data["claims"]["P2"][0]["rank"] = "deprecated"
+        self.edit("Q1", deprecated)
+        self.build()
+        self.assertIn('<span class="rank-icon rank-deprecated" title="Rank: deprecated"></span>', self.page("Q1.html"))
+
+    def test_language_table_lists_default_second_and_every_other_language_present(self) -> None:
+        def terms(data: dict) -> None:
+            data["labels"]["fr"] = {"language": "fr", "value": "Site d'exemple"}
+            data["descriptions"]["xx-odd"] = {"language": "xx-odd", "value": "odd <b>text</b>"}
+            data["aliases"]["en"] = [{"language": "en", "value": "Sample site"}, {"language": "en", "value": "Test & demo"}]
+        self.edit("Q1", terms)
+        self.site_yaml("languages:\n  default: en\n  second: de\n")
+        self.build()
+        q1 = self.page("Q1.html")
+        table = q1[q1.index('<table class="terms">'):q1.index("</table>")]
+        rows = [r for r in table.split("<tr lang=")[1:]]
+        self.assertEqual([r[1:r.index('"', 1)] for r in rows], ["en", "de", "fr", "xx-odd"])      # default, second, the rest sorted
+        self.assertIn('<td><span class="l" lang="en">English</span><span class="l" lang="de">Englisch</span></td>', rows[0])
+        self.assertIn("Sample site | Test &amp; demo", rows[0])                                       # aliases joined, escaped
+        self.assertIn('<span class="muted"><span class="l" lang="en">No label defined</span><span class="l" lang="de">Keine Bezeichnung vorhanden</span></span>', rows[1])
+        self.assertIn("Site d&#39;exemple", rows[2])
+        self.assertIn("<td>xx-odd</td>", rows[3])                                                     # an unknown code stays as it is
+        self.assertIn("odd &lt;b&gt;text&lt;/b&gt;", rows[3])                                         # escaped
+        self.assertIn('<span class="l" lang="en">In other languages</span><span class="l" lang="de">In weiteren Sprachen</span>', q1)
+
+    def test_language_table_with_one_language_has_one_row_and_names_the_gap_only_for_the_second(self) -> None:
+        self.build()
+        q1 = self.page("Q1.html")
+        self.assertEqual(q1.count("<tr lang="), 1)
+        self.assertIn("<td>English</td>", q1)
+
+    def test_tabs_name_the_kind_and_link_to_the_original(self) -> None:
+        self.site_yaml("source:\n  url: https://wb.example\n")
+        self.build()
+        q1, p1, index = self.page("Q1.html"), self.page("P1.html"), self.page("index.html")
+        self.assertIn('<ul class="tabs-left"><li class="active"><span>Item</span></li></ul>', q1)
+        self.assertIn('<ul class="tabs-left"><li class="active"><span>Property</span></li></ul>', p1)
+        self.assertIn('<li class="active"><span>Read</span></li><li><a href="https://wb.example/entity/Q1" target="_blank" rel="noopener">Original</a></li>', q1)
+        self.assertIn('<ul class="tabs-left"><li class="active"><span>Home</span></li></ul>', index)
+        self.assertIn('<ul class="tabs-view"></ul>', index)
+
+    def test_without_a_source_there_is_no_original_tab(self) -> None:
+        self.build()
+        self.assertNotIn(">Original</a>", self.page("Q1.html"))
+
+    def test_tools_section_is_there_only_when_something_points_to_the_page(self) -> None:
+        self.build()
+        self.assertIn('<h3>Tools</h3>', self.page("Q2.html"))
+        self.assertIn('<a href="#incoming">Referenced by</a>', self.page("Q2.html"))
+        self.assertIn('<section class="incoming" id="incoming">', self.page("Q2.html"))
+        self.assertNotIn("<h3>Tools</h3>", self.page("Q1.html"))                                      # nothing points to Q1
+        self.assertNotIn('id="incoming"', self.page("Q1.html"))
+
+    def test_the_footer_sits_inside_the_content_column(self) -> None:
+        self.build()
+        q1 = self.page("Q1.html")
+        self.assertLess(q1.index('<div class="content">'), q1.index('<footer class="site-footer">'))
+        self.assertLess(q1.index('<footer class="site-footer">'), q1.index("</main>") + 200)
 
     def test_logo_and_navigation_sit_in_the_sidebar(self) -> None:
         self.build()

@@ -86,6 +86,12 @@ def emit(text: str, lines: list[str]) -> None:
     lines.append(text)
 
 
+def data_is_elsewhere() -> bool:
+    """True when WBS_ROOT names a directory other than this repository."""
+    root = os.environ.get("WBS_ROOT")
+    return bool(root) and Path(root).resolve() != ROOT
+
+
 def main(argv: list[str] | None = None) -> int:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -138,7 +144,11 @@ def main(argv: list[str] | None = None) -> int:
     # full default run writes it: a partial run would replace the report
     # with a different, shorter one and show up as a change in `git status`.
     full_run = not (args.verb or args.only or args.from_ or args.skip)
-    if full_run:
+    if full_run and data_is_elsewhere():
+        # WBS_ROOT points to a site repository: the steps worked on its data, so a report written here
+        # would describe that site, not this repository (and would be committed by mistake).
+        print(f"\nreport not written: WBS_ROOT={os.environ['WBS_ROOT']} is not this repository (unset it to write {REPORT.name})")
+    elif full_run:
         REPORT.parent.mkdir(parents=True, exist_ok=True)
         with open(REPORT, "w", encoding="utf-8", newline="\n") as handle:
             handle.write("\n".join(lines) + "\n")

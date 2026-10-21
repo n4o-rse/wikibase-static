@@ -1,13 +1,33 @@
 {% extends "base.html" %}
 {% from "_macros.html" import prop_link %}
+{% block sidebar_tools %}
+{% if incoming %}
+    <div class="nav-section">
+      <h3>{{ ui_tools }}</h3>
+      <nav class="nav">
+        <a href="#incoming">{{ ui_referenced_by_short }}</a>
+      </nav>
+    </div>
+{% endif %}
+{% endblock %}
+{% block tabs_left %}<li class="active"><span>{{ ui_kind }}</span></li>{% endblock %}
+{% block tabs_right %}<li class="active"><span>{{ ui_tab_read }}</span></li>{% if footer.original_url %}<li><a href="{{ footer.original_url }}" target="_blank" rel="noopener">{{ ui_tab_original }}</a></li>{% endif %}{% endblock %}
 {% block main %}
 <article class="entity">
-  <p class="kind">{{ ui_kind }}</p>
   <h1>{{ heading }}</h1>
   <p class="description">{% if description %}{{ description }}{% else %}<span class="muted">{{ ui_no_description }}</span>{% endif %}</p>
-  {% if aliases %}
-  <p class="aliases"><span class="muted">{{ ui_also_known_as }}:</span> {{ aliases }}</p>
-  {% endif %}
+
+  <details class="languages" open>
+    <summary>{{ ui_in_other_languages }}</summary>
+    <table class="terms">
+      <thead><tr><th>{{ ui_language }}</th><th>{{ ui_label }}</th><th>{{ ui_description }}</th><th>{{ ui_also_known_as }}</th></tr></thead>
+      <tbody>
+        {% for row in language_rows %}
+        <tr lang="{{ row.code }}"><td>{{ row.name }}</td><td>{{ row.label }}</td><td>{{ row.description }}</td><td>{{ row.aliases }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </details>
   {% if datatype_label %}
   <p class="datatype"><span class="muted">{{ ui_datatype }}:</span> {{ datatype_label }} <code>{{ datatype }}</code></p>
   {% endif %}
@@ -30,26 +50,31 @@
       <div class="values">
         {% for st in group.statements %}
         <div class="statement rank-{{ st.rank }}">
-          <div class="main">{{ st.value }}{% if st.rank == "preferred" %} <span class="rank rank-preferred">{{ ui_rank_preferred }}</span>{% elif st.rank == "deprecated" %} <span class="rank rank-deprecated">{{ ui_rank_deprecated }}</span>{% endif %}</div>
-          {% if st.qualifiers %}
-          <div class="qualifiers">
-            {% for q in st.qualifiers %}
-            <div class="qualifier"><span class="qprop">{{ prop_link(q) }}</span> <span class="qval">{{ q.value }}</span></div>
-            {% endfor %}
-          </div>
-          {% endif %}
-          {% if st.references %}
-          <details class="references">
-            <summary>{{ st.references_label }}</summary>
-            {% for reference in st.references %}
-            <div class="reference">
-              {% for part in reference %}
-              <span class="qprop">{{ prop_link(part) }}</span> <span class="qval">{{ part.value }}</span>{% if not loop.last %}; {% endif %}
+          <span class="rank-icon rank-{{ st.rank }}" title="{{ st.rank_title }}"></span>
+          <div class="body">
+            <div class="main">{{ st.value }}{% if st.rank == "preferred" %} <span class="rank rank-preferred">{{ ui_rank_preferred }}</span>{% elif st.rank == "deprecated" %} <span class="rank rank-deprecated">{{ ui_rank_deprecated }}</span>{% endif %}</div>
+            {% if st.qualifiers %}
+            <div class="qualifiers">
+              {% for q in st.qualifiers %}
+              <div class="qprop">{{ prop_link(q) }}</div><div class="qval">{{ q.value }}</div>
               {% endfor %}
             </div>
-            {% endfor %}
-          </details>
-          {% endif %}
+            {% endif %}
+            {% if st.references %}
+            <details class="references">
+              <summary>{{ st.references_label }}</summary>
+              {% for reference in st.references %}
+              <div class="reference">
+                {% for part in reference %}
+                <div class="qprop">{{ prop_link(part) }}</div><div class="qval">{{ part.value }}</div>
+                {% endfor %}
+              </div>
+              {% endfor %}
+            </details>
+            {% else %}
+            <div class="references zero"><span class="toggle">{{ st.references_label }}</span></div>
+            {% endif %}
+          </div>
         </div>
         {% endfor %}
       </div>
@@ -58,7 +83,7 @@
   </section>
 
   {% if incoming %}
-  <section class="incoming">
+  <section class="incoming" id="incoming">
     <details>
       <summary>{{ ui_referenced_by }}</summary>
       <ul>

@@ -181,7 +181,8 @@ def main(argv: list[str] | None = None) -> int:
             datatype_label = r.ui(f"dt_{entity.datatype}") if f"dt_{entity.datatype}" in _known_datatypes() else entity.datatype
         context = common(name, f"{title} – {cfg.title}", r.description_text(entity), r.footer(entity), points)
         context.update({
-            "heading": r.heading(entity.id), "description": r.description(entity), "aliases": r.aliases(entity),
+            "heading": r.heading(entity.id), "description": r.description(entity),
+            "language_rows": r.language_rows(entity),
             "ui_kind": r.ui("item" if entity.kind == "item" else "property"),
             "datatype": entity.datatype, "datatype_label": datatype_label,
             "points_json": json.dumps([{"lat": p.lat, "lon": p.lon, "text": p.text} for p in points],
@@ -189,6 +190,10 @@ def main(argv: list[str] | None = None) -> int:
             "ui_map_text": r.ui_text("map"), "groups": r.statement_groups(entity),
             "incoming": r.referenced_by(entity.id),
             "ui_no_description": r.ui("no_description"), "ui_also_known_as": r.ui("also_known_as"),
+            "ui_language": r.ui("language"), "ui_label": r.ui("label"), "ui_description": r.ui("description"),
+            "ui_in_other_languages": r.ui("in_other_languages"), "ui_tools": r.ui("tools"),
+            "ui_referenced_by_short": r.ui("referenced_by_short"), "ui_tab_read": r.ui("tab_read"),
+            "ui_tab_original": r.ui("tab_original"),
             "ui_datatype": r.ui("datatype"), "ui_map": r.ui("map"), "ui_statements": r.ui("statements"),
             "ui_no_statements": r.ui("no_statements"), "ui_rank_preferred": r.ui("rank_preferred"),
             "ui_rank_deprecated": r.ui("rank_deprecated"),
