@@ -34,7 +34,9 @@ class Site(unittest.TestCase):
 
     def setUp(self) -> None:
         self.tmp = tempfile.TemporaryDirectory()
-        self.root = Path(self.tmp.name)
+        # Resolved, like utils.ROOT is in production: on a Windows runner the temp directory sits under an 8.3 short
+        # name (C:\Users\RUNNER~1), and place_logo compares a resolved path with ROOT (CI run #1, PRIMER.md Befund 16).
+        self.root = Path(self.tmp.name).resolve()
         shutil.copytree(FIXTURES / "entities", self.root / "data" / "raw" / "entities")
         self.docs = self.root / "docs"
 
