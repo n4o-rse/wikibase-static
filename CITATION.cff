@@ -12,7 +12,7 @@ authors:
     given-names: Florian
     # orcid: "https://orcid.org/..."  # TODO: insert ORCID
 license: MIT
-version: "0.7.0"
+version: "0.8.0"
 repository-code: "https://github.com/n4o-rse/wikibase-static"
 # date-released: ""  # TODO: set when the first release is tagged
 # doi: ""            # TODO: add Zenodo DOI once minted

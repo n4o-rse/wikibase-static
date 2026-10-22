@@ -1,0 +1,10 @@
+dcat_class,crm_class,status,note
+Resource,crm:E1,fallback,"Too open as a target for the shapes: only a fallback, the check warns"
+Dataset,crm:E73,target,
+DatasetSeries,crm:E73,target,
+Distribution,crmdig:D1,target,
+Catalog,crm:E31 crmdig:D1,target,"A catalogue is a document; the catalogues of this export are digital, hence D1 as well"
+CatalogRecord,crm:E31 crmdig:D1,target,"As Catalog; E31 cannot tell it from a dataset, the export keeps the DCAT type for that"
+DataService,,none,"No equivalent in the CRM; not enforced"
+Relationship,crm:E89,proposal,"No direct equivalent; E89 Propositional Object is only a proposal"
+Role,crm:E55,target,

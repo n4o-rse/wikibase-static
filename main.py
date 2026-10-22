@@ -46,6 +46,7 @@ STEPS = [
     ("search", "step_search", True, "S5  build the search index"),
     ("rdf", "step_rdf", True, "S6  export RDF in the Wikibase data model"),
     ("sparql", "step_sparql", True, "S6  build the in-browser SPARQL page"),
+    ("check-crm", "step_check_crm", False, "S12 SHACL check: every class reaches the CIDOC CRM (after rdf)"),
 ]
 NAMES = [s[0] for s in STEPS]
 

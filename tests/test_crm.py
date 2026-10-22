@@ -120,7 +120,9 @@ class Inheriting(unittest.TestCase):
 class Exporting(unittest.TestCase):
     def test_the_class_says_subclass_of_the_crm_class_and_the_extension_is_aligned(self) -> None:
         result = rdf.build(csv_site(OVERLAY), rdf.Namespaces(BASE))
-        triples = {(s.value, p.value, o.value) for s, p, o in result.crm}
+        # the anchoring itself: the class and the chain; the DCAT classes and the spelled-out class tree are tested in test_check_crm.py
+        triples = {(s.value, p.value, o.value) for s, p, o in result.crm
+                   if s.value == BASE + "/entity/Q100" or s.value.startswith("http://www.cidoc-crm.org/")}
         self.assertEqual(triples, {(BASE + "/entity/Q100", RDFS + "subClassOf", D14), (D14, RDFS + "subClassOf", D1), (D1, RDFS + "subClassOf", E73)})
         self.assertTrue(result.crm <= result.triples)
         self.assertEqual(set(result.by_entity["Q100"]) & result.crm, {t for t in result.crm if t[0] == rdf.Iri(BASE + "/entity/Q100")})

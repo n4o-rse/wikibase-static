@@ -76,7 +76,8 @@ OBJECT_DATATYPES = frozenset({"wikibase-item", "wikibase-property", "url", "comm
 BRIDGE_PROPERTIES = {"P1": RDFS + "subClassOf", "P2": RDF + "type", "P3": RDFS + "subPropertyOf"}
 BRIDGE_CLASSES = {"Q1": RDFS + "Class", "Q2": RDF + "Property", "Q3": OWL + "Thing"}
 CRM_TITLE = ("CIDOC CRM anchoring (wikibase-static): the classes of this site tied to classes of the CIDOC CRM and its extensions "
-             "(data/crm.csv),\nwith the superclasses of an extension class up to its first class of the CIDOC CRM. Not part of the Wikibase data model.")
+             "(data/crm.csv) and the DCAT classes of this file (data/dcat-crm.csv),\nwith the superclasses of an extension class up to its first "
+             "class of the CIDOC CRM, and subclass of / instance of spelled out as rdfs:subClassOf / rdf:type. Not part of the Wikibase data model.")
 BRIDGE_TITLE = ("RDFS bridge of the kernel (wikibase-static): the direct properties P1 to P3 and the classes Q1 to Q3 "
                 "tied to RDFS and OWL.\nNot part of the Wikibase data model; written only when the kernel is part of the site.")
 
@@ -656,6 +657,40 @@ class _Builder:
                 self.out.triples.add(link)
                 self.out.crm.add(link)
 
+    def spell_out(self) -> None:
+        """With an overlay: ``subclass of`` (P1) and ``instance of`` (P2) of the kernel written as plain ``rdfs:subClassOf``
+        and ``rdf:type`` (S12). The bridge only says ``wdt:P1 rdfs:subPropertyOf rdfs:subClassOf``, which a reader without
+        inference (the N4O profile measures anchoring that way) does not see. Edges to Q1 to Q3 are left out (they are
+        the kernel, not classes of the domain) and so are the kernel items themselves."""
+        if not self.site.crm or not self.site.has_kernel():
+            return
+        kernel = {"Q1", "Q2", "Q3"}
+        for entity in self.site.entities.values():
+            if entity.id in kernel or not entity.id.startswith("Q"):
+                continue
+            for statement in entity.statements:
+                snak = statement.mainsnak
+                target = snak.entity_id
+                if snak.property not in ("P1", "P2") or not target or target in kernel or not target.startswith("Q"):
+                    continue
+                predicate = Iri(RDFS + "subClassOf") if snak.property == "P1" else self._a()
+                triple = (self._wd(entity.id), predicate, self._wd(target))
+                self.out.triples.add(triple)
+                self.out.crm.add(triple)
+
+    def align_dcat(self) -> None:
+        """The DCAT classes this export uses, tied to the CRM by the package table ``data/dcat-crm.csv`` (S12)."""
+        used = {o.value for _s, p, o in self.out.triples if isinstance(o, Iri) and isinstance(p, Iri)
+                and p.value == RDF + "type" and o.value.startswith(DCAT)}
+        table = crm.read_dcat_table()
+        for child, parent in crm.dcat_alignment(used, table):
+            link = (Iri(child), Iri(RDFS + "subClassOf"), Iri(parent))
+            self.out.triples.add(link)
+            self.out.crm.add(link)
+        left = sorted(u[len(DCAT):] for u in used if not table.get(u[len(DCAT):], ([], "none"))[0])
+        if left:
+            self.out.notes.append(f"DCAT classes without a CRM class (data/dcat-crm.csv): {', '.join(left)}")
+
     # ---- DCAT
 
     def _dcat(self, name: str) -> Iri:
@@ -818,11 +853,16 @@ def build(site: Site, ns: Namespaces, license_url: str | None = None, catalog: C
         builder.catalogue()
         if not catalog.pages_url:
             builder.out.notes.append("no pages_url in site.yaml: the datasets have no distributions (a distribution needs a download URL)")
+    builder.spell_out()
+    if catalog is not None:
+        builder.align_dcat()
     if builder.out.bridge:
         builder.out.notes.append(f"the kernel is part of the site: {len(builder.out.bridge)} RDFS bridge triples written (own section in the Turtle file)")
     if builder.out.crm:
         classes = sum(1 for c in site.crm if site.crm[c])
-        builder.out.notes.append(f"CIDOC CRM: {classes} class(es) anchored by data/crm.csv, {len(builder.out.crm)} triples written (own section in the Turtle file)")
+        what = (f"{classes} class(es) anchored by data/crm.csv; {len(builder.out.crm)} triples written for them, the class tree, the types and the DCAT classes"
+                if site.crm else f"no data/crm.csv; {len(builder.out.crm)} triples tie the DCAT classes of the export to the CRM")
+        builder.out.notes.append(f"CIDOC CRM: {what} (own section in the Turtle file)")
     if builder.out.federated:
         builder.out.notes.append(f"{builder.out.federated} value(s) of Wikidata properties (wd:P...) are linked on the pages, not exported")
     problems = set(builder.problems)

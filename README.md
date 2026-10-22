@@ -193,6 +193,12 @@ root class anchors the whole tree; an own row comes before an inherited one, and
 (D14 to D1 to E73), so that tools which follow `rdfs:subClassOf` to CIDOC CRM reach it. The default query `crm-classes`
 lists the result. Without `data/crm.csv` nothing changes. The overlay needs the kernel (Q1 to Q3, P1, P2) of a site made by `from-csv`.
 
+The export also ties the DCAT classes it uses to the CRM (`data/dcat-crm.csv` of the package: `dcat:Dataset` is an E73, `dcat:Catalog` an
+E31 and a D1, `dcat:Distribution` a D1) and, with an overlay, writes `subclass of` / `instance of` as plain `rdfs:subClassOf` / `rdf:type`,
+because the N4O profile does not infer. `python main.py check-crm` (not part of the default run) validates `dist/<host>.ttl` with pySHACL
+against `data/shapes-crm.ttl`: a class of the site or a DCAT class that reaches no CIDOC CRM class over `rdfs:subClassOf` is a violation
+(`WARN`, so `--strict` stops), one that reaches only E1 is a warning.
+
 ## Continuous integration
 
 Two workflows live in `.github/workflows/`:

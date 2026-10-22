@@ -396,7 +396,7 @@ class DcatTests(unittest.TestCase):
 
     def test_the_entity_files_together_cover_every_entity_triple(self) -> None:
         union = set().union(*self.result.by_entity.values())
-        catalogue = {t for t in self.result.triples if t not in union}
+        catalogue = {t for t in self.result.triples if t not in union and t not in self.result.crm}      # the CRM section is its own
         own = (NS.cat.rstrip("/"), NS.dist + "export", NS.dist + "wikibase-ontology")
         self.assertTrue(catalogue)
         self.assertTrue(all(t[0].value.startswith(own) for t in catalogue), [t for t in catalogue if not t[0].value.startswith(own)][:3])

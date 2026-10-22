@@ -1,0 +1,61 @@
+# SHACL shapes of wikibase-static for the CIDOC CRM anchoring (S12). @@base@@ is replaced by the base URI of the site.
+# The rule is that of n4o-kg-profile (build/make_metadata.py, crm_anchor): follow rdfs:subClassOf, without inference,
+# until a class of the CIDOC CRM namespaces is reached ("http://www.cidoc-crm.org/cidoc-crm/", "http://www.cidoc-crm.org/extensions/").
+# Checked are the classes of the site (@@base@@/entity/...) and the DCAT classes of the export; Q1 to Q3 are the kernel.
+
+@prefix sh:   <http://www.w3.org/ns/shacl#> .
+@prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+@prefix wbsc: <https://w3id.org/nfdi4objects/wikibase-static/crm#> .
+
+wbsc:
+    sh:declare [ sh:prefix "rdf" ; sh:namespace "http://www.w3.org/1999/02/22-rdf-syntax-ns#"^^xsd:anyURI ] ,
+               [ sh:prefix "rdfs" ; sh:namespace "http://www.w3.org/2000/01/rdf-schema#"^^xsd:anyURI ] ,
+               [ sh:prefix "crm" ; sh:namespace "http://www.cidoc-crm.org/cidoc-crm/"^^xsd:anyURI ] .
+
+wbsc:ClassIsAnchoredShape
+    a sh:NodeShape ;
+    sh:targetObjectsOf rdf:type ;
+    sh:targetSubjectsOf rdfs:subClassOf ;
+    sh:targetObjectsOf rdfs:subClassOf ;
+    sh:targetSubjectsOf <@@base@@/prop/direct/P1> ;
+    sh:targetObjectsOf <@@base@@/prop/direct/P1> , <@@base@@/prop/direct/P2> ;
+    sh:severity sh:Violation ;
+    sh:sparql [
+        a sh:SPARQLConstraint ;
+        sh:prefixes wbsc: ;
+        sh:message "{$this} reaches no class of the CIDOC CRM over rdfs:subClassOf (add it to data/crm.csv or put it below a class that has a row)." ;
+        sh:select """
+            SELECT $this WHERE {
+              FILTER ( STRSTARTS(STR($this), "@@base@@/entity/") || STRSTARTS(STR($this), "http://www.w3.org/ns/dcat#") )
+              FILTER ( $this NOT IN ( <@@base@@/entity/Q1>, <@@base@@/entity/Q2>, <@@base@@/entity/Q3> ) )
+              FILTER NOT EXISTS {
+                $this rdfs:subClassOf* ?anchor .
+                FILTER ( STRSTARTS(STR(?anchor), "http://www.cidoc-crm.org/cidoc-crm/") || STRSTARTS(STR(?anchor), "http://www.cidoc-crm.org/extensions/") )
+              }
+            }""" ] .
+
+wbsc:ClassIsMoreThanE1Shape
+    a sh:NodeShape ;
+    sh:targetObjectsOf rdf:type ;
+    sh:targetSubjectsOf rdfs:subClassOf ;
+    sh:targetObjectsOf rdfs:subClassOf ;
+    sh:targetSubjectsOf <@@base@@/prop/direct/P1> ;
+    sh:targetObjectsOf <@@base@@/prop/direct/P1> , <@@base@@/prop/direct/P2> ;
+    sh:severity sh:Warning ;
+    sh:sparql [
+        a sh:SPARQLConstraint ;
+        sh:prefixes wbsc: ;
+        sh:message "{$this} is anchored only in E1 CRM Entity, which is too open to say anything (a fallback)." ;
+        sh:select """
+            SELECT $this WHERE {
+              FILTER ( STRSTARTS(STR($this), "@@base@@/entity/") || STRSTARTS(STR($this), "http://www.w3.org/ns/dcat#") )
+              FILTER ( $this NOT IN ( <@@base@@/entity/Q1>, <@@base@@/entity/Q2>, <@@base@@/entity/Q3> ) )
+              $this rdfs:subClassOf* crm:E1_CRM_Entity .
+              FILTER NOT EXISTS {
+                $this rdfs:subClassOf* ?anchor .
+                FILTER ( ( STRSTARTS(STR(?anchor), "http://www.cidoc-crm.org/cidoc-crm/") || STRSTARTS(STR(?anchor), "http://www.cidoc-crm.org/extensions/") )
+                         && ?anchor != crm:E1_CRM_Entity )
+              }
+            }""" ] .

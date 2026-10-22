@@ -58,6 +58,10 @@ _CODE = re.compile(r"^(?P<prefix>[a-z]+):(?P<name>[A-Za-z][A-Za-z0-9]*(?:_[A-Za-
 _SHORT = re.compile(r"^[A-Za-z]+[0-9]+[a-z]?$")
 ENTITY_ID = re.compile(r"^Q[1-9][0-9]*$")
 COLUMNS = ["class", "crm_class", "note"]
+DCAT = "http://www.w3.org/ns/dcat#"
+DCAT_FILE = Path(__file__).resolve().parent / "data" / "dcat-crm.csv"
+DCAT_COLUMNS = ["dcat_class", "crm_class", "status", "note"]
+DCAT_STATUS = ("target", "fallback", "proposal", "none")
 OVERLAY_FILE = "data/crm.csv"
 
 
@@ -169,3 +173,45 @@ def anchors(overlay: dict[str, list[str]], edges: dict[str, list[str]], entity_i
                 seen.add(curie)
                 found.append(Anchor(curie, carrier))
     return found
+
+
+# ---- DCAT -> CRM (A4 "DCAT -> CRM", S12)
+
+
+def read_dcat_table(path: Path | None = None) -> dict[str, tuple[list[str], str]]:
+    """``data/dcat-crm.csv`` of the package: DCAT class name -> (its CRM classes as full curies, status).
+
+    The status is ``target`` (a class the shapes accept), ``fallback`` (``dcat:Resource`` to E1: accepted with a warning),
+    ``proposal`` (not a settled equivalent) or ``none`` (no equivalent, nothing is written or enforced). A broken table
+    is a bug of the package, so it raises."""
+    path = DCAT_FILE if path is None else path
+    with path.open(encoding="utf-8", newline="") as handle:
+        reader = csv.DictReader(handle)
+        if reader.fieldnames != DCAT_COLUMNS:
+            raise ValueError(f"{path.name}: columns must be {','.join(DCAT_COLUMNS)}")
+        table: dict[str, tuple[list[str], str]] = {}
+        for row in reader:
+            name, status = row["dcat_class"].strip(), row["status"].strip()
+            if status not in DCAT_STATUS or name in table:
+                raise ValueError(f"{path.name}: bad status or duplicate row for {name!r}")
+            codes = [full_name(code) for code in row["crm_class"].split()]
+            if bool(codes) == (status == "none"):
+                raise ValueError(f"{path.name}: {name} has status {status} and {len(codes)} CRM class(es)")
+            table[name] = (codes, status)
+    return table
+
+
+def dcat_alignment(used: set[str], table: dict[str, tuple[list[str], str]] | None = None) -> list[tuple[str, str]]:
+    """``(subclass, superclass)`` IRI pairs that tie the DCAT classes in ``used`` (IRIs) to the CRM: the class to each of
+    its CRM classes, then the chain of an extension class up to its first ``crm:`` class. Classes without a row or with
+    status ``none`` give nothing, and the shapes then report them."""
+    table = read_dcat_table() if table is None else table
+    pairs: list[tuple[str, str]] = []
+    for name in sorted(table):
+        codes, _status = table[name]
+        if DCAT + name not in used:
+            continue
+        for code in codes:
+            pairs.append((DCAT + name, iri(code)))
+            pairs.extend(chain(code))
+    return sorted(set(pairs))
