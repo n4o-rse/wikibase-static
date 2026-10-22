@@ -173,7 +173,8 @@ class BuildTests(Site):
         code, out = self.build()
         self.assertEqual(code, 0)
         self.assertEqual(sorted(p.name for p in self.docs.glob("*.html")),
-                         sorted(["index.html", "Q1.html", "Q2.html"] + [f"P{n}.html" for n in range(1, 11)]))
+                         sorted(["index.html", "items.html", "properties.html", "overview.html", "Q1.html", "Q2.html"]
+                                + [f"P{n}.html" for n in range(1, 11)]))
         self.assertIn("[build] 12 entities -> 12 entity pages + index.html in docs/ (difference 0)", out)
         self.assertIn("0 dead", out)
         self.assertNotIn("WARN", out)
@@ -426,10 +427,11 @@ class BuildTests(Site):
         q1 = self.page("Q1.html")
         self.assertIn('<aside class="sidebar">', q1)
         self.assertIn('<span class="logo-text">Wikibase archive</span>', q1)       # no logo: the title takes its place
-        self.assertIn('href="index.html#items"', q1)
-        self.assertIn('href="index.html#properties"', q1)
-        self.assertIn('<section id="items">', self.page("index.html"))
-        self.assertIn('<section id="properties">', self.page("index.html"))
+        self.assertIn('href="items.html"', q1)
+        self.assertIn('href="overview.html"', q1)
+        self.assertIn('href="properties.html"', q1)
+        self.assertLess(q1.index('href="items.html"'), q1.index('href="overview.html"'))        # the overview follows the items
+        self.assertLess(q1.index('href="overview.html"'), q1.index('href="properties.html"'))
 
     def test_referenced_by_lists_who_points_here(self) -> None:
         self.build()
@@ -444,8 +446,37 @@ class BuildTests(Site):
         index = self.page("index.html")
         self.assertIn("<h1>Demo</h1>", index)
         self.assertIn("12 entities (2 items, 10 properties)", index)
-        self.assertIn('<td class="id">Q1</td><td><a href="Q1.html">Example site</a></td>', index)   # the id has its own column
-        self.assertIn('<a href="P10.html">related property</a>', index)
+        self.assertIn('<a href="items.html">Items</a> <span class="muted">(2)</span>', index)
+        self.assertIn('<a href="properties.html">Properties</a> <span class="muted">(10)</span>', index)
+        self.assertNotIn('<table class="list">', index)                                           # the lists have pages of their own
+
+    def test_items_and_properties_have_their_own_pages(self) -> None:
+        self.build()
+        items, props = self.page("items.html"), self.page("properties.html")
+        self.assertIn('<td class="id">Q1</td><td><a href="Q1.html">Example site</a></td>', items)   # the id has its own column
+        self.assertNotIn("P10.html", items.split("<main>")[1])
+        self.assertIn('<a href="P10.html">related property</a>', props)
+        self.assertIn('<a href="items.html" aria-current="page">Items</a>', items)
+        self.assertIn('<a href="properties.html" aria-current="page">Properties</a>', props)
+
+    def test_overview_groups_the_items_by_class_and_shares_one_map(self) -> None:
+        self.build()
+        page = self.page("overview.html")
+        self.assertIn('<a href="overview.html" aria-current="page">Overview</a>', page)
+        self.assertIn('<section id="class-Q2">', page)                      # Q1 is an instance of Q2 (P1 is "instance of" here)
+        self.assertIn('<a href="#class-Q2">Example class</a> <span class="muted">1 instance</span>', page)
+        self.assertIn('<td class="id">Q1</td><td><a href="Q1.html">Example site</a></td>', page.split('id="class-Q2"')[1])
+        self.assertIn("&#34;href&#34;:&#34;Q1.html&#34;", page)                             # the map points to the page of the instance
+        self.assertIn("&#34;text&#34;:&#34;Example site&#34;", page)
+        self.assertIn("assets/map.js", page)
+
+    def test_without_an_instance_of_property_there_is_no_overview(self) -> None:
+        def rename(data: dict) -> None:
+            data["labels"]["en"]["value"] = "kind of"
+        self.edit("P1", rename)
+        self.build()
+        self.assertFalse((self.docs / "overview.html").exists())
+        self.assertNotIn("overview.html", self.page("Q1.html"))
 
     def test_property_page_shows_the_datatype(self) -> None:
         self.build()

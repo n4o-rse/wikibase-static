@@ -5,7 +5,9 @@
 Reads data/raw/ and data/derived/ (through ``loader.load_site``) and ``site.yaml``
 and writes, flat in docs/ (PRIMER.md, A4 "Seiten-URL-Schema")::
 
-    docs/index.html        start page: title, description, list of items and properties
+    docs/index.html        start page: title, description, counts, links to the three lists below
+    docs/items.html        all items;  docs/properties.html  all properties
+    docs/overview.html     the items grouped by class (instance of), one section and one map per class
     docs/Q123.html         one page per item
     docs/P1.html           one page per property
     docs/assets/           style.css, app.js (language switch), map.js, vendor/leaflet, logo
@@ -131,6 +133,7 @@ def logo_href(logo: str | None) -> str | None:
 def page_context(site: Any, cfg: Any, r: Any, logo: str | None):
     """The function that makes the context every page shares (title, strings, navigation, footer)."""
     base_url = (cfg.pages_url.rstrip("/") + "/") if cfg.pages_url else None
+    has_overview = bool(r.class_groups())
 
     def common(page: str, title: str, description: str | None, footer: dict[str, Any],
                map_points: list[Any] | None = None) -> dict[str, Any]:
@@ -145,7 +148,8 @@ def page_context(site: Any, cfg: Any, r: Any, logo: str | None):
             "ui_home": r.ui("home"), "ui_home_text": r.ui_text("home"), "ui_items": r.ui("items"), "ui_properties": r.ui("properties"),
             "ui_sparql": r.ui("sparql"), "ui_query": r.ui("query"), "has_sparql": True, "page_name": page,
             "search_text": r.ui_text("search"), "search_texts": r.search_texts_json(),
-            "has_items": bool(site.items), "has_properties": bool(site.properties),
+            "has_items": bool(site.items), "has_properties": bool(site.properties), "has_overview": has_overview,
+            "ui_overview": r.ui("overview"),
         }
     return common
 
@@ -210,10 +214,11 @@ def main(argv: list[str] | None = None) -> int:
 
     expected: set[str] = set()
     pages_with_map = markers = 0
+    points_of: dict[str, list[Any]] = {}
     for entity in site.entities.values():
         name = f"{entity.id}.html"
         expected.add(name)
-        points = r.map_points(entity)
+        points = points_of[entity.id] = r.map_points(entity)
         pages_with_map += bool(points)
         markers += len(points)
         label = r.label_text(entity.id)
@@ -247,17 +252,51 @@ def main(argv: list[str] | None = None) -> int:
         })
         utils.write_text(docs / name, env.get_template("entity.html").render(context))
 
-    sections = []
-    for title_key, entities in (("items", site.items), ("properties", site.properties)):
-        rows = [{"id": e.id, "link": r.entity_link(e.id, show_id=False), "description": r.description(e)}
+    def rows_of(entities: list[Any]) -> list[dict[str, Any]]:
+        return [{"id": e.id, "link": r.entity_link(e.id, show_id=False), "description": r.description(e)}
                 for e in sorted(entities, key=lambda e: id_sort_key(e.id))]
-        if rows:
-            sections.append({"id": title_key, "title": r.ui(title_key), "rows": rows})
+
+    groups = r.class_groups()
+    page_links = []
+    list_pages = []
+    for name, key, entities in (("items.html", "items", site.items), ("properties.html", "properties", site.properties)):
+        if entities:
+            list_pages.append((name, key, entities))
+    for name, key, entities in list_pages:
+        page_links.append({"href": name, "title": r.ui(key), "note": f"({len(entities)})"})
+        if key == "items" and groups:
+            page_links.append({"href": "overview.html", "title": r.ui("overview"), "note": f"({len(groups)})"})
+    if not any(link["href"] == "items.html" for link in page_links) and groups:
+        page_links.append({"href": "overview.html", "title": r.ui("overview"), "note": f"({len(groups)})"})
+    for name, key, entities in list_pages:
+        listing = common(name, f"{r.ui_text(key)} – {cfg.title}", None, r.footer(None))
+        listing.update({"list_title": r.ui(key), "list_intro": r.ui(f"{key}_intro"), "rows": rows_of(entities),
+                        "ui_id": r.ui("id"), "ui_label": r.ui("label"), "ui_description": r.ui("description")})
+        utils.write_text(docs / name, env.get_template("list.html").render(listing))
+    if groups:
+        overview = common("overview.html", f"{r.ui_text('overview')} – {cfg.title}", None, r.footer(None))
+        view_groups = []
+        for group in groups:
+            class_entity = site.entities[group["id"]]
+            points = []
+            for entity in group["instances"]:
+                for p in points_of.get(entity.id, []):
+                    points.append({"lat": p.lat, "lon": p.lon, "text": r.label_text(entity.id), "href": f"{entity.id}.html"})
+            count = r.ui("instances_one") if len(group["instances"]) == 1 else r.ui("instances_n", n=len(group["instances"]))
+            view_groups.append({
+                "id": group["id"], "title": r.label(group["id"]), "link": r.entity_link(group["id"], show_id=False),
+                "count": count, "description": r.description(class_entity), "rows": rows_of(group["instances"]),
+                "points_json": json.dumps(points, ensure_ascii=False, separators=(",", ":")) if points else None,
+                "map_text": r.ui_text("overview_map", **{"class": r.label_text(group["id"])}),
+            })
+        overview["leaflet"] = any(g["points_json"] for g in view_groups)
+        overview.update({"groups": view_groups, "overview_intro": r.ui("overview_intro"),
+                         "ui_id": r.ui("id"), "ui_label": r.ui("label"), "ui_description": r.ui("description")})
+        utils.write_text(docs / "overview.html", env.get_template("overview.html").render(overview))
     index = common("index.html", cfg.title, cfg.description or None, r.footer(None))
     index.update({
-        "site_description": cfg.description, "sections": sections,
+        "site_description": cfg.description, "page_links": page_links,
         "ui_counts": r.ui("entities_n", n=len(site.entities), items=len(site.items), properties=len(site.properties)),
-        "ui_id": r.ui("id"), "ui_label": r.ui("label"), "ui_description": r.ui("description"),
     })
     expected.add("index.html")
     utils.write_text(docs / "index.html", env.get_template("index.html").render(index))

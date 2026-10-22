@@ -218,3 +218,8 @@ button.link { font: inherit; padding: 0; border: 0; background: none; color: var
 .copy-uri { font: inherit; color: var(--link); background: none; border: 0; padding: 0; cursor: pointer; }
 .copy-uri:hover, .copy-uri:focus-visible { text-decoration: underline; }
 .copy-uri[hidden], .copy-done[hidden], .copy-label[hidden] { display: none; }
+
+.page-links { list-style: none; padding: 0; margin: 1rem 0; display: flex; flex-wrap: wrap; gap: 0.4rem 1.4rem; }
+.overview section { margin-top: 1.8rem; }
+.overview .wbs-map { margin: 0.6rem 0 1rem; }
+.overview h2 .count { font-size: 0.8rem; font-weight: normal; }

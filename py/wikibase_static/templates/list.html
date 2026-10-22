@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block tabs_left %}<li class="active"><span>{{ list_title }}</span></li>{% endblock %}
+{% block main %}
+<article class="index">
+  <h1>{{ list_title }}</h1>
+  <p class="description">{{ list_intro }}</p>
+  <table class="list">
+    <thead><tr><th>{{ ui_id }}</th><th>{{ ui_label }}</th><th>{{ ui_description }}</th></tr></thead>
+    <tbody>
+      {% for row in rows %}
+      <tr><td class="id">{{ row.id }}</td><td>{{ row.link }}</td><td>{% if row.description %}{{ row.description }}{% endif %}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</article>
+{% endblock %}

@@ -13,7 +13,13 @@
     }).addTo(map);
     var bounds = [];
     points.forEach(function (p) {
-      L.marker([p.lat, p.lon]).addTo(map).bindTooltip(p.text);
+      var marker = L.marker([p.lat, p.lon]).addTo(map).bindTooltip(p.text);
+      if (p.href) {
+        var link = document.createElement("a");
+        link.href = p.href;
+        link.textContent = p.text;
+        marker.bindPopup(link);
+      }
       bounds.push([p.lat, p.lon]);
     });
     if (bounds.length === 1) { map.setView(bounds[0], 13); } else { map.fitBounds(bounds, { padding: [24, 24], maxZoom: 14 }); }

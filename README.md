@@ -73,8 +73,11 @@ and warnings (`--all` prints every warning). It writes nothing and runs with the
 python main.py load
 ```
 
-`build` renders the loaded entities into `docs/`: `index.html`, one flat page per entity (`Q123.html`,
-`P1.html`) and `assets/`. It needs no network. The pages are laid out like a Wikibase: a sidebar with the
+`build` renders the loaded entities into `docs/`: `index.html` (title, description, counts), `items.html` and
+`properties.html` (the lists), `overview.html` (the items grouped by the class they are an instance of, one
+section per class, with a map of the instances that have coordinates; it appears when the site has an
+"instance of" property: `P2` with the kernel, otherwise the property labelled "instance of"), one flat page per
+entity (`Q123.html`, `P1.html`) and `assets/`. It needs no network. The pages are laid out like a Wikibase: a sidebar with the
 logo and a short navigation, tabs, a table of labels, descriptions and aliases per language, and one box
 per property with its statements (rank, value, qualifiers as label and value pairs, references behind a
 "N references" toggle). Links between Q- and P-ids show the id behind the label, external links open in a

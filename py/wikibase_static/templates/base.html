@@ -28,8 +28,9 @@ html[data-lang="{{ second }}"] .l:not([lang="{{ second }}"]) { display: none; }
     <a class="logo" href="index.html">{% if logo %}<img src="{{ logo }}" alt="{{ site_title }}">{% else %}<span class="logo-text">{{ site_title }}</span>{% endif %}</a>
     <nav class="nav" aria-label="{{ ui_home_text }}">
       <a href="index.html">{{ ui_home }}</a>
-      {% if has_items %}<a href="index.html#items">{{ ui_items }}</a>{% endif %}
-      {% if has_properties %}<a href="index.html#properties">{{ ui_properties }}</a>{% endif %}
+      {% if has_items %}<a href="items.html"{% if page_name == "items.html" %} aria-current="page"{% endif %}>{{ ui_items }}</a>{% endif %}
+      {% if has_overview %}<a href="overview.html"{% if page_name == "overview.html" %} aria-current="page"{% endif %}>{{ ui_overview }}</a>{% endif %}
+      {% if has_properties %}<a href="properties.html"{% if page_name == "properties.html" %} aria-current="page"{% endif %}>{{ ui_properties }}</a>{% endif %}
       {% if has_sparql %}<a href="sparql.html"{% if page_name == "sparql.html" %} aria-current="page"{% endif %}>{{ ui_sparql }}</a>{% endif %}
       {% if has_sparql %}<a href="query.html"{% if page_name == "query.html" %} aria-current="page"{% endif %}>{{ ui_query }}</a>{% endif %}
     </nav>

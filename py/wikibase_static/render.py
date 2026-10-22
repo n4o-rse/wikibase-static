@@ -54,6 +54,9 @@ STRINGS: dict[str, dict[str, str]] = {
         "rank": "Rank", "rank_normal": "normal",
         "no_value": "no value", "rank_preferred": "preferred", "rank_deprecated": "deprecated",
         "datatype": "Data type", "referenced_by": "Referenced by ({n})", "items": "Items", "properties": "Properties",
+        "overview": "Overview", "overview_intro": "The items of this site, grouped by the class they are an instance of. An item with several classes appears under each of them.",
+        "instances_n": "{n} instances", "instances_one": "1 instance", "overview_map": "Map of the instances of {class}", "index_lists": "Lists",
+        "items_intro": "All items of this site.", "properties_intro": "All properties of this site.",
         "id": "ID", "label": "Label", "description": "Description", "source": "Source", "as_of": "As of",
         "license": "Licence", "license_missing": "Licence not stated", "imprint": "Imprint",
         "generated": "Static read-only copy, generated with", "map": "Map", "item": "Item", "property": "Property",
@@ -103,6 +106,9 @@ STRINGS: dict[str, dict[str, str]] = {
         "rank": "Rang", "rank_normal": "normal",
         "no_value": "kein Wert", "rank_preferred": "bevorzugt", "rank_deprecated": "veraltet",
         "datatype": "Datentyp", "referenced_by": "Verwendet von ({n})", "items": "Items", "properties": "Properties",
+        "overview": "Übersicht", "overview_intro": "Die Items dieser Seite, gruppiert nach der Klasse, deren Instanz sie sind. Ein Item mit mehreren Klassen erscheint unter jeder von ihnen.",
+        "instances_n": "{n} Instanzen", "instances_one": "1 Instanz", "overview_map": "Karte der Instanzen von {class}", "index_lists": "Listen",
+        "items_intro": "Alle Items dieser Seite.", "properties_intro": "Alle Properties dieser Seite.",
         "id": "ID", "label": "Bezeichnung", "description": "Beschreibung", "source": "Quelle", "as_of": "Stand",
         "license": "Lizenz", "license_missing": "Lizenz nicht angegeben", "imprint": "Impressum",
         "generated": "Statische Nur-Lese-Kopie, erzeugt mit", "map": "Karte", "item": "Item", "property": "Property",
@@ -548,6 +554,40 @@ class Renderer:
             if not any((p.lat, p.lon) == point for p in points):
                 points.append(MapPoint(point[0], point[1], text))
         return points
+
+    # ---- overview: instances by class
+
+    def instance_property(self) -> str | None:
+        """The property that says "instance of": P2 where the kernel is part of the site, otherwise the property whose
+        English label is "instance of" (a harvested Wikibase has its own number, often P31); ``None`` when there is none."""
+        if self.site.has_kernel():
+            return "P2"
+        for entity in sorted(self.site.properties, key=lambda e: id_sort_key(e.id)):
+            if entity.labels.get("en", "").strip().lower() == "instance of":
+                return entity.id
+        return None
+
+    def class_groups(self) -> list[dict[str, Any]]:
+        """Classes with at least one direct instance, each with its instances, both in id order. The classes of the
+        kernel (Q1 to Q3) are left out, and so are properties: the page is about the items of the domain."""
+        prop = self.instance_property()
+        if prop is None:
+            return []
+        kernel = {"Q1", "Q2", "Q3"} if prop == "P2" else set()
+        members: dict[str, list[Entity]] = {}
+        for entity in self.site.items:
+            seen: set[str] = set()
+            for statement in entity.statements:
+                target = statement.mainsnak.entity_id
+                if (statement.mainsnak.property == prop and target and target not in kernel and target not in seen
+                        and target in self.site.entities):
+                    seen.add(target)
+                    members.setdefault(target, []).append(entity)
+        groups = []
+        for class_id in sorted(members, key=id_sort_key):
+            instances = sorted(members[class_id], key=lambda e: id_sort_key(e.id))
+            groups.append({"id": class_id, "instances": instances})
+        return groups
 
     # ---- who points here
 

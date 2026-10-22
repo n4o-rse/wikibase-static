@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block tabs_left %}<li class="active"><span>{{ ui_overview }}</span></li>{% endblock %}
+{% block main %}
+<article class="index overview">
+  <h1>{{ ui_overview }}</h1>
+  <p class="description">{{ overview_intro }}</p>
+  <ul class="page-links class-links">
+    {% for group in groups %}
+    <li><a href="#class-{{ group.id }}">{{ group.title }}</a> <span class="muted">{{ group.count }}</span></li>
+    {% endfor %}
+  </ul>
+  {% for group in groups %}
+  <section id="class-{{ group.id }}">
+    <h2>{{ group.link }} <span class="muted count">{{ group.count }}</span></h2>
+    {% if group.description %}<p class="description">{{ group.description }}</p>{% endif %}
+    {% if group.points_json %}
+    <div class="wbs-map" data-points="{{ group.points_json }}" role="img" aria-label="{{ group.map_text }}"></div>
+    {% endif %}
+    <table class="list">
+      <thead><tr><th>{{ ui_id }}</th><th>{{ ui_label }}</th><th>{{ ui_description }}</th></tr></thead>
+      <tbody>
+        {% for row in group.rows %}
+        <tr><td class="id">{{ row.id }}</td><td>{{ row.link }}</td><td>{% if row.description %}{{ row.description }}{% endif %}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+  {% endfor %}
+</article>
+{% endblock %}
