@@ -8,3 +8,4 @@ PyYAML>=6      # S3: site.yaml
 Jinja2>=3.1    # S3: page templates
 # S4 (harvest) uses urllib from the standard library; no requests needed.
 rdflib>=7      # S6: reads the Turtle back and runs the example queries of the query page
+pyshacl>=0.26  # S12: check-crm validates the export against the CRM shapes (also what the tests need)
