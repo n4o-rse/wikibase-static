@@ -28,6 +28,13 @@
     {% endif %}
   </p>
 
+  {% if crm_rows is not none %}
+  <p class="crm"><span class="muted">{{ ui_crm }}:</span>
+    {% for row in crm_rows %}<span class="crm-class" title="{{ row.iri }}"><code>{{ row.curie }}</code>{% if row.via %} <span class="muted">({{ ui_crm_from }} {{ row.via }})</span>{% endif %}</span>{% if not loop.last %}, {% endif %}{% endfor %}
+    {% if not crm_rows %}<span class="muted">{{ ui_crm_none }}</span>{% endif %}
+  </p>
+  {% endif %}
+
   <details class="languages" open>
     <summary>{{ ui_in_other_languages }}</summary>
     <table class="terms">

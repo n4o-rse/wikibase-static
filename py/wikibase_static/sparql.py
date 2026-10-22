@@ -19,7 +19,7 @@ Queries come from ``queries.yaml`` in the site repository when it exists, else f
 
 ``requires`` names a property datatype (``globe-coordinate``, ``time``, ...) or one of ``reference``,
 ``qualifier``, ``alias``, ``preferred``, ``somevalue``, ``image`` (a Commons file, or a URL that ends in .jpg, .png and the like),
-``distribution`` (the site states ``pages_url``).
+``distribution`` (the site states ``pages_url``), ``crm`` (the site has ``data/crm.csv``).
 
 A comment line ``#defaultView:Map`` (or ``ImageGrid``, ``Table``) at the top of a query names the view of the query editor that opens first.
 ``@@lang@@`` in a query is replaced by the default language of the site. A query that is kept must return at least one row, or the
@@ -43,7 +43,7 @@ MAX_ROWS = 500
 PACKAGE = Path(__file__).resolve().parent
 DEFAULT_QUERIES = PACKAGE / "data" / "queries.default.yaml"
 SLUG = re.compile(r"^[a-z0-9][a-z0-9-]*$")
-FEATURES = {"reference", "qualifier", "alias", "preferred", "somevalue", "image"}
+FEATURES = {"reference", "qualifier", "alias", "preferred", "somevalue", "image", "crm"}
 IMAGE_FILE = re.compile(r"\.(jpe?g|png|gif|svg|webp|tiff?)$", re.IGNORECASE)
 
 # Executed by the page (Pyodide) and by the build (CPython), unchanged. ``wbs_run`` returns JSON text:
@@ -189,6 +189,8 @@ def site_features(site: Site, pages_url: str | None = None) -> set[str]:
     found = {e.datatype for e in site.properties if e.datatype}
     if pages_url:
         found.add("distribution")
+    if site.crm:
+        found.add("crm")
     for entity in site.entities.values():
         if entity.aliases and any(entity.aliases.values()):
             found.add("alias")

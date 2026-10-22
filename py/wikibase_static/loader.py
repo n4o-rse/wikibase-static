@@ -21,7 +21,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from wikibase_static import utils
+from wikibase_static import crm, utils
 from wikibase_static.model import (
     ENTITY_ID, SUPPORTED_DATATYPES, VALUE_KEYS, VALUE_TYPE, Entity, Snak, Statement, federated_from_uri,
     id_sort_key, is_federated,
@@ -47,6 +47,7 @@ class Site:
     files: int = 0
     source_url: str | None = None          # from data/raw/manifest.json, if present
     latest_modified: str | None = None
+    crm: dict[str, list[str]] = field(default_factory=dict)   # data/crm.csv: class id -> CRM classes (S11)
 
     @property
     def items(self) -> list[Entity]:
@@ -84,6 +85,37 @@ class Site:
                        for s in self.entities[subject].statements):
                 return False
         return True
+
+    def crm_edges(self) -> dict[str, list[str]]:
+        """Entity -> the classes it says it belongs to or descends from (kernel P1 and P2); empty without the kernel,
+        where those two properties have no fixed meaning. The CRM rows are inherited over these edges."""
+        edges: dict[str, list[str]] = {}
+        if not self.has_kernel():
+            return edges
+        for entity in self.entities.values():
+            for statement in entity.statements:
+                if statement.mainsnak.property in ("P1", "P2") and statement.mainsnak.entity_id:
+                    edges.setdefault(entity.id, []).append(statement.mainsnak.entity_id)
+        return edges
+
+    def crm_anchors(self, entity_id: str, edges: dict[str, list[str]] | None = None) -> list["crm.Anchor"]:
+        """The CIDOC CRM classes of an entity from ``data/crm.csv``: its own, then those of the classes above it."""
+        return crm.anchors(self.crm, self.crm_edges() if edges is None else edges, entity_id) if self.crm else []
+
+    def crm_classes(self) -> list[str]:
+        """The items that are classes (kernel): the target of a ``subclass of`` or ``instance of`` statement, or with a
+        ``subclass of`` statement of their own, except Q1 to Q3 which are the kernel."""
+        if not self.has_kernel():
+            return []
+        found = set()
+        for entity in self.entities.values():
+            for statement in entity.statements:
+                prop, target = statement.mainsnak.property, statement.mainsnak.entity_id
+                if prop == "P1" and entity.kind == "item":
+                    found.add(entity.id)
+                if prop in ("P1", "P2") and target in self.entities and self.entities[target].kind == "item":
+                    found.add(target)
+        return sorted(found - {"Q1", "Q2", "Q3"}, key=id_sort_key)
 
     def labeller(self, languages: list[str]) -> "LabelResolver":
         return LabelResolver(self, languages)
@@ -293,6 +325,8 @@ def load_site(raw: Path | None = None, derived: Path | None = None) -> Site:
                 site.entities[entity.id] = entity
 
     site.entities = dict(sorted(site.entities.items(), key=lambda kv: id_sort_key(kv[0])))
+    site.crm, crm_problems = crm.read_overlay(raw.parent / "crm.csv", set(site.entities))
+    problems.extend(crm_problems)
     _check_manifest(site, raw)
     _check_references(site)
     site.problems = sorted(set(site.problems))

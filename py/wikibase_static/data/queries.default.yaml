@@ -252,3 +252,18 @@ queries:
       }
       ORDER BY ?title ?dataset
       LIMIT 100
+
+  - id: crm-classes
+    requires: [crm]
+    title: {en: "Classes and their CIDOC CRM class", de: "Klassen und ihre CIDOC-CRM-Klasse"}
+    intro:
+      en: The classes that say themselves which class of the CIDOC CRM (or one of its extensions) they are subclasses of; the classes below them inherit it.
+      de: Die Klassen, die selbst sagen, Unterklasse welcher Klasse des CIDOC CRM (oder einer Erweiterung) sie sind; die Klassen darunter erben sie.
+    sparql: |
+      SELECT ?class ?label ?crmClass WHERE {
+        ?class rdfs:subClassOf ?crmClass ;
+               rdfs:label ?label .
+        FILTER(STRSTARTS(STR(?crmClass), "http://www.cidoc-crm.org/"))
+        FILTER(LANG(?label) = "@@lang@@")
+      }
+      ORDER BY ?label ?crmClass

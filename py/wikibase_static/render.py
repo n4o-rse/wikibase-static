@@ -26,6 +26,7 @@ from urllib.parse import quote
 
 from markupsafe import Markup, escape
 
+from wikibase_static import crm
 from wikibase_static.loader import LabelResolver, Site
 from wikibase_static.model import Entity, Snak, Statement, id_sort_key, is_federated, pick_text
 from wikibase_static.site_config import SiteConfig
@@ -49,6 +50,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "tools": "Tools", "referenced_by_short": "Referenced by", "tab_read": "Read", "tab_original": "Original",
         "page_downloads": "Download", "download_ttl": "RDF (Turtle)", "download_json": "JSON",
         "copy_uri": "Copy concept URI", "copy_page_uri": "Copy page URL", "copied": "Copied",
+        "crm": "CIDOC CRM class", "crm_from": "from", "crm_none": "none yet",
         "rank": "Rank", "rank_normal": "normal",
         "no_value": "no value", "rank_preferred": "preferred", "rank_deprecated": "deprecated",
         "datatype": "Data type", "referenced_by": "Referenced by ({n})", "items": "Items", "properties": "Properties",
@@ -97,6 +99,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "tools": "Werkzeuge", "referenced_by_short": "Verwendet von", "tab_read": "Lesen", "tab_original": "Original",
         "page_downloads": "Herunterladen", "download_ttl": "RDF (Turtle)", "download_json": "JSON",
         "copy_uri": "Konzept-URI kopieren", "copy_page_uri": "Seiten-URL kopieren", "copied": "Kopiert",
+        "crm": "CIDOC-CRM-Klasse", "crm_from": "von", "crm_none": "noch keine",
         "rank": "Rang", "rank_normal": "normal",
         "no_value": "kein Wert", "rank_preferred": "bevorzugt", "rank_deprecated": "veraltet",
         "datatype": "Datentyp", "referenced_by": "Verwendet von ({n})", "items": "Items", "properties": "Properties",
@@ -289,6 +292,8 @@ class Renderer:
         self._labels_second = LabelResolver(site, [self.second, self.default]) if self.second else None
         self.incoming = self._build_incoming()
         self.unmapped_coordinates = 0
+        self._crm_edges: dict[str, list[str]] | None = None
+        self._kernel = False
 
     # ---- text
 
@@ -379,6 +384,20 @@ class Renderer:
                 "aliases": Markup(" | ".join(str(escape(a)) for a in aliases)),
             })
         return rows
+
+    def crm_rows(self, entity: Entity) -> list[dict[str, Any]] | None:
+        """The CIDOC CRM classes of an item for the page (S11): ``None`` when the site has no ``data/crm.csv`` or the entity is
+        a property or a kernel item; an empty list when the item has none yet. ``via`` is the link to the class the row
+        was inherited from, ``None`` where the entity says it itself."""
+        if not self.site.crm or entity.kind != "item":
+            return None
+        if self._crm_edges is None:
+            self._crm_edges = self.site.crm_edges()
+            self._kernel = self.site.has_kernel()
+        if self._kernel and entity.id in ("Q1", "Q2", "Q3"):       # the kernel items are not data of the site
+            return None
+        return [{"curie": a.curie, "iri": crm.iri(a.curie), "via": None if a.via == entity.id else self.entity_link(a.via, show_id=False)}
+                for a in self.site.crm_anchors(entity.id, self._crm_edges)]
 
     def heading(self, entity_id: str) -> Markup:
         """``Label (Q1)`` for the page heading."""

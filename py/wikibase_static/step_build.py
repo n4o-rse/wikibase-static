@@ -224,7 +224,8 @@ def main(argv: list[str] | None = None) -> int:
         context = common(name, f"{title} – {cfg.title}", r.description_text(entity), r.footer(entity), points)
         context.update({
             "heading": r.heading(entity.id), "description": r.description(entity),
-            "language_rows": r.language_rows(entity),
+            "language_rows": r.language_rows(entity), "crm_rows": r.crm_rows(entity),
+            "ui_crm": r.ui("crm"), "ui_crm_from": r.ui("crm_from"), "ui_crm_none": r.ui("crm_none"),
             "ui_kind": r.ui("item" if entity.kind == "item" else "property"),
             "datatype": entity.datatype, "datatype_label": datatype_label,
             "points_json": json.dumps([{"lat": p.lat, "lon": p.lon, "text": p.text} for p in points],

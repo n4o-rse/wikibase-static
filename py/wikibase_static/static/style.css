@@ -213,6 +213,7 @@ button.link { font: inherit; padding: 0; border: 0; background: none; color: var
 }
 
 /* downloads and the copy button under the description of an entity page */
+.crm { font-size: 0.9rem; margin: 0.2rem 0 1rem; }
 .entity-tools { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.3rem 1rem; font-size: 0.86rem; margin: 0.2rem 0 1rem; }
 .copy-uri { font: inherit; color: var(--link); background: none; border: 0; padding: 0; cursor: pointer; }
 .copy-uri:hover, .copy-uri:focus-visible { text-decoration: underline; }

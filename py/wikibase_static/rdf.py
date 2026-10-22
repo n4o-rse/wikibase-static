@@ -36,6 +36,7 @@ from dataclasses import dataclass, field
 from typing import Any, Iterable, Union
 from urllib.parse import quote, urlparse
 
+from wikibase_static import crm
 from wikibase_static.loader import Site
 from wikibase_static.model import (
     SUPPORTED_DATATYPES, Entity, Snak, Statement, federated_to_uri, id_sort_key, is_federated,
@@ -74,6 +75,8 @@ OBJECT_DATATYPES = frozenset({"wikibase-item", "wikibase-property", "url", "comm
 # classes are tied to RDFS and OWL, so that a reasoner (or a query with a property path) reads the class tree.
 BRIDGE_PROPERTIES = {"P1": RDFS + "subClassOf", "P2": RDF + "type", "P3": RDFS + "subPropertyOf"}
 BRIDGE_CLASSES = {"Q1": RDFS + "Class", "Q2": RDF + "Property", "Q3": OWL + "Thing"}
+CRM_TITLE = ("CIDOC CRM anchoring (wikibase-static): the classes of this site tied to classes of the CIDOC CRM and its extensions "
+             "(data/crm.csv),\nwith the superclasses of an extension class up to its first class of the CIDOC CRM. Not part of the Wikibase data model.")
 BRIDGE_TITLE = ("RDFS bridge of the kernel (wikibase-static): the direct properties P1 to P3 and the classes Q1 to Q3 "
                 "tied to RDFS and OWL.\nNot part of the Wikibase data model; written only when the kernel is part of the site.")
 
@@ -339,6 +342,7 @@ class Rdf:
     distributions: int = 0
     federated: int = 0                                          # snaks of Wikidata properties (wd:P...), linked but not exported
     bridge: set[Triple] = field(default_factory=set)            # the RDFS bridge triples (kernel only), also in ``triples``
+    crm: set[Triple] = field(default_factory=set)               # the CIDOC CRM anchoring (data/crm.csv), also in ``triples``
 
 
 @dataclass
@@ -640,6 +644,18 @@ class _Builder:
         self.add(*triple)
         self.out.bridge.add(triple)
 
+    def crm(self, entity: Entity) -> None:
+        """``wd:Q100 rdfs:subClassOf crmdig:...`` for each CRM class the class says itself (not the inherited ones: the
+        bridge and the class tree carry those), and the alignment of an extension class up to the CIDOC CRM."""
+        for curie in self.site.crm.get(entity.id, []):
+            triple = (self._wd(entity.id), Iri(RDFS + "subClassOf"), Iri(crm.iri(curie)))
+            self.add(*triple)
+            self.out.crm.add(triple)
+            for child, parent in crm.chain(curie):
+                link = (Iri(child), Iri(RDFS + "subClassOf"), Iri(parent))
+                self.out.triples.add(link)
+                self.out.crm.add(link)
+
     # ---- DCAT
 
     def _dcat(self, name: str) -> Iri:
@@ -774,6 +790,8 @@ class _Builder:
             self.property_definition(entity)
         if self.kernel:
             self.bridge(entity)
+        if entity.id in self.site.crm:
+            self.crm(entity)
         document = Iri(ns.data + entity.id)
         self.add(document, self._a(), Iri(SCHEMA + "Dataset"))
         self.add(document, Iri(SCHEMA + "about"), subject)
@@ -802,6 +820,9 @@ def build(site: Site, ns: Namespaces, license_url: str | None = None, catalog: C
             builder.out.notes.append("no pages_url in site.yaml: the datasets have no distributions (a distribution needs a download URL)")
     if builder.out.bridge:
         builder.out.notes.append(f"the kernel is part of the site: {len(builder.out.bridge)} RDFS bridge triples written (own section in the Turtle file)")
+    if builder.out.crm:
+        classes = sum(1 for c in site.crm if site.crm[c])
+        builder.out.notes.append(f"CIDOC CRM: {classes} class(es) anchored by data/crm.csv, {len(builder.out.crm)} triples written (own section in the Turtle file)")
     if builder.out.federated:
         builder.out.notes.append(f"{builder.out.federated} value(s) of Wikidata properties (wd:P...) are linked on the pages, not exported")
     problems = set(builder.problems)
@@ -881,13 +902,21 @@ def _subject_group(term: Term, ns: Namespaces) -> float:
 
 
 def to_turtle(triples: Iterable[Triple], ns: Namespaces, header: str = "",
-              section: tuple[str, Iterable[Triple]] | None = None) -> str:
+              section: "tuple[str, Iterable[Triple]] | list[tuple[str, Iterable[Triple]]] | None" = None) -> str:
     """The triples as Turtle: prefixes, then one block per subject, everything in a fixed order.
 
     ``section`` is a title and a set of triples that are written last, under a comment of their own, instead of
-    among the others (the RDFS bridge); the graph is the same either way."""
-    abbreviate = _Abbreviator(ns.prefixes())
-    marked = set(section[1]) if section else set()
+    among the others (the RDFS bridge), or a list of such pairs (the bridge, then the CRM anchoring); empty ones are
+    left out. The graph is the same either way. The prefixes of the CRM families are declared when a triple uses one."""
+    sections = [] if section is None else [section] if isinstance(section, tuple) else list(section)
+    sections = [(title, set(members)) for title, members in sections if members]
+    prefixes = dict(ns.prefixes())
+    iris = {term.value for _, members in sections for triple in members for term in triple if isinstance(term, Iri)}
+    for prefix, namespace in crm.FAMILIES.items():
+        if any(value.startswith(namespace) for value in iris):
+            prefixes[prefix] = namespace
+    abbreviate = _Abbreviator(prefixes)
+    marked = set().union(*(members for _, members in sections)) if sections else set()
     main = [t for t in triples if t not in marked]
 
     lines: list[str] = []
@@ -895,13 +924,13 @@ def to_turtle(triples: Iterable[Triple], ns: Namespaces, header: str = "",
         lines.append(f"# {line}" if line else "#")
     if lines:
         lines.append("")
-    for prefix, namespace in sorted(ns.prefixes().items()):
+    for prefix, namespace in sorted(prefixes.items()):
         lines.append(f"@prefix {prefix}: <{namespace}> .")
     lines.extend(_blocks(main, ns, abbreviate))
-    if section and marked:
+    for title, members in sections:
         lines.append("")
-        lines.extend(f"# {line}" if line else "#" for line in section[0].splitlines())
-        lines.extend(_blocks(marked, ns, abbreviate))
+        lines.extend(f"# {line}" if line else "#" for line in title.splitlines())
+        lines.extend(_blocks(members, ns, abbreviate))
     return "\n".join(lines) + "\n"
 
 

@@ -182,6 +182,17 @@ python -m unittest discover -s tests
 The tests of the search box and of the query page run the code of `search.js` and `sparql.js` under Node.js; where `node` is not on the
 path they are skipped, and the other tests are unaffected.
 
+### CIDOC CRM overlay
+
+A site can say which CIDOC CRM class its classes stand for, without touching the data. Write `data/crm.csv` next to
+`data/raw/` (columns `class, crm_class, note`; one row per class, `crm_class` as `crm:E73`, `crmdig:D14`, `crmsci:`,
+`crmarchaeo:` or `crmgeo:` plus the number). The row is inherited along instance of and subclass of, so one row at the
+root class anchors the whole tree; an own row comes before an inherited one, and several rows give several classes.
+`load` reports the classes that have none, entity pages show the class (and the class it comes from), `rdf` writes
+`rdfs:subClassOf <crm class>` in a section of its own and, for an extension class, the chain up to the first `crm:` class
+(D14 to D1 to E73), so that tools which follow `rdfs:subClassOf` to CIDOC CRM reach it. The default query `crm-classes`
+lists the result. Without `data/crm.csv` nothing changes. The overlay needs the kernel (Q1 to Q3, P1, P2) of a site made by `from-csv`.
+
 ## Continuous integration
 
 Two workflows live in `.github/workflows/`:

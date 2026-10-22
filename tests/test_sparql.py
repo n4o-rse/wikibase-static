@@ -169,7 +169,7 @@ class RunTests(unittest.TestCase):
         qs = sparql.load_queries(None)
         sparql.apply_language(qs, "en")
         sparql.apply_requirements(qs, sparql.site_features(self.site, "https://p.example/"))
-        self.assertEqual(qs.left_out, [])
+        self.assertEqual(qs.left_out, ["crm-classes"])       # needs data/crm.csv; tests/test_crm.py runs it
         for result in sparql.run_all(self.ttl, qs.queries, self.prefixes):
             self.assertIsNone(result["error"], result["id"])
             self.assertGreaterEqual(result["rows"], 1, result["id"])
