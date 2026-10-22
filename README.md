@@ -11,8 +11,9 @@ coordinates, Commons images, a search box and an in-browser SPARQL query editor 
 on the published site can be edited.
 
 > **Status.** `harvest` (S4), `load` (S2), the page renderer `build` (S3), the search `search` (S5) and the
-> RDF export, example queries and query editor `rdf`, `sparql` (S6) work. The CSV import (S7) is still a skeleton step that reports
-> "nothing to do". See [`PRIMER.md`](https://github.com/n4o-rse/wikibase-static/blob/main/PRIMER.md) (German) for the plan, the
+> RDF export, example queries and query editor `rdf`, `sparql` (S6) work, and so does the CSV route (S7a: `from-csv`, `to-csv`,
+> `csv-fmt`; S7c: `import-open-archaeo`). The Wikidata importer, the update channel and the push into a real Wikibase (S7d to S7g) are
+> still to come. See [`PRIMER.md`](https://github.com/n4o-rse/wikibase-static/blob/main/PRIMER.md) (German) for the plan, the
 > decisions taken so far and the order of the steps.
 
 ## Workflow
@@ -181,6 +182,24 @@ python -m unittest discover -s tests
 
 The tests of the search box and of the query page run the code of `search.js` and `sparql.js` under Node.js; where `node` is not on the
 path they are skipped, and the other tests are unaffected.
+
+### Importing open-archaeo (S7c)
+
+```
+python main.py import-open-archaeo               about 100 of the entries, stratified by category
+python main.py import-open-archaeo --limit 40    another size (the same limit always picks the same entries)
+python main.py import-open-archaeo --all         every entry
+python main.py import-open-archaeo --dry-run     print the report, write nothing
+```
+
+Offline, and a verb of its own because it writes source files. It reads `data/raw/open-archaeo-software.csv` (the output of
+`py/transform.py` in open-archaeo, never edited), a mapping `data/csv/mapping/open-archaeo.csv` (columns `column, property, qualifiers,
+rule`; the properties are Wikidata properties, turned into the local ones through their `P4` twins) and a vocabulary
+`data/csv/mapping/open-archaeo-vocabulary.csv` (controlled values and the Wikidata item each stands for, where there is one). It
+writes rows with `origin=open-archaeo` into the four tables and `idmap.csv`; `from-csv` then makes the JSON. Every statement carries
+a reference (P6, the page of the entry). A reimport replaces the rows of the importer; a row whose `origin` you emptied counts as
+written by hand and wins (the importer then leaves that property of that subject alone). The report lists what was not imported
+and why. The rules are described at the top of `py/wikibase_static/step_import_open_archaeo.py`.
 
 ### CIDOC CRM overlay
 
