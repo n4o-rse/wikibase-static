@@ -182,16 +182,18 @@ queries:
       de: Aussagen, die angeben, woher sie stammen, mit Property und Wert der Fundstelle.
     sparql: |
       SELECT ?itemLabel ?propertyLabel ?sourceLabel ?source WHERE {
-        # Three groups that are joined from the first outwards: written as one block, rdflib builds the
-        # cross product of the two property lists (every property times every property) before it joins them.
-        { ?statement prov:wasDerivedFrom ?reference .
-          ?reference ?referenceProperty ?source . }
+        # Two groups, not three. rdflib joins a group lazily (one solution at a time) only when it has no further
+        # join inside it; each additional group is evaluated alone and then paired with every row of the others.
+        # The first group finds the statements and their references; the second looks the two properties up
+        # for the bound ?claim and ?referenceProperty.
         { ?item ?claim ?statement .
-          ?property wikibase:claim ?claim ;
+          ?statement prov:wasDerivedFrom ?reference .
+          ?reference ?referenceProperty ?source . }
+        { ?property wikibase:claim ?claim ;
                     rdfs:label ?propertyLabel .
-          FILTER(LANG(?propertyLabel) = "@@lang@@") }
-        { ?sourceProperty wikibase:reference ?referenceProperty ;
+          ?sourceProperty wikibase:reference ?referenceProperty ;
                           rdfs:label ?sourceLabel .
+          FILTER(LANG(?propertyLabel) = "@@lang@@")
           FILTER(LANG(?sourceLabel) = "@@lang@@") }
         OPTIONAL {
           ?item rdfs:label ?itemLabel .
