@@ -50,7 +50,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "tools": "Tools", "merged_into": "was merged into", "referenced_by_short": "Referenced by", "tab_read": "Read", "tab_original": "Original",
         "tab_source": "Source rows", "source_rows": "Source rows (CSV)", "copy_rows": "Copy rows", "edit_file": "Edit the file",
         "source_rows_intro": "The rows of the CSV tables that this page is made from, as they stand in the files. The page cannot be edited: change the file in the repository (or apply a QuickStatements file) and build again.",
-        "rows_n": "{n} row(s)",
+        "rows_n": "{n} row(s)", "hierarchy": "Class hierarchy",
         "page_downloads": "Download", "download_ttl": "RDF (Turtle)", "download_json": "JSON",
         "copy_uri": "Copy concept URI", "copy_page_uri": "Copy page URL", "copied": "Copied",
         "crm": "CIDOC CRM class", "crm_from": "from", "crm_none": "none yet",
@@ -105,7 +105,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "tools": "Werkzeuge", "merged_into": "wurde mit diesem Eintrag zusammengeführt:", "referenced_by_short": "Verwendet von", "tab_read": "Lesen", "tab_original": "Original",
         "tab_source": "Quellzeilen", "source_rows": "Quellzeilen (CSV)", "copy_rows": "Zeilen kopieren", "edit_file": "Datei bearbeiten",
         "source_rows_intro": "Die Zeilen der CSV-Tabellen, aus denen diese Seite gebaut wird, so wie sie in den Dateien stehen. Die Seite lässt sich nicht bearbeiten: Datei im Repository ändern (oder eine QuickStatements-Datei anwenden) und neu bauen.",
-        "rows_n": "{n} Zeile(n)",
+        "rows_n": "{n} Zeile(n)", "hierarchy": "Klassenhierarchie",
         "page_downloads": "Herunterladen", "download_ttl": "RDF (Turtle)", "download_json": "JSON",
         "copy_uri": "Konzept-URI kopieren", "copy_page_uri": "Seiten-URL kopieren", "copied": "Kopiert",
         "crm": "CIDOC-CRM-Klasse", "crm_from": "von", "crm_none": "noch keine",
@@ -572,6 +572,59 @@ class Renderer:
             if entity.labels.get("en", "").strip().lower() == "instance of":
                 return entity.id
         return None
+
+    def subclass_property(self) -> str | None:
+        """The property that says "subclass of": P1 where the kernel is part of the site, otherwise the property whose English label is that."""
+        if self.site.has_kernel():
+            return "P1"
+        for entity in sorted(self.site.properties, key=lambda e: id_sort_key(e.id)):
+            if entity.labels.get("en", "").strip().lower() == "subclass of":
+                return entity.id
+        return None
+
+    def class_tree(self, class_id: str) -> list[dict[str, Any]]:
+        """The whole hierarchy around a class (S7f+): every path from a root down to the class, and everything below it.
+
+        A list of root nodes ``{id, link, current, children}``; the class itself is ``current`` and sits in the middle. The branches
+        above the class hold only what leads to it (no siblings), the class holds all its subclasses, recursively. A class with two
+        superclasses appears under both. Empty when the class has neither superclasses nor subclasses. The kernel's root Q3
+        ("Instance") is not shown as a root, except on its own page."""
+        prop = self.subclass_property()
+        if prop is None or class_id not in self.site.entities:
+            return []
+        parents: dict[str, list[str]] = {}
+        children: dict[str, list[str]] = {}
+        for entity in self.site.entities.values():
+            for statement in entity.statements:
+                target = statement.mainsnak.entity_id
+                if statement.mainsnak.property == prop and target and target in self.site.entities and target != entity.id:
+                    if target not in parents.setdefault(entity.id, []):
+                        parents[entity.id].append(target)
+                        children.setdefault(target, []).append(entity.id)
+        above: set[str] = set()
+        todo = list(parents.get(class_id, []))
+        while todo:
+            node = todo.pop()
+            if node not in above and node != class_id:
+                above.add(node)
+                todo.extend(parents.get(node, []))
+        if class_id != "Q3" and self.site.has_kernel():     # the kernel's root "Instance" tops every branch and says nothing: left out
+            above.discard("Q3")
+        if not above and not children.get(class_id):
+            return []
+        order = lambda ids: sorted(ids, key=id_sort_key)
+
+        def node(entity_id: str, path: tuple[str, ...]) -> dict[str, Any]:
+            kids = children.get(entity_id, [])
+            if entity_id in above:                      # on the way down to the class: only what leads to it
+                kids = [k for k in kids if k in above or k == class_id]
+            return {"id": entity_id, "link": self.entity_link(entity_id), "current": entity_id == class_id,
+                    "children": [node(k, path + (entity_id,)) for k in order(kids) if k not in path and k != entity_id]}
+
+        roots = [a for a in above if not [p for p in parents.get(a, []) if p in above]]
+        if not above:
+            roots = [class_id]
+        return [node(root, ()) for root in order(roots)]
 
     def class_groups(self) -> list[dict[str, Any]]:
         """Classes with at least one direct instance, each with its instances, both in id order. The classes of the

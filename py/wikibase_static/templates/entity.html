@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import prop_link %}
+{% from "_macros.html" import prop_link, class_tree %}
 {% block sidebar_tools %}
 {% if incoming %}
     <div class="nav-section">
@@ -50,6 +50,11 @@
   <p class="datatype"><span class="muted">{{ ui_datatype }}:</span> {{ datatype_label }} <code>{{ datatype }}</code></p>
   {% endif %}
 
+  {% if class_tree_nodes %}
+  <div class="class-tree"><span class="muted">{{ ui_hierarchy }}:</span>
+    {{ class_tree(class_tree_nodes) }}
+  </div>
+  {% endif %}
   {% if map_points %}
   <section class="map-section">
     <h2>{{ ui_map }}</h2>

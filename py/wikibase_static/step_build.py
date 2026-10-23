@@ -251,7 +251,7 @@ def main(argv: list[str] | None = None) -> int:
             "points_json": json.dumps([{"lat": p.lat, "lon": p.lon, "text": p.text} for p in points],
                                       ensure_ascii=False, separators=(",", ":")),
             "ui_map_text": r.ui_text("map"), "groups": r.statement_groups(entity),
-            "incoming": r.referenced_by(entity.id),
+            "incoming": r.referenced_by(entity.id), "class_tree_nodes": r.class_tree(entity.id), "ui_hierarchy": r.ui("hierarchy"),
             "ui_no_description": r.ui("no_description"), "ui_also_known_as": r.ui("also_known_as"),
             "ui_language": r.ui("language"), "ui_label": r.ui("label"), "ui_description": r.ui("description"),
             "ui_in_other_languages": r.ui("in_other_languages"), "ui_tools": r.ui("tools"),
@@ -310,11 +310,12 @@ def main(argv: list[str] | None = None) -> int:
             view_groups.append({
                 "id": group["id"], "title": r.label(group["id"]), "link": r.entity_link(group["id"], show_id=False),
                 "count": count, "description": r.description(class_entity), "rows": rows_of(group["instances"]),
+                "tree": r.class_tree(group["id"]),
                 "points_json": json.dumps(points, ensure_ascii=False, separators=(",", ":")) if points else None,
                 "map_text": r.ui_text("overview_map", **{"class": r.label_text(group["id"])}),
             })
         overview["leaflet"] = any(g["points_json"] for g in view_groups)
-        overview.update({"groups": view_groups, "overview_intro": r.ui("overview_intro"),
+        overview.update({"groups": view_groups, "ui_hierarchy": r.ui("hierarchy"), "overview_intro": r.ui("overview_intro"),
                          "ui_id": r.ui("id"), "ui_label": r.ui("label"), "ui_description": r.ui("description")})
         utils.write_text(docs / "overview.html", env.get_template("overview.html").render(overview))
     index = common("index.html", cfg.title, cfg.description or None, r.footer(None))

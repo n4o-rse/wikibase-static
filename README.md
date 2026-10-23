@@ -267,6 +267,13 @@ ends. What the subset does not read (sitelinks, `CREATE_PROPERTY`, removing a la
 New rows have no `origin`, so they count as hand work and no importer overwrites them. The exact syntax is in the docstring of
 `py/wikibase_static/step_apply_qs.py`.
 
+### Class hierarchy
+
+On the overview, under the heading of every class, and on the page of every class that has superclasses or subclasses, there is the whole
+hierarchy around that class: every path from the root down to it, with the class itself in bold in the middle, and everything below it.
+A class with two superclasses stands under both. The branches above hold only what leads to the class (no siblings). With the kernel, its root "Instance" (Q3) is left out of the trees (it tops every branch and says nothing); only the page of Q3 itself shows it. It uses "subclass of"
+(P1 where the kernel is part of the site, otherwise the property with that English label), so a harvested Wikibase gets it too.
+
 ### Source rows (S7f)
 
 When the site is made from CSV tables (`data/csv/` exists), every entity page has a tab "Source rows" next to "Read". It opens a section with

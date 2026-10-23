@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_macros.html" import class_tree %}
 {% block tabs_left %}<li class="active"><span>{{ ui_overview }}</span></li>{% endblock %}
 {% block main %}
 <article class="index overview">
@@ -13,6 +14,11 @@
   <section id="class-{{ group.id }}">
     <h2>{{ group.link }} <span class="muted count">{{ group.count }}</span></h2>
     {% if group.description %}<p class="description">{{ group.description }}</p>{% endif %}
+    {% if group.tree %}
+    <div class="class-tree"><span class="muted">{{ ui_hierarchy }}:</span>
+      {{ class_tree(group.tree) }}
+    </div>
+    {% endif %}
     {% if group.points_json %}
     <div class="wbs-map" data-points="{{ group.points_json }}" role="img" aria-label="{{ group.map_text }}"></div>
     {% endif %}

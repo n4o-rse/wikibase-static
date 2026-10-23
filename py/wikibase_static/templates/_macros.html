@@ -1,3 +1,12 @@
 {% macro prop_link(view) -%}
 {% if view.link %}<a href="{{ view.property }}.html">{{ view.label }}</a>{% else %}{{ view.label }}{% endif %}
 {%- endmacro %}
+{% macro class_tree(nodes) -%}
+<ul>
+{% for node in nodes %}
+  <li{% if node.current %} class="current"{% endif %}>{% if node.current %}<strong>{{ node.link }}</strong>{% else %}{{ node.link }}{% endif %}
+  {% if node.children %}{{ class_tree(node.children) }}{% endif %}
+  </li>
+{% endfor %}
+</ul>
+{%- endmacro %}
