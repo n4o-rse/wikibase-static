@@ -9,6 +9,10 @@ Reads ``entities.csv``, ``statements.csv``, ``qualifiers.csv`` and ``references.
 the kernel of the package (Q1 to Q3, P1 to P10) and writes one JSON file per entity in the form ``harvest`` leaves in
 ``data/raw/entities/``, so ``load`` and everything after it need no second code path. Files without a CSV row are
 removed from the output folder. Offline, deterministic, no clock. Without ``data/csv/`` there is nothing to do.
+
+``data/csv/merges.csv`` (optional; columns ``from, to, note``; made by ``python main.py merge``) merges an item into another one
+while the tables are read: see ``csvbuild._apply_merges``. A merged id has no entity file; ``redirects.json`` next to
+``entities/`` says where it went (``{"Q359": "Q361"}``) and is removed when there is no merge.
 """
 
 from __future__ import annotations
@@ -27,6 +31,7 @@ from wikibase_static import csvbuild, csvio, utils
 STEP = "from-csv"
 SHOWN = 50
 ENTITY_FILE = re.compile(r"^[QP][1-9][0-9]*\.json$")
+REDIRECTS = "redirects.json"
 
 
 def shown_path(path: Path) -> str:
@@ -56,6 +61,16 @@ def write_entities(folder: Path, entities: dict[str, dict]) -> tuple[int, int, i
     return written, unchanged, removed
 
 
+def write_redirects(path: Path, redirects: dict[str, str]) -> None:
+    """``redirects.json`` (merged id -> id it went into), or no file when nothing is merged."""
+    if redirects:
+        text = json.dumps(dict(sorted(redirects.items())), ensure_ascii=False, indent=2) + "\n"
+        if not path.is_file() or path.read_text(encoding="utf-8") != text:
+            utils.write_text(path, text)
+    elif path.is_file():
+        path.unlink()
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="python main.py from-csv", description="CSV tables to Wikibase JSON.")
     parser.add_argument("--csv", type=Path, default=utils.ROOT / "data" / "csv", help="folder with the CSV tables")
@@ -77,11 +92,14 @@ def main(argv: list[str] | None = None) -> int:
 
     target = args.out / "entities"
     written, unchanged, removed = write_entities(target, built.entities)
+    write_redirects(args.out / REDIRECTS, built.redirects)
     counts = {kind: sum(1 for k in built.kinds.values() if k == kind) for kind in csvio.KINDS}
     print(f"[{STEP}] {len(built.entities)} entities ({counts['item']} items, {counts['class']} classes, "
           f"{counts['property']} properties), {built.statements} statements -> {shown_path(target)}")
     print(f"[{STEP}] {'kernel mixed in (Q1-Q3, P1-P10)' if built.kernel else 'no kernel (--no-kernel)'}; "
           f"{written} file(s) written, {unchanged} unchanged, {removed} removed")
+    for note in built.merge_notes:
+        print(f"[{STEP}] merge {note}")
     shown = problems if args.all else problems[:SHOWN]
     for message in shown:
         utils.warn(STEP, message)

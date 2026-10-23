@@ -11,7 +11,7 @@
     python main.py harvest          a step that is not in the default run
 
 ``harvest`` and ``import-wikidata`` are the only steps that touch the network, so they are never part of
-the default run; give them their own verbs. ``to-csv``, ``csv-fmt``, ``import-open-archaeo`` and ``import-wikidata`` write source files
+the default run; give them their own verbs. ``to-csv``, ``csv-fmt``, ``import-open-archaeo``, ``import-wikidata`` and ``merge`` write source files
 (``data/csv/``) and have verbs of their own as well. Anything main.py does not recognise is
 passed on to the step when exactly one step is selected, e.g.
 ``python main.py harvest --probe``.
@@ -42,6 +42,7 @@ STEPS = [
     ("csv-fmt", "step_csv_fmt", False, "S7a canonical form of data/csv (--check for CI)"),
     ("import-open-archaeo", "step_import_open_archaeo", False, "S7c open-archaeo entries -> CSV tables (offline, writes data/csv)"),
     ("import-wikidata", "step_import_wikidata", False, "S7d Wikidata seeds -> CSV tables (network, incremental, writes data/csv)"),
+    ("merge", "step_merge", False, "S7e merge an item into another (merge Q381 Q359; writes data/csv/merges.csv)"),
     ("from-csv", "step_from_csv", True, "S7a CSV tables + kernel -> Wikibase JSON in data/derived"),
     ("load", "step_load", True, "S2  read data/raw and data/derived, check them"),
     ("build", "step_build", True, "S3  render the static pages into docs/"),

@@ -97,7 +97,9 @@ def concept_stubs(site, base: str, pages_url: str | None) -> dict[str, bytes]:
     base URI is that of the live Wikibase nothing is written."""
     if not pages_url or pages_url.rstrip("/") != base.rstrip("/"):
         return {}
-    return {f"{entity_id}.html": utils_bytes(STUB.format(id=entity_id)) for entity_id in sorted(site.entities)}
+    stubs = {f"{entity_id}.html": utils_bytes(STUB.format(id=entity_id)) for entity_id in sorted(site.entities)}
+    stubs.update({f"{source}.html": utils_bytes(STUB.format(id=target)) for source, target in sorted(site.redirects.items())})   # merged ids
+    return stubs
 
 
 def write_published(site, ns, result, text: str, stem: str, header: list[str], pages_url: str | None = None) -> int:

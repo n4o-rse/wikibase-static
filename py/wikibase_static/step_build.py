@@ -252,6 +252,14 @@ def main(argv: list[str] | None = None) -> int:
         })
         utils.write_text(docs / name, env.get_template("entity.html").render(context))
 
+    for source, target in sorted(site.redirects.items(), key=lambda kv: id_sort_key(kv[0])):    # merged ids (S7e): a page that forwards
+        name = f"{source}.html"
+        expected.add(name)
+        context = common(name, f"{source} – {cfg.title}", None, r.footer(None))
+        context.update({"source": source, "target": target, "target_label": r.label_text(target),
+                        "ui_merged_into": r.ui("merged_into")})
+        utils.write_text(docs / name, env.get_template("redirect.html").render(context))
+
     def rows_of(entities: list[Any]) -> list[dict[str, Any]]:
         return [{"id": e.id, "link": r.entity_link(e.id, show_id=False), "description": r.description(e)}
                 for e in sorted(entities, key=lambda e: id_sort_key(e.id))]
@@ -306,11 +314,14 @@ def main(argv: list[str] | None = None) -> int:
         (docs / name).unlink()
 
     entity_pages = sorted(p.name for p in docs.glob("*.html") if ENTITY_PAGE.match(p.name))
-    missing = sorted(f"{e}.html" for e in site.entities if f"{e}.html" not in entity_pages)
+    missing = sorted(f"{e}.html" for e in [*site.entities, *site.redirects] if f"{e}.html" not in entity_pages)
     checked, dead = linkcheck(docs, pending=("sparql.html", "query.html"), pending_dirs=("ttl/", "json/"))
 
-    print(f"[{STEP}] {len(site.entities)} entities -> {len(entity_pages)} entity pages + index.html in docs/ "
-          f"(difference {len(site.entities) - len(entity_pages)}), {assets} asset files")
+    pages = len(entity_pages) - len(site.redirects)
+    print(f"[{STEP}] {len(site.entities)} entities -> {pages} entity pages + index.html in docs/ "
+          f"(difference {len(site.entities) - pages}), {assets} asset files")
+    if site.redirects:
+        print(f"[{STEP}] {len(site.redirects)} merged id(s) forward to the entity they were merged into")
     print(f"[{STEP}] languages: {', '.join(cfg.languages)}; source: {cfg.source_url or 'not stated'}; "
           f"licence: {cfg.license_name or 'not stated'}{' (default)' if cfg.license_is_default else ''}")
     print(f"[{STEP}] maps: {markers} distinct coordinate(s) on {pages_with_map} page(s)"

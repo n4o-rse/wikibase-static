@@ -1,3 +1,3 @@
 """wikibase-static: static, read-only HTML demonstrators for Wikibase instances."""
 
-__version__ = "0.12.0"
+__version__ = "0.13.0"

@@ -231,6 +231,19 @@ importer's rows; a row whose `origin` you emptied wins. The report also lists wh
 items of another origin (open-archaeo); nothing is merged. The rules are described at the top of
 `py/wikibase_static/step_import_wikidata.py`.
 
+### Merging items (S7h)
+
+The same thing can arrive twice, once from Wikidata and once from open-archaeo. `python main.py merge Q381 Q359` merges the first
+item into the second, as Wikibase does with `Special:MergeItems`; `--dry-run` says what would happen, `--list` shows the merges,
+`--undo Q381` takes one back. The command writes one line to `data/csv/merges.csv` (`from, to, note`); the tables themselves stay
+as they are, and `from-csv` applies the merges while it reads them, so a merge survives every reimport.
+
+Statements of the merged item move over; one the target has already is not doubled and its references are joined; different values
+of the same property are all kept and named in the report. The label of the target wins and a different label of the merged item
+becomes an alias. A value that pointed at the merged item points at the target. The merged item is a redirect from then on: its page
+forwards, the RDF says `owl:sameAs`, its id is never used again. Chains are refused (the target must not be merged into something
+else), and so is a property or a pair of an item and a class.
+
 ### CIDOC CRM overlay
 
 A site can say which CIDOC CRM class its classes stand for, without touching the data. Write `data/crm.csv` next to

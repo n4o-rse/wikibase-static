@@ -445,7 +445,8 @@ def reconcile(converter: Converter, site: csvbuild.CsvSet) -> list[str]:
         for name, local in keys:
             if row["property"] == local and row.get("origin", "") not in ORIGINS and row["subject"] not in own:
                 owners[(name, normal_url(row["value"]))].add(row["subject"])
-    lines, compared = [], 0
+    lines, compared, done = [], 0, 0
+    merged = {(row.get("from", "").strip(), row.get("to", "").strip()) for row in (site.merges.rows if site.merges else [])}
     by_local = {local: name for name, local in keys}
     for qid, local_id in converter.seed_ids.items():
         for statement in converter.out.statements:
@@ -453,8 +454,11 @@ def reconcile(converter: Converter, site: csvbuild.CsvSet) -> list[str]:
             if name and statement["subject"] == local_id:
                 compared += 1
                 for other in sorted(owners.get((name, normal_url(statement["value"])), ())):
-                    lines.append(f"  {qid} ({local_id}) and {other} share the {name} URL {statement['value']}")
-    head = f"reconcile with the other local items by URL ({', '.join(n for n, _l in keys)}): {compared} URL(s) compared, {len(lines)} found in both"
+                    already = (other, local_id) in merged or (local_id, other) in merged
+                    done += already
+                    lines.append(f"  {qid} ({local_id}) and {other} share the {name} URL {statement['value']}"
+                                 + (" (merged already)" if already else ""))
+    head = f"reconcile with the other local items by URL ({', '.join(n for n, _l in keys)}): {compared} URL(s) compared, {len(lines)} found in both" + (f", {done} of them merged already" if done else "")
     return [head] + lines
 
 

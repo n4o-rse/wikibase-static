@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block head %}
+<meta http-equiv="refresh" content="0; url={{ target }}.html">
+{% endblock %}
+{% block main %}
+<article class="entity">
+  <h1>{{ source }}</h1>
+  <p>{{ ui_merged_into }} <a href="{{ target }}.html">{{ target_label }} ({{ target }})</a>.</p>
+</article>
+{% endblock %}

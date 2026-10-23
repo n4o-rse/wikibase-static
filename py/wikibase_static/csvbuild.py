@@ -17,6 +17,7 @@ entity; anything else on a kernel id is a problem and ignored. Mixing the kernel
 
 from __future__ import annotations
 
+import json
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -40,6 +41,8 @@ KERNEL: dict[str, tuple[str, str | None]] = {
     "P7": ("property", "time"), "P8": ("property", "wikibase-item"), "P9": ("property", "wikibase-item"),
     "P10": ("property", "wikibase-item"),
 }
+MERGES = "merges.csv"               # optional: from, to, note -- ``from`` is merged into ``to`` (S7e, see ``_apply_merges``)
+MERGE_COLUMNS = ["from", "to", "note"]
 SUBCLASS, INSTANCE, DOMAIN, RANGE = "P1", "P2", "P9", "P10"
 CLASS, PROPERTY, ROOT = "Q1", "Q2", "Q3"
 
@@ -53,6 +56,7 @@ class CsvSet:
     qualifiers: Table
     references: Table
     folder: str = ""
+    merges: Table | None = None         # ``merges.csv`` (not one of the four tables: it is read, never rewritten by csv-fmt)
 
     @property
     def tables(self) -> list[Table]:
@@ -69,6 +73,7 @@ def read_set(folder: Path, problems: list[str], shown: str | None = None) -> Csv
         qualifiers=csvio.read_table(folder / "qualifiers.csv", ["sid", "property", "value"], problems, f"{prefix}qualifiers.csv"),
         references=csvio.read_table(folder / "references.csv", ["sid", "property", "value"], problems, f"{prefix}references.csv"),
         folder=shown,
+        merges=csvio.read_table(folder / MERGES, ["from", "to"], problems, f"{prefix}{MERGES}"),
     )
 
 
@@ -116,6 +121,8 @@ class Built:
     kinds: dict[str, str] = field(default_factory=dict)
     statements: int = 0
     kernel: bool = False
+    redirects: dict[str, str] = field(default_factory=dict)       # merged id -> the id it was merged into
+    merge_notes: list[str] = field(default_factory=list)          # one line per merge: what moved, what was identical, what differs
 
 
 def _language_cells(row: dict[str, str], prefix: str) -> dict[str, str]:
@@ -270,6 +277,141 @@ def _read_snaks(site: CsvSet, by_sid: dict[str, Claim], rows: dict[str, Row], ba
         parts = _snak_parts(raw, where, rows, base, problems)
         if parts:
             claim.references.setdefault(raw.get("group", "").strip() or "1", []).append(parts)
+
+
+
+# --------------------------------------------------------------------------- merges (S7e)
+
+
+def _canonical_value(claim: Claim) -> str:
+    return json.dumps([claim.prop, claim.snaktype, claim.datavalue], sort_keys=True, ensure_ascii=False)
+
+
+def _snak_key(parts: tuple[str, str, Any, str | None, str]) -> str:
+    return json.dumps(parts[:3], sort_keys=True, ensure_ascii=False)
+
+
+def _same_claim(a: Claim, b: Claim) -> bool:
+    """The same statement: property, value, rank and qualifiers (references may differ and are joined)."""
+    return (_canonical_value(a) == _canonical_value(b) and a.rank == b.rank
+            and sorted(_snak_key(q) for q in a.qualifiers) == sorted(_snak_key(q) for q in b.qualifiers))
+
+
+def _join_references(target: Claim, other: Claim) -> None:
+    """Add the reference groups of ``other`` that ``target`` does not have yet, as groups of their own."""
+    have = {tuple(sorted(_snak_key(s) for s in group)) for group in target.references.values()}
+    for _group, snaks in sorted(other.references.items(), key=lambda kv: (int(kv[0]) if kv[0].isdigit() else 10 ** 9, kv[0])):
+        key = tuple(sorted(_snak_key(s) for s in snaks))
+        if key in have:
+            continue
+        have.add(key)
+        free = max([int(g) for g in target.references if g.isdigit()] + [0]) + 1
+        target.references[str(free)] = list(snaks)
+
+
+def _redirect_value(datavalue: Any, mapping: dict[str, str]) -> Any:
+    """The datavalue with a merged item id replaced by the id it was merged into (anything else unchanged)."""
+    if isinstance(datavalue, dict) and datavalue.get("type") == "wikibase-entityid":
+        found = datavalue["value"].get("id", "")
+        if found in mapping:
+            target = mapping[found]
+            return {"type": "wikibase-entityid", "value": {"entity-type": "item", "numeric-id": int(target[1:]), "id": target}}
+    return datavalue
+
+
+def read_merges(site: CsvSet, rows: dict[str, Row], kernel_ids: set[str], problems: list[str]) -> list[tuple[str, str, str]]:
+    """The usable lines of ``merges.csv`` as (from, to, note), sorted by ``from``; every other line is a problem and skipped.
+
+    A merge needs two different items (or two classes) of the site, neither in the kernel, and no chains: ``to`` must not
+    be merged into something else, and ``from`` may be merged only once."""
+    table = site.merges
+    if table is None:
+        return []
+    candidates: list[tuple[str, str, str, str]] = []
+    for index, raw in enumerate(table.rows):
+        where = table.where(index)
+        source, target, note = raw.get("from", "").strip(), raw.get("to", "").strip(), raw.get("note", "").strip()
+        if not (ENTITY_ID.match(source) and ENTITY_ID.match(target)) or source[0] != "Q" or target[0] != "Q":
+            problems.append(f"{where}: {source!r} and {target!r} must both be item ids (Q12); line skipped")
+        elif source == target:
+            problems.append(f"{where}: {source} cannot be merged into itself; line skipped")
+        elif source not in rows or target not in rows:
+            problems.append(f"{where}: {source if source not in rows else target} is not an entity of the site; line skipped")
+        elif source in kernel_ids or target in kernel_ids:
+            problems.append(f"{where}: the kernel cannot be merged; line skipped")
+        elif rows[source].kind != rows[target].kind:
+            problems.append(f"{where}: {source} is a {rows[source].kind}, {target} a {rows[target].kind}; only two of a kind can be merged; line skipped")
+        else:
+            candidates.append((source, target, note, where))
+    sources = [c[0] for c in candidates]
+    found: dict[str, tuple[str, str]] = {}
+    for source, target, note, where in candidates:
+        if sources.count(source) > 1 and source in found:
+            problems.append(f"{where}: {source} is merged twice; line skipped")
+        elif target in sources:
+            problems.append(f"{where}: {target} is itself merged into another item; merge {source} into that one (no chains); line skipped")
+        else:
+            found[source] = (target, note)
+    return [(source, found[source][0], found[source][1]) for source in sorted(found, key=id_sort_key)]
+
+
+def _apply_merges(site: CsvSet, rows: dict[str, Row], kernel_ids: set[str], built: Built) -> None:
+    """Merge ``from`` into ``to`` for every line of ``merges.csv`` (the tables stay as they are, nothing is written back).
+
+    * Statements of ``from`` become statements of ``to``; one that ``to`` has already (same property, value, rank and
+      qualifiers) is not added again, its references are joined as further reference groups.
+    * Different values of the same property are all kept, as in Wikibase; the notes say which properties differ.
+    * The label, description and aliases of ``to`` win; a different label of ``from`` becomes an alias, languages
+      ``to`` lacks are taken over.
+    * A value (or qualifier or reference value) that points at ``from`` points at ``to``.
+    * ``from`` is no entity any more: it is a redirect (``Built.redirects``), its id is never used again.
+    """
+    problems = built.problems
+    merges = read_merges(site, rows, kernel_ids, problems)
+    if not merges:
+        return
+    mapping = {source: target for source, target, _note in merges}
+    for source, target, _note in merges:
+        old, new = rows[source], rows[target]
+        for name in ("labels", "descriptions"):
+            mine, theirs = getattr(new, name), getattr(old, name)
+            for code, text in theirs.items():
+                if code not in mine:
+                    mine[code] = text
+                elif name == "labels" and mine[code] != text:
+                    present = new.aliases.setdefault(code, [])
+                    if text not in present:
+                        present.append(text)
+        for code, values in old.aliases.items():
+            present = new.aliases.setdefault(code, [])
+            present += [v for v in values if v not in present and v != new.labels.get(code)]
+        before = {c.prop: {_canonical_value(x) for x in new.statements if x.prop == c.prop} for c in new.statements}
+        moved = joined = 0
+        differing: set[str] = set()
+        for claim in old.statements:
+            twin = next((c for c in new.statements if _same_claim(c, claim)), None)
+            if twin is not None:
+                _join_references(twin, claim)
+                joined += 1
+                continue
+            if claim.prop in before and _canonical_value(claim) not in before[claim.prop]:
+                differing.add(claim.prop)
+            new.statements.append(claim)
+            moved += 1
+        old.statements = []
+        built.merge_notes.append(
+            f"{source} -> {target}: {moved} statement(s) moved, {joined} already there (references joined)"
+            + (f"; different values for {', '.join(sorted(differing, key=id_sort_key))}, all kept" if differing else ""))
+        built.redirects[source] = target
+        del rows[source]
+    for row in rows.values():
+        for claim in row.statements:
+            claim.datavalue = _redirect_value(claim.datavalue, mapping)
+            if claim.snaktype == "value" and claim.datavalue and claim.datavalue["type"] == "wikibase-entityid" and claim.value in mapping:
+                claim.value = mapping[claim.value]
+            claim.qualifiers = [(p, st, _redirect_value(dv, mapping), dt, w) for p, st, dv, dt, w in claim.qualifiers]
+            claim.references = {g: [(p, st, _redirect_value(dv, mapping), dt, w) for p, st, dv, dt, w in snaks]
+                                for g, snaks in claim.references.items()}
 
 
 # --------------------------------------------------------------------------- validation
@@ -444,6 +586,7 @@ def build(site: CsvSet, kernel: CsvSet | None, base: str | None = None) -> Built
     _read_entities(site.entities, "site", rows, problems, kernel_ids)
     by_sid = _read_statements(site, kernel_ids, rows, base, problems)
     _read_snaks(site, by_sid, rows, base, problems)
+    _apply_merges(site, rows, kernel_ids, built)
     if kernel is not None:
         _validate_kernel(rows, problems)
         _type_by_kind(rows)

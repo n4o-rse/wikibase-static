@@ -849,6 +849,10 @@ def build(site: Site, ns: Namespaces, license_url: str | None = None, catalog: C
     builder = _Builder(site, ns, license_url, catalog)
     for entity in sorted(site.entities.values(), key=lambda e: id_sort_key(e.id)):
         builder.entity(entity)
+    for source, target in sorted(site.redirects.items(), key=lambda kv: id_sort_key(kv[0])):   # merged ids (S7e), as Wikibase writes a redirect
+        builder.owner = builder.out.by_entity.setdefault(target, set())
+        builder.add(builder._wd(source), Iri(OWL + "sameAs"), builder._wd(target))
+    builder.owner = None
     if catalog is not None:
         builder.catalogue()
         if not catalog.pages_url:

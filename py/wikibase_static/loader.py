@@ -48,6 +48,7 @@ class Site:
     source_url: str | None = None          # from data/raw/manifest.json, if present
     latest_modified: str | None = None
     crm: dict[str, list[str]] = field(default_factory=dict)   # data/crm.csv: class id -> CRM classes (S11)
+    redirects: dict[str, str] = field(default_factory=dict)   # merged id -> id it was merged into (data/derived/redirects.json, S7e)
 
     @property
     def items(self) -> list[Entity]:
@@ -325,6 +326,7 @@ def load_site(raw: Path | None = None, derived: Path | None = None) -> Site:
                 site.entities[entity.id] = entity
 
     site.entities = dict(sorted(site.entities.items(), key=lambda kv: id_sort_key(kv[0])))
+    _read_redirects(site, derived / "redirects.json")
     site.crm, crm_problems = crm.read_overlay(raw.parent / "crm.csv", set(site.entities))
     problems.extend(crm_problems)
     _check_manifest(site, raw)
@@ -352,12 +354,36 @@ def _check_manifest(site: Site, raw: Path) -> None:
         site.problems.append(f"data/raw/entities/{entity_id}.json: not listed in the manifest")
 
 
+def _read_redirects(site: Site, path: Path) -> None:
+    """``redirects.json``: merged id -> id it was merged into. Both must look right and the target must exist."""
+    if not path.is_file():
+        return
+    shown = f"data/derived/{path.name}"
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as err:
+        site.problems.append(f"{shown}: cannot be read ({err})")
+        return
+    if not isinstance(data, dict):
+        site.problems.append(f"{shown}: expected an object of merged id -> target id")
+        return
+    for source, target in sorted(data.items(), key=lambda kv: id_sort_key(kv[0]) if ENTITY_ID.match(kv[0]) else (9, 0)):
+        if not (isinstance(target, str) and ENTITY_ID.match(source) and ENTITY_ID.match(target)):
+            site.problems.append(f"{shown}: {source!r} -> {target!r} is not a pair of entity ids")
+        elif source in site.entities:
+            site.problems.append(f"{shown}: {source} is merged into {target}, but it is an entity as well")
+        elif target not in site.entities:
+            site.problems.append(f"{shown}: {source} is merged into {target}, which has no data")
+        else:
+            site.redirects[source] = target
+
+
 def _check_references(site: Site) -> None:
     """Report every Q-/P-id that is pointed to but has no data, once, with who points to it."""
     referrers: dict[str, set[str]] = {}
     for entity in site.entities.values():
         for target in entity.referenced_ids():
-            if target not in site.entities and not is_federated(target):     # wd:Q42 is only linked (A4)
+            if target not in site.entities and target not in site.redirects and not is_federated(target):     # wd:Q42 is only linked (A4)
                 referrers.setdefault(target, set()).add(entity.id)
     for target in sorted(referrers, key=id_sort_key):
         who = sorted(referrers[target], key=id_sort_key)
