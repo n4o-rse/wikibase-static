@@ -28,3 +28,4 @@ Thumbs.db
 # dist/, docs/ and data/ are deliberately NOT ignored: dist/ holds the
 # versioned products, docs/ is served by GitHub Pages, data/raw/ is the
 # archived source. Ignoring any of them breaks the Pages build silently.
+PATCH-README.md
