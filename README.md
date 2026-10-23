@@ -12,7 +12,7 @@ on the published site can be edited.
 
 > **Status.** `harvest` (S4), `load` (S2), the page renderer `build` (S3), the search `search` (S5) and the
 > RDF export, example queries and query editor `rdf`, `sparql` (S6) work, and so does the CSV route (S7a: `from-csv`, `to-csv`,
-> `csv-fmt`; S7c: `import-open-archaeo`). The Wikidata importer, the update channel and the push into a real Wikibase (S7d to S7g) are
+> `csv-fmt`; S7c: `import-open-archaeo`; S7d: `import-wikidata`). The update channel and the push into a real Wikibase (S7e to S7g) are
 > still to come. See [`PRIMER.md`](https://github.com/n4o-rse/wikibase-static/blob/main/PRIMER.md) (German) for the plan, the
 > decisions taken so far and the order of the steps.
 
@@ -203,6 +203,30 @@ writes rows with `origin=open-archaeo` into the four tables and `idmap.csv`; `fr
 a reference (P6, the page of the entry). A reimport replaces the rows of the importer; a row whose `origin` you emptied counts as
 written by hand and wins (the importer then leaves that property of that subject alone). The report lists what was not imported
 and why. The rules are described at the top of `py/wikibase_static/step_import_open_archaeo.py`.
+
+### Importing Wikidata items (S7d)
+
+```
+python main.py import-wikidata                  fetch what changed at Wikidata, then import the seeds
+python main.py import-wikidata --offline        no network: import what data/raw/wikidata/ holds
+python main.py import-wikidata --from-dir DIR   store JSON files saved in a browser (Special:EntityData, wbgetentities), then import
+python main.py import-wikidata --dry-run        print the report, write nothing
+```
+
+The only importer that may use the network, so it has a verb of its own and is never part of the default run. The seeds are listed in
+`data/csv/seeds-wikidata.csv` (columns `qid, kind, note`; `kind` and `note` are for the reader). Each seed becomes a local item
+(`origin=wikidata`) with its labels, descriptions, aliases (`--languages`, default `en,de`), statements, qualifiers and references.
+The raw answers are kept unchanged in `data/raw/wikidata/entities/` with a `manifest.json`; a run asks Wikidata for the revisions
+(`props=info`, 50 ids per request) and fetches only what changed.
+
+Wikidata ids stay out of the data: a Wikidata property is translated through the `P4` twin of a local property (one without a twin is not
+imported and appears in the report and in `dist/wikidata-gaps.csv`), an item value through the twin of a local item. A target without a
+twin becomes a *stub* (`origin=wikidata-stub`: label, description and the twin, nothing more); a target that is the value of
+"instance of" becomes a class stub below the local twin of software. Every statement carries a reference (the Wikidata page, the
+date of the revision that was read, stated in Wikidata), followed by the references Wikidata itself holds. A reimport replaces the
+importer's rows; a row whose `origin` you emptied wins. The report also lists which repository and exact-match URLs of the seeds occur in
+items of another origin (open-archaeo); nothing is merged. The rules are described at the top of
+`py/wikibase_static/step_import_wikidata.py`.
 
 ### CIDOC CRM overlay
 

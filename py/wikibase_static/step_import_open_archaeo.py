@@ -157,18 +157,19 @@ class IdMap:
 
     COLUMNS = ["source", "key", "id"]
 
-    def __init__(self, rows: list[dict[str, str]], taken: set[str]) -> None:
+    def __init__(self, rows: list[dict[str, str]], taken: set[str], source: str = SOURCE) -> None:
+        self.source = source              # the importer that asks; rows of other sources are kept and their ids stay taken
         self.ids: dict[tuple[str, str], str] = {(r["source"], r["key"]): r["id"] for r in rows}
         self.used = {int(i[1:]) for i in list(self.ids.values()) + sorted(taken) if i[:1] == "Q" and i[1:].isdigit()}
         self.new = 0
 
     def get(self, key: str) -> str:
-        found = self.ids.get((SOURCE, key))
+        found = self.ids.get((self.source, key))
         if found:
             return found
         number = max([FIRST_FREE - 1] + sorted(self.used)) + 1
         self.used.add(number)
-        self.ids[(SOURCE, key)] = f"Q{number}"
+        self.ids[(self.source, key)] = f"Q{number}"
         self.new += 1
         return f"Q{number}"
 
@@ -432,14 +433,15 @@ class Merged:
     added: dict[str, int]
 
 
-def merge(existing: dict[str, csvio.Table], out: Out) -> Merged:
+def merge(existing: dict[str, csvio.Table], out: Out, origins: tuple[str, ...] = (SOURCE,)) -> Merged:
     """The tables after the import: importer rows replaced, rows of anyone else untouched, and where a hand row exists for
-    a (subject, property) the importer leaves that property of that subject alone."""
+    a (subject, property) the importer leaves that property of that subject alone. ``origins`` are the values of the
+    ``origin`` column that belong to the importer (the Wikidata importer has two, ``wikidata`` and ``wikidata-stub``)."""
     entities, statements = existing["entities.csv"], existing["statements.csv"]
-    hand_ids = {r["id"] for r in entities.rows if r.get("origin", "") != SOURCE}
-    protected = {(r["subject"], r["property"]) for r in statements.rows if r.get("origin", "") != SOURCE}
+    hand_ids = {r["id"] for r in entities.rows if r.get("origin", "") not in origins}
+    protected = {(r["subject"], r["property"]) for r in statements.rows if r.get("origin", "") not in origins}
 
-    kept_entities = [r for r in entities.rows if r.get("origin", "") != SOURCE]
+    kept_entities = [r for r in entities.rows if r.get("origin", "") not in origins]
     new_entities = [row for entity_id, row in out.entities.items() if entity_id not in hand_ids]
     columns = list(entities.columns)
     for row in new_entities:
@@ -449,11 +451,11 @@ def merge(existing: dict[str, csvio.Table], out: Out) -> Merged:
 
     kept_statements, dropped, kept_by_hand = [], set(), 0
     for row in statements.rows:
-        if row.get("origin", "") == SOURCE and (row["subject"], row["property"]) not in protected:
+        if row.get("origin", "") in origins and (row["subject"], row["property"]) not in protected:
             dropped.add(row.get("sid", ""))
         else:
             kept_statements.append(row)
-            if row.get("origin", "") == SOURCE:
+            if row.get("origin", "") in origins:
                 kept_by_hand += 1
     dropped.discard("")
     replaced = len(statements.rows) - len(kept_statements)
@@ -477,12 +479,13 @@ def merge(existing: dict[str, csvio.Table], out: Out) -> Merged:
 # --------------------------------------------------------------------------- the step
 
 
-def twin_map(site: csvbuild.CsvSet, kernel: csvbuild.CsvSet) -> dict[str, str]:
-    """Wikidata id -> local id, from the P4 statements of the site and of the kernel (the site wins a clash)."""
+def twin_map(site: csvbuild.CsvSet, kernel: csvbuild.CsvSet, skip: tuple[str, ...] = (SOURCE,)) -> dict[str, str]:
+    """Wikidata id -> local id, from the P4 statements of the site and of the kernel (the site wins a clash). Rows whose
+    ``origin`` is in ``skip`` (those of the importer that asks, which it is about to write again) do not count."""
     found: dict[str, str] = {}
     for table in (kernel.statements, site.statements):
         for row in table.rows:
-            if row["property"] == TWIN and row.get("origin", "") != SOURCE:
+            if row["property"] == TWIN and row.get("origin", "") not in skip:
                 found[row["value"]] = row["subject"]
     return found
 

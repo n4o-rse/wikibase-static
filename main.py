@@ -10,8 +10,8 @@
     python main.py --strict         warnings become errors (what CI runs)
     python main.py harvest          a step that is not in the default run
 
-``harvest`` is the only step that touches the network, so it is never part of
-the default run; give it its own verb. ``to-csv``, ``csv-fmt`` and ``import-open-archaeo`` write source files
+``harvest`` and ``import-wikidata`` are the only steps that touch the network, so they are never part of
+the default run; give them their own verbs. ``to-csv``, ``csv-fmt``, ``import-open-archaeo`` and ``import-wikidata`` write source files
 (``data/csv/``) and have verbs of their own as well. Anything main.py does not recognise is
 passed on to the step when exactly one step is selected, e.g.
 ``python main.py harvest --probe``.
@@ -41,6 +41,7 @@ STEPS = [
     ("to-csv", "step_to_csv", False, "S7a harvested JSON -> CSV tables (writes data/csv)"),
     ("csv-fmt", "step_csv_fmt", False, "S7a canonical form of data/csv (--check for CI)"),
     ("import-open-archaeo", "step_import_open_archaeo", False, "S7c open-archaeo entries -> CSV tables (offline, writes data/csv)"),
+    ("import-wikidata", "step_import_wikidata", False, "S7d Wikidata seeds -> CSV tables (network, incremental, writes data/csv)"),
     ("from-csv", "step_from_csv", True, "S7a CSV tables + kernel -> Wikibase JSON in data/derived"),
     ("load", "step_load", True, "S2  read data/raw and data/derived, check them"),
     ("build", "step_build", True, "S3  render the static pages into docs/"),
