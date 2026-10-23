@@ -12,8 +12,8 @@ on the published site can be edited.
 
 > **Status.** `harvest` (S4), `load` (S2), the page renderer `build` (S3), the search `search` (S5) and the
 > RDF export, example queries and query editor `rdf`, `sparql` (S6) work, and so does the CSV route (S7a: `from-csv`, `to-csv`,
-> `csv-fmt`; S7c: `import-open-archaeo`; S7d: `import-wikidata`). The update channel and the push into a real Wikibase (S7e to S7g) are
-> still to come. See [`PRIMER.md`](https://github.com/n4o-rse/wikibase-static/blob/main/PRIMER.md) (German) for the plan, the
+> `csv-fmt`; S7c: `import-open-archaeo`; S7d: `import-wikidata`; S7e: `apply-qs`; S7h/S7i: `merge`). The push into a real Wikibase
+> (S7g) is still to come. See [`PRIMER.md`](https://github.com/n4o-rse/wikibase-static/blob/main/PRIMER.md) (German) for the plan, the
 > decisions taken so far and the order of the steps.
 
 ## Workflow
@@ -248,6 +248,23 @@ else), and so is a property or a pair of an item and a class.
 the command that would merge it. It compares items of different origin by name (labels and aliases in every language; case, accents and
 punctuation do not count), by first and last name ("Allard Mees", "Allard Wijnand Mees") and by account names that look like initial plus
 surname ("nfrerebeau"). Nothing is merged by it; you run the lines you agree with. The Wikidata side is the one that stays.
+
+### Changing the tables with QuickStatements (S7e)
+
+The tables stay the state, and a QuickStatements file is the language of a change. `python main.py apply-qs data/edits/my-change.qs`
+reads a subset of QuickStatements v1 (tab separated, one command per line, `#` comments) with explicit local ids and writes the change
+into the CSV tables in their canonical form; `--dry-run` says what would happen. Commands: `CREATE` and `LAST` for a new item (it gets
+the next free Q number), `Len`, `Dde`, `Aen` for label, description and alias, `Q12<TAB>P3<TAB>value` for a statement with further
+pairs as qualifiers, `S`-numbered pairs as references, a leading `-` to remove exactly one statement (or alias), and
+`MERGE<TAB>Q12<TAB>Q13`, which writes a line to `merges.csv`. Values: `Q12`, `wd:Q42`, `"text"`, `de:"Text"`,
+`+2021-06-04T00:00:00Z/11`, `@lat/lon`, `12`, `somevalue`, `novalue`; each is checked against the datatype of its property.
+
+A file is applied all or nothing: every line is checked first and named with its line number, the tables are built once more with the
+change, and one bad line leaves everything as it was. A statement that is there already is not added twice. `data/edits/applied.csv`
+(`sha256, file, changes`) keeps the hash of every applied file, so the same text does not act a second time, whatever its name or line
+ends. What the subset does not read (sitelinks, `CREATE_PROPERTY`, removing a label) is reported as `WARN` with the line number and skipped.
+New rows have no `origin`, so they count as hand work and no importer overwrites them. The exact syntax is in the docstring of
+`py/wikibase_static/step_apply_qs.py`.
 
 ### CIDOC CRM overlay
 
