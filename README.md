@@ -214,7 +214,9 @@ python main.py import-wikidata --dry-run        print the report, write nothing
 ```
 
 The only importer that may use the network, so it has a verb of its own and is never part of the default run. The seeds are listed in
-`data/csv/seeds-wikidata.csv` (columns `qid, kind, note`; `kind` and `note` are for the reader). Each seed becomes a local item
+`data/csv/seeds-wikidata.csv` (columns `qid, kind, note` and, optionally, `instance_of`; `kind` and `note` are for the reader; `instance_of` lists local item ids
+separated by `|`, e.g. the class of the chublets: the seed becomes an instance of them besides what Wikidata says, once, without a
+Wikidata reference). Each seed becomes a local item
 (`origin=wikidata`) with its labels, descriptions, aliases (`--languages`, default `en,de`), statements, qualifiers and references.
 The raw answers are kept unchanged in `data/raw/wikidata/entities/` with a `manifest.json`; a run asks Wikidata for the revisions
 (`props=info`, 50 ids per request) and fetches only what changed. The requests carry no `maxlag` (Wikidata counts the lag of its

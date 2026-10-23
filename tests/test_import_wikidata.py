@@ -480,6 +480,34 @@ class Network(Case):
         self.run_step("--offline", client=client)
         self.assertEqual(client.calls, [])
 
+    def seeds_with(self, column: dict[str, str]) -> None:
+        write_csv(self.paths["seeds"], ["qid", "kind", "note", "instance_of"],
+                  [{"qid": q, "kind": "research software", "instance_of": column.get(q, "")} for q in SEEDS])
+
+    def test_instance_of_column_makes_a_seed_a_chublet_once(self) -> None:
+        self.seeds_with({q: "Q106" for q in SEEDS})
+        code, out = self.load()
+        self.assertEqual(code, 0, out)
+        for qid in SEEDS:
+            own = self.values(self.local(qid), "P2")
+            self.assertEqual(own.count("Q106"), 1, (qid, own))       # Wikidata already says chublet for three of them
+        profile = [r for r in self.table("statements.csv") if r["subject"] == self.local("Q74823867") and r["property"] == "P2"]
+        self.assertEqual(profile[-1]["value"], "Q106")
+        self.assertEqual(profile[-1]["origin"], "wikidata")
+        self.assertEqual([r for r in self.table("references.csv") if r["sid"] == profile[-1]["sid"]], [])
+        snapshot = self.snapshot()
+        self.assertEqual(self.run_step("--offline")[0], 0)
+        self.assertEqual(self.snapshot(), snapshot)
+
+    def test_instance_of_must_name_an_item_of_the_site(self) -> None:
+        self.seeds_with({"Q74823867": "Q999"})
+        code, out = self.load()
+        self.assertNotEqual(code, 0)
+        self.assertIn("Q999", out)
+        self.seeds_with({"Q74823867": "wikidata"})
+        code, out = self.load()
+        self.assertNotEqual(code, 0)
+
     def test_maxlag_is_off_by_default_and_can_be_switched_on(self) -> None:
         """Wikidata counts the lag of its query service in maxlag; reading must not wait for it."""
         from wikibase_static.step_harvest import Client

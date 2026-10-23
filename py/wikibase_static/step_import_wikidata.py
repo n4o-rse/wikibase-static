@@ -6,8 +6,9 @@
                                                     wbgetentities) in data/raw/wikidata/, then import offline
     python main.py import-wikidata --dry-run        print the report, write nothing (reads data/raw only)
 
-The seeds are listed in ``data/csv/seeds-wikidata.csv`` (columns ``qid, kind, note``; ``kind`` and ``note`` are for the
-reader, the importer treats every seed alike). Each seed becomes a local item (``origin=wikidata``) with its labels,
+The seeds are listed in ``data/csv/seeds-wikidata.csv`` (columns ``qid, kind, note`` and optionally ``instance_of``; ``kind`` and
+``note`` are for the reader). ``instance_of`` holds local item ids separated by ``|`` (the chublet class, say): the seed becomes an
+instance of them besides what Wikidata says, once, without a Wikidata reference, and an id the site does not have is an error. Each seed becomes a local item (``origin=wikidata``) with its labels,
 descriptions and aliases in the wanted languages and its statements, qualifiers and references.
 
 How Wikidata ids are kept out of the data (PRIMER.md, Befund 34): a property is translated through the Wikidata twin
@@ -74,12 +75,21 @@ REPORT = "wikidata-import.txt"
 # --------------------------------------------------------------------------- reading
 
 
+def classes_of(seed: dict[str, str]) -> list[str]:
+    """The local classes a seed is made an instance of, besides what Wikidata says (column ``instance_of``, ids separated by ``|``)."""
+    return [part.strip() for part in seed.get("instance_of", "").split("|") if part.strip()]
+
+
 def read_seeds(path: Path) -> list[dict[str, str]]:
     rows = read_rows(path, ["qid"], "seeds")
     seen: set[str] = set()
     for number, row in enumerate(rows, start=2):
         row.setdefault("kind", "")
         row.setdefault("note", "")
+        row.setdefault("instance_of", "")
+        for target in classes_of(row):
+            if not QID.match(target):
+                raise ImportProblem(f"seeds: {path.name}:{number}: instance_of {target!r} is not a local item id (Q106)")
         if not QID.match(row["qid"]):
             raise ImportProblem(f"seeds: {path.name}:{number}: {row['qid']!r} is not an item id (Q42)")
         if row["qid"] in seen:
@@ -279,6 +289,19 @@ class Converter:
                 continue
             for claim in claims:
                 self.statement(local, pid, claim, qid)
+        self.add_classes(qid)
+
+    def add_classes(self, qid: str) -> None:
+        """The classes the seed list asks for (column ``instance_of``), unless the item has them already. No reference:
+        the claim is the site's, not Wikidata's."""
+        seed = next(row for row in self.seeds if row["qid"] == qid)
+        have = {s["value"] for s in self.out.statements if s["subject"] == self.subject and s["property"] == INSTANCE}
+        for number, target in enumerate(classes_of(seed), start=1):
+            if target in have:
+                continue
+            have.add(target)
+            self.out.statements.append({"sid": f"{self.subject}-{INSTANCE}-seed{number}", "subject": self.subject,
+                                        "property": INSTANCE, "value": target, "rank": "", "origin": SOURCE})
 
     def add_twin(self, qid: str) -> None:
         if self.twins.get(qid) == self.subject:      # an existing twin of someone else's: that item already says it
@@ -488,6 +511,11 @@ def build_parser() -> argparse.ArgumentParser:
 def convert(seeds, raw_entities, site, kernel, idmap, languages) -> Converter:
     twins = twin_map(site, kernel, ORIGINS)
     converter = Converter(seeds, raw_entities, twins, property_datatypes(kernel, site), idmap, languages)
+    known = {row["id"] for one in (site, kernel) for row in one.entities.rows}
+    for seed in seeds:
+        for target in classes_of(seed):
+            if target not in known:
+                raise ImportProblem(f"seeds: {seed['qid']}: instance_of {target} is not an item of this site")
     for seed in seeds:
         converter.seed(seed["qid"])
     return converter
