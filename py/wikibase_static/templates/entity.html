@@ -11,7 +11,7 @@
 {% endif %}
 {% endblock %}
 {% block tabs_left %}<li class="active"><span>{{ ui_kind }}</span></li>{% endblock %}
-{% block tabs_right %}<li class="active"><span>{{ ui_tab_read }}</span></li>{% endblock %}
+{% block tabs_right %}<li class="active"><span>{{ ui_tab_read }}</span></li>{% if source_rows %}<li><a href="#source-rows">{{ ui_tab_source }}</a></li>{% endif %}{% endblock %}
 {% block main %}
 <article class="entity">
   <h1>{{ heading }}</h1>
@@ -100,6 +100,24 @@
     {% endfor %}
   </section>
 
+  {% if source_rows %}
+  <section class="source-rows">
+    <details id="source-rows">
+      <summary>{{ ui_source_rows }}</summary>
+      <p class="muted">{{ ui_source_rows_intro }}</p>
+      {% for block in source_rows %}
+      <div class="rows-block">
+        <h3><code>{{ block.file }}</code> <span class="muted">{{ block.count }}</span></h3>
+        <p class="rows-tools">
+          <button type="button" class="copy-rows" data-copy-from="rows-{{ loop.index }}"><span class="copy-label">{{ ui_copy_rows }}</span><span class="copy-done" hidden>{{ ui_copied }}</span></button>
+          {% if block.edit_href %}<a href="{{ block.edit_href }}" target="_blank" rel="noopener">{{ ui_edit_file }}</a>{% endif %}
+        </p>
+        <pre id="rows-{{ loop.index }}" class="rows"><code>{{ block.text }}</code></pre>
+      </div>
+      {% endfor %}
+    </details>
+  </section>
+  {% endif %}
   {% if incoming %}
   <section class="incoming" id="incoming">
     <details>

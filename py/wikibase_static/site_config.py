@@ -38,7 +38,7 @@ PROPERTY = re.compile(r"^P[1-9][0-9]*$")
 DEFAULT_COLOUR = "#336699"
 DEFAULT_LICENSE = ("CC0 1.0", "https://creativecommons.org/publicdomain/zero/1.0/")   # PRIMER.md, A4
 KNOWN_KEYS = {"title", "description", "logo", "colour", "source", "license", "languages",
-              "imprint", "pages_url", "formatter_property", "rdf_base"}
+              "imprint", "pages_url", "formatter_property", "rdf_base", "edit_url"}
 
 
 @dataclass
@@ -56,6 +56,7 @@ class SiteConfig:
     imprint: str | None = None
     pages_url: str | None = None
     rdf_base: str | None = None
+    edit_url: str | None = None                # folder of the CSV tables in the repository editor (S7f), without a trailing slash
     formatter_property: str = "P1630"
     present: bool = False                      # was there a site.yaml at all
     problems: list[str] = field(default_factory=list)
@@ -152,6 +153,13 @@ def load_config(path: Path, manifest_source: str | None = None) -> SiteConfig:
             cfg.rdf_base = rdf_base.rstrip("/")
         else:
             problems.append(f"site.yaml: rdf_base {rdf_base!r} is not an http(s) URL without query or fragment; ignored")
+
+    edit_url = _text(data.get("edit_url"), "edit_url", problems)
+    if edit_url:
+        if re.match(r"^https?://[^\s]+$", edit_url):
+            cfg.edit_url = edit_url.rstrip("/")
+        else:
+            problems.append(f"site.yaml: edit_url {edit_url!r} is not an http(s) URL; ignored")
 
     formatter = _text(data.get("formatter_property"), "formatter_property", problems)
     if formatter:

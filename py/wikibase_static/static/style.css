@@ -215,11 +215,18 @@ button.link { font: inherit; padding: 0; border: 0; background: none; color: var
 /* downloads and the copy button under the description of an entity page */
 .crm { font-size: 0.9rem; margin: 0.2rem 0 1rem; }
 .entity-tools { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.3rem 1rem; font-size: 0.86rem; margin: 0.2rem 0 1rem; }
-.copy-uri { font: inherit; color: var(--link); background: none; border: 0; padding: 0; cursor: pointer; }
-.copy-uri:hover, .copy-uri:focus-visible { text-decoration: underline; }
+.copy-uri, .copy-rows { font: inherit; color: var(--link); background: none; border: 0; padding: 0; cursor: pointer; }
+.copy-uri:hover, .copy-uri:focus-visible, .copy-rows:hover, .copy-rows:focus-visible { text-decoration: underline; }
 .copy-uri[hidden], .copy-done[hidden], .copy-label[hidden] { display: none; }
 
 .page-links { list-style: none; padding: 0; margin: 1rem 0; display: flex; flex-wrap: wrap; gap: 0.4rem 1.4rem; }
 .overview section { margin-top: 1.8rem; }
 .overview .wbs-map { margin: 0.6rem 0 1rem; }
 .overview h2 .count { font-size: 0.8rem; font-weight: normal; }
+
+/* ---- tab "Source rows": the CSV lines of the page, as text */
+.source-rows { margin-top: 1.6rem; }
+.source-rows summary { cursor: pointer; font-weight: 600; }
+.rows-block h3 { font-size: 0.95rem; margin: 1rem 0 0.2rem; font-weight: 600; }
+.rows-tools { margin: 0 0 0.3rem; font-size: 0.85rem; display: flex; gap: 1rem; }
+pre.rows { margin: 0; padding: 0.6rem 0.8rem; overflow-x: auto; font-size: 0.78rem; line-height: 1.4; border: 1px solid var(--soft-border); background: var(--page); max-height: 24rem; }

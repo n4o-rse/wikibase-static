@@ -46,6 +46,20 @@
       if (ok) { resolve(); } else { reject(new Error("copy failed")); }
     });
   }
+  document.querySelectorAll("[data-copy-from]").forEach(function (button) {      // the rows of a source table (S7f)
+    var label = button.querySelector(".copy-label");
+    var done = button.querySelector(".copy-done");
+    button.addEventListener("click", function () {
+      var source = document.getElementById(button.getAttribute("data-copy-from"));
+      if (!source) { return; }
+      copy(source.textContent).then(function () {
+        if (label && done) { label.hidden = true; done.hidden = false; }
+        window.setTimeout(function () {
+          if (label && done) { label.hidden = false; done.hidden = true; }
+        }, 1500);
+      }, function () { window.prompt("CSV", source.textContent); });
+    });
+  });
   document.querySelectorAll("[data-copy]").forEach(function (button) {
     var label = button.querySelector(".copy-label");
     var done = button.querySelector(".copy-done");
@@ -58,4 +72,17 @@
       }, function () { window.prompt("URI", button.getAttribute("data-copy")); });
     });
   });
+})();
+
+// The tab "Source rows" is a link to a <details> element; a link to a closed <details> does not open it, so open it here.
+(function () {
+  function openSource() {
+    var details = document.getElementById("source-rows");
+    if (details && window.location.hash === "#source-rows") {
+      details.open = true;
+      details.scrollIntoView();
+    }
+  }
+  openSource();
+  window.addEventListener("hashchange", openSource);
 })();

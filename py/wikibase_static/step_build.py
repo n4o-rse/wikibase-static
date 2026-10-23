@@ -37,6 +37,7 @@ if __package__ in (None, ""):  # direct run: python py/wikibase_static/step_buil
 from wikibase_static import __version__, utils
 from wikibase_static.loader import load_site
 from wikibase_static.model import id_sort_key
+from wikibase_static.source_rows import SourceRows
 
 STEP = "build"
 PACKAGE = Path(__file__).resolve().parent
@@ -154,6 +155,19 @@ def page_context(site: Any, cfg: Any, r: Any, logo: str | None):
     return common
 
 
+def source_context(r: Any, cfg: Any, source_rows: SourceRows | None, entity_id: str) -> dict[str, Any]:
+    """Template values of the tab "Source rows" (S7f): ``source_rows`` is ``None`` when the site is not made from CSV or the entity has no row."""
+    blocks = source_rows.blocks(entity_id) if source_rows else []
+    if not blocks:
+        return {"source_rows": None}
+    return {
+        "source_rows": [{"file": b.file, "count": r.ui("rows_n", n=b.rows), "text": b.text,
+                         "edit_href": f"{cfg.edit_url}/{b.name}" if cfg.edit_url and b.editable else None} for b in blocks],
+        "ui_tab_source": r.ui("tab_source"), "ui_source_rows": r.ui("source_rows"), "ui_source_rows_intro": r.ui("source_rows_intro"),
+        "ui_copy_rows": r.ui("copy_rows"), "ui_edit_file": r.ui("edit_file"),
+    }
+
+
 def place_logo(logo: str | None, docs: Path, problems: list[str]) -> str | None:
     """The href for the header logo: a URL as given, or a repository file copied into docs/assets/logo/."""
     if not logo:
@@ -198,6 +212,7 @@ def main(argv: list[str] | None = None) -> int:
 
     env = make_env()
     r = Renderer(site, cfg, __version__)
+    source_rows = SourceRows.load(utils.ROOT / "data" / "csv")          # None for a site that was harvested and not made from CSV
     common = page_context(site, cfg, r, logo)
     base, placeholder = resolve_base(cfg)
     own = cfg.pages_url.rstrip("/") if cfg.pages_url else None
@@ -250,6 +265,7 @@ def main(argv: list[str] | None = None) -> int:
             "ui_rank_deprecated": r.ui("rank_deprecated"),
             "ui_referenced_by": r.ui("referenced_by", n=len(r.incoming.get(entity.id, []))),
         })
+        context.update(source_context(r, cfg, source_rows, entity.id))
         utils.write_text(docs / name, env.get_template("entity.html").render(context))
 
     for source, target in sorted(site.redirects.items(), key=lambda kv: id_sort_key(kv[0])):    # merged ids (S7e): a page that forwards

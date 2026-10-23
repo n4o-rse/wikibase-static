@@ -175,6 +175,7 @@ imprint: https://example.org/imprint    # text or URL
 pages_url: https://example.github.io/repo/   # optional, for the canonical link
 formatter_property: P1630        # property that holds the formatter URL of external-id properties
 rdf_base: https://example.org    # optional: base URI of the RDF export; default is source.url
+edit_url: https://github.com/OWNER/REPO/edit/main/data/csv   # optional: folder of the CSV tables in the repository editor (tab "Source rows")
 ```
 
 Offline tests (a fake Wikibase on localhost, no network needed):
@@ -265,6 +266,16 @@ change, and one bad line leaves everything as it was. A statement that is there 
 ends. What the subset does not read (sitelinks, `CREATE_PROPERTY`, removing a label) is reported as `WARN` with the line number and skipped.
 New rows have no `origin`, so they count as hand work and no importer overwrites them. The exact syntax is in the docstring of
 `py/wikibase_static/step_apply_qs.py`.
+
+### Source rows (S7f)
+
+When the site is made from CSV tables (`data/csv/` exists), every entity page has a tab "Source rows" next to "Read". It opens a section with
+the rows of the CSV files that the page is made from: the entity's row in `entities.csv`, its rows in `statements.csv`, the rows of
+`qualifiers.csv` and `references.csv` that belong to those statements, and the lines of `merges.csv` that name it. The text is the text of
+the file, line for line, with the header line first, and each block has a button that copies it. With `edit_url` in `site.yaml` every block
+links to its file in the repository editor. The kernel (Q1 to Q3, P1 to P10) is shown from the tables of the package, without a link.
+The page stays read-only; there is no write access from the browser. A site that was harvested from a Wikibase (no `data/csv/`) gets no tab,
+and its pages do not change.
 
 ### CIDOC CRM overlay
 
