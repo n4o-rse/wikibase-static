@@ -363,7 +363,8 @@ def _apply_merges(site: CsvSet, rows: dict[str, Row], kernel_ids: set[str], buil
     * Different values of the same property are all kept, as in Wikibase; the notes say which properties differ.
     * The label, description and aliases of ``to`` win; a different label of ``from`` becomes an alias, languages
       ``to`` lacks are taken over.
-    * A value (or qualifier or reference value) that points at ``from`` points at ``to``.
+    * A value (or qualifier or reference value) that points at ``from`` points at ``to``; this happens first, so two statements
+      that differed only in naming ``from`` or ``to`` count as the same one.
     * ``from`` is no entity any more: it is a redirect (``Built.redirects``), its id is never used again.
     """
     problems = built.problems
@@ -371,6 +372,15 @@ def _apply_merges(site: CsvSet, rows: dict[str, Row], kernel_ids: set[str], buil
     if not merges:
         return
     mapping = {source: target for source, target, _note in merges}
+    # First every value that points at a merged item, so that "Q382" and "Q365" are the same value when two statements are compared.
+    for row in rows.values():
+        for claim in row.statements:
+            claim.datavalue = _redirect_value(claim.datavalue, mapping)
+            if claim.snaktype == "value" and claim.datavalue and claim.datavalue["type"] == "wikibase-entityid" and claim.value in mapping:
+                claim.value = mapping[claim.value]
+            claim.qualifiers = [(p, st, _redirect_value(dv, mapping), dt, w) for p, st, dv, dt, w in claim.qualifiers]
+            claim.references = {g: [(p, st, _redirect_value(dv, mapping), dt, w) for p, st, dv, dt, w in snaks]
+                                for g, snaks in claim.references.items()}
     for source, target, _note in merges:
         old, new = rows[source], rows[target]
         for name in ("labels", "descriptions"):
@@ -404,14 +414,6 @@ def _apply_merges(site: CsvSet, rows: dict[str, Row], kernel_ids: set[str], buil
             + (f"; different values for {', '.join(sorted(differing, key=id_sort_key))}, all kept" if differing else ""))
         built.redirects[source] = target
         del rows[source]
-    for row in rows.values():
-        for claim in row.statements:
-            claim.datavalue = _redirect_value(claim.datavalue, mapping)
-            if claim.snaktype == "value" and claim.datavalue and claim.datavalue["type"] == "wikibase-entityid" and claim.value in mapping:
-                claim.value = mapping[claim.value]
-            claim.qualifiers = [(p, st, _redirect_value(dv, mapping), dt, w) for p, st, dv, dt, w in claim.qualifiers]
-            claim.references = {g: [(p, st, _redirect_value(dv, mapping), dt, w) for p, st, dv, dt, w in snaks]
-                                for g, snaks in claim.references.items()}
 
 
 # --------------------------------------------------------------------------- validation

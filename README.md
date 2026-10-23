@@ -244,6 +244,11 @@ becomes an alias. A value that pointed at the merged item points at the target. 
 forwards, the RDF says `owl:sameAs`, its id is never used again. Chains are refused (the target must not be merged into something
 else), and so is a property or a pair of an item and a class.
 
+`python main.py merge --suggest` looks for items that may be the same thing and writes `dist/merge-suggestions.csv`, one line per pair with
+the command that would merge it. It compares items of different origin by name (labels and aliases in every language; case, accents and
+punctuation do not count), by first and last name ("Allard Mees", "Allard Wijnand Mees") and by account names that look like initial plus
+surname ("nfrerebeau"). Nothing is merged by it; you run the lines you agree with. The Wikidata side is the one that stays.
+
 ### CIDOC CRM overlay
 
 A site can say which CIDOC CRM class its classes stand for, without touching the data. Write `data/crm.csv` next to

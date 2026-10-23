@@ -1,4 +1,4 @@
-"""Tests for merges (S7e): ``merges.csv``, the merge while the tables are read, redirects in pages and RDF, the ``merge`` verb.
+"""Tests for merges (S7h, S7i): ``merges.csv``, the merge while the tables are read, redirects in pages and RDF, the ``merge`` verb.
 
     python tests/test_merge.py
 """
@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import contextlib
+import csv
 import io
 import json
 import sys
@@ -107,6 +108,15 @@ class Merging(Case):
         self.merges(("Q102", "Q101"))
         built = self.build()
         self.assertEqual(self.values(built, "Q103", "P101"), ["Q101"])
+
+    def test_statements_that_differ_only_in_naming_a_merged_item_are_the_same_one(self) -> None:
+        # Q101 and Q102 both say "used by": one names Q103, the other Q104; Q104 is merged into Q103 as well.
+        (self.csv / "statements.csv").write_text((self.csv / "statements.csv").read_text(encoding="utf-8")
+                                                 + "e1,Q101,P101,Q103,,\ne2,Q102,P101,Q104,,\n", encoding="utf-8", newline="")
+        self.merges(("Q102", "Q101"), ("Q104", "Q103"))
+        built = self.build()
+        self.assertEqual(built.problems, [])
+        self.assertEqual(self.values(built, "Q101", "P101"), ["Q103"])                      # once, not twice
 
     def test_the_label_of_the_target_wins_and_the_other_becomes_an_alias(self) -> None:
         self.merges(("Q102", "Q101"))
@@ -217,6 +227,87 @@ class Pipeline(Case):
         self.assertNotIn("WARN", out.getvalue(), out.getvalue())
         self.assertIn("1 merged id(s) forward", out.getvalue())
         self.assertIn("(difference 0)", out.getvalue())
+
+
+class Suggestions(unittest.TestCase):
+    """``merge --suggest`` (S7i): pairs of different origin that may be the same thing."""
+
+    def setUp(self) -> None:
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.root = Path(self._tmp.name).resolve()
+        self.csv = self.root / "csv"
+        self.report = self.root / "report.csv"
+
+    def tables(self, rows: list[tuple[str, str, str, str, str]], merges: list[tuple[str, str]] = ()) -> None:
+        """rows: id, kind, origin, label_en, aliases_en"""
+        write(self.csv, "entities.csv", ["id", "kind", "datatype", "origin", "label_en", "aliases_en"],
+              [{"id": i, "kind": k, "datatype": "string" if k == "property" else "", "origin": o, "label_en": label, "aliases_en": a}
+               for i, k, o, label, a in rows])
+        if merges:
+            write(self.csv, csvbuild.MERGES, csvbuild.MERGE_COLUMNS, [{"from": a, "to": b, "note": ""} for a, b in merges])
+
+    def run_suggest(self) -> tuple[int, str, list[dict[str, str]]]:
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            code = step_merge.main(["--csv", str(self.csv), "--suggest", "--report", str(self.report)])
+        rows: list[dict[str, str]] = []
+        if self.report.is_file():
+            with self.report.open(encoding="utf-8", newline="") as handle:
+                rows = list(csv.DictReader(handle))
+        return code, out.getvalue(), rows
+
+    def test_names_parts_and_account_names(self) -> None:
+        self.tables([
+            ("Q101", "item", "open-archaeo", "florianthiery", ""), ("Q102", "item", "wikidata-stub", "Florian Thiery", ""),
+            ("Q103", "item", "open-archaeo", "Allard Mees", ""), ("Q104", "item", "wikidata-stub", "Allard Wijnand Mees", "Dr. Allard Wijnand Mees FSA"),
+            ("Q105", "item", "open-archaeo", "nfrerebeau", ""), ("Q106", "item", "hand", "Nicolas Frérebeau", ""),
+            ("Q107", "item", "open-archaeo", "Zoë Müller", ""), ("Q108", "item", "wikidata", "ZOE MULLER", ""),
+        ])
+        code, out, rows = self.run_suggest()
+        self.assertEqual(code, 0, out)
+        found = {frozenset((r["from"], r["to"])): r["score"] for r in rows}
+        self.assertEqual(found[frozenset(("Q101", "Q102"))], "3")
+        self.assertEqual(found[frozenset(("Q103", "Q104"))], "2")
+        self.assertEqual(found[frozenset(("Q105", "Q106"))], "1")
+        self.assertEqual(found[frozenset(("Q107", "Q108"))], "3")             # accents and case do not count
+        self.assertEqual([r["score"] for r in rows], ["3", "3", "2", "1"])    # best first
+
+    def test_the_wikidata_side_stays(self) -> None:
+        self.tables([("Q101", "item", "wikidata-stub", "Python", ""), ("Q102", "item", "open-archaeo", "Python", ""),
+                     ("Q103", "item", "wikidata", "Python programming", "Python"), ("Q104", "item", "wikidata-stub", "Mess", "")])
+        _code, _out, rows = self.run_suggest()
+        commands = {r["command"] for r in rows}
+        self.assertIn("merge Q102 Q103", commands)          # the seed beats the stub and the other source
+        self.assertIn("merge Q101 Q103", commands)
+        self.assertNotIn("merge Q103 Q102", commands)
+
+    def test_left_out_same_origin_short_names_classes_and_merged_ones(self) -> None:
+        self.tables([
+            ("Q101", "item", "open-archaeo", "Anna Maier", ""), ("Q102", "item", "open-archaeo", "Anna Maier", ""),     # same origin
+            ("Q103", "item", "open-archaeo", "R", ""), ("Q104", "item", "wikidata-stub", "R", ""),                      # too short
+            ("Q105", "class", "starter-pack", "Software", ""), ("Q106", "item", "open-archaeo", "Software", ""),        # a class
+            ("P100", "property", "starter-pack", "Software", ""),                                                       # a property
+            ("Q107", "item", "open-archaeo", "Ina Roth", ""), ("Q108", "item", "wikidata-stub", "Ina Roth", ""),        # merged already
+            ("Q109", "item", "open-archaeo", "Anna Maier", ""), ("Q110", "item", "open-archaeo", "Ben Maier", ""),
+        ], merges=[("Q107", "Q108")])
+        _code, out, rows = self.run_suggest()
+        self.assertEqual(rows, [], rows)
+        self.assertIn("0 pair(s)", out)
+
+    def test_two_people_with_the_same_initial_and_surname_are_not_suggested_for_each_other(self) -> None:
+        self.tables([("Q101", "item", "open-archaeo", "Allard Mees", ""), ("Q102", "item", "wikidata-stub", "Anna Mees", "")])
+        _code, _out, rows = self.run_suggest()
+        self.assertEqual(rows, [])
+
+    def test_the_report_is_a_function_of_the_tables(self) -> None:
+        self.tables([("Q101", "item", "open-archaeo", "Ina Roth", ""), ("Q102", "item", "wikidata-stub", "Ina Roth", "")])
+        self.run_suggest()
+        first = self.report.read_bytes()
+        self.run_suggest()
+        self.assertEqual(self.report.read_bytes(), first)
+        self.assertTrue(first.startswith(b"score,reason,from,from_label,from_origin,to,to_label,to_origin,command\n"))
+        self.assertTrue(first.endswith(b"merge Q101 Q102\n"))
 
 
 class Verb(Case):
