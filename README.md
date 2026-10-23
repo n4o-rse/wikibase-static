@@ -217,7 +217,8 @@ The only importer that may use the network, so it has a verb of its own and is n
 `data/csv/seeds-wikidata.csv` (columns `qid, kind, note`; `kind` and `note` are for the reader). Each seed becomes a local item
 (`origin=wikidata`) with its labels, descriptions, aliases (`--languages`, default `en,de`), statements, qualifiers and references.
 The raw answers are kept unchanged in `data/raw/wikidata/entities/` with a `manifest.json`; a run asks Wikidata for the revisions
-(`props=info`, 50 ids per request) and fetches only what changed.
+(`props=info`, 50 ids per request) and fetches only what changed. The requests carry no `maxlag` (Wikidata counts the lag of its
+query service in it, which is often above five seconds and says nothing about reading); `--maxlag N` switches it on.
 
 Wikidata ids stay out of the data: a Wikidata property is translated through the `P4` twin of a local property (one without a twin is not
 imported and appears in the report and in `dist/wikidata-gaps.csv`), an item value through the twin of a local item. A target without a

@@ -479,6 +479,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--from-dir", metavar="DIR", type=Path, help="store saved JSON files in the raw folder first")
     parser.add_argument("--dry-run", action="store_true", help="print the report, write nothing (implies --offline)")
     parser.add_argument("--delay", type=float, default=1.0, help="seconds between requests (default: 1)")
+    parser.add_argument("--maxlag", type=float, default=0.0,
+                        help="send maxlag=N seconds (default: 0 = off; Wikidata counts the lag of its query service, which is often above 5 s and irrelevant for reading)")
     parser.add_argument("--contact", help="contact named in the User-Agent; or set WBS_CONTACT")
     return parser
 
@@ -524,7 +526,7 @@ def main(argv: list[str] | None = None, client: Client | None = None) -> int:
         online = not (args.offline or args.dry_run or args.from_dir)
         if online:
             contact = args.contact or os.environ.get("WBS_CONTACT") or "https://github.com/n4o-rse/wikibase-static"
-            client = client or Client(API, f"wikibase-static/{__version__} (+{contact}; static archive, read-only)", delay=args.delay)
+            client = client or Client(API, f"wikibase-static/{__version__} (+{contact}; static archive, read-only)", delay=args.delay, maxlag=args.maxlag)
             changed, same = refresh(client, args.raw, wanted, True, languages)
             first = convert(seeds, load_raw(args.raw), site, kernel, IdMap(idmap_rows, taken, SOURCE), languages)
             more = sorted(set(first.stubs) - set(wanted))

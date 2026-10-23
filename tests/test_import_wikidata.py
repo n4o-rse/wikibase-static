@@ -480,6 +480,25 @@ class Network(Case):
         self.run_step("--offline", client=client)
         self.assertEqual(client.calls, [])
 
+    def test_maxlag_is_off_by_default_and_can_be_switched_on(self) -> None:
+        """Wikidata counts the lag of its query service in maxlag; reading must not wait for it."""
+        from wikibase_static.step_harvest import Client
+
+        sent: list[str] = []
+
+        class Probe(Client):
+            def _open(self, request):  # no network
+                sent.append(request.full_url)
+                return 200, {}, b"{}"
+
+        Probe(imp.API, "test").get({"action": "query"}, "probe")
+        Probe(imp.API, "test", maxlag=0).get({"action": "query"}, "probe")
+        Probe(imp.API, "test", maxlag=7).get({"action": "query"}, "probe")
+        self.assertIn("maxlag=5", sent[0])      # the harvest default is unchanged
+        self.assertNotIn("maxlag", sent[1])
+        self.assertIn("maxlag=7", sent[2])
+        self.assertEqual(imp.build_parser().parse_args([]).maxlag, 0.0)
+
 
 if __name__ == "__main__":
     unittest.main()

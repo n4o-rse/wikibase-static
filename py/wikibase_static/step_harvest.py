@@ -79,8 +79,9 @@ class Unreachable(HarvestError):
 class Client:
     """A polite, read-only MediaWiki API client (GET only)."""
 
-    def __init__(self, api: str, user_agent: str, delay: float = 1.0, timeout: float = 60.0) -> None:
+    def __init__(self, api: str, user_agent: str, delay: float = 1.0, timeout: float = 60.0, maxlag: float | None = MAXLAG) -> None:
         self.api = api
+        self.maxlag = maxlag  # None or 0: send no maxlag parameter
         self.user_agent = user_agent
         self.delay = delay
         self.timeout = timeout
@@ -95,7 +96,9 @@ class Client:
 
     def get(self, params: dict[str, Any], kind: str) -> dict[str, Any]:
         """One API call with retries on 429, 5xx and ``maxlag``; returns decoded JSON."""
-        query = {"format": "json", "maxlag": str(MAXLAG), **params}
+        query = {"format": "json", **params}
+        if self.maxlag:
+            query = {"format": "json", "maxlag": f"{self.maxlag:g}", **params}
         url = self.api + "?" + urllib.parse.urlencode(query)
         request = urllib.request.Request(url, headers={"User-Agent": self.user_agent, "Accept": "application/json"})
         for attempt in range(MAX_RETRIES + 1):
