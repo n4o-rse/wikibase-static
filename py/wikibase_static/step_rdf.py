@@ -147,16 +147,17 @@ def main(argv: list[str] | None = None) -> int:
     ns = rdf.Namespaces(base, cfg.rdf_prefix)
     stem = rdf.file_stem(base)
     json_sizes = {e.id: file.stat().st_size for e in site.entities.values() if (file := raw_file(e)) is not None}
+    data_date = site.latest_modified or cfg.data_as_of         # the archived entities first, else the date stated in site.yaml
     catalog = rdf.CatalogInfo(
         title=cfg.title, description=cfg.description, license_url=cfg.license_url, source_url=cfg.source_url,
-        pages_url=cfg.pages_url, modified=site.latest_modified, json_sizes=json_sizes,
+        pages_url=cfg.pages_url, modified=data_date, json_sizes=json_sizes,
         export_file=f"downloads/{stem}.ttl", ontology_file=f"downloads/{ONTOLOGY_NAME}",
         ontology_bytes=ONTOLOGY.stat().st_size)
     result = rdf.build(site, ns, cfg.license_url, catalog)
 
     own = bool(cfg.pages_url) and ns.base.rstrip("/") == cfg.pages_url.rstrip("/")     # URIs of this site: do not point to the source
     header = [f"RDF export of {cfg.title if own else (cfg.source_url or cfg.title)}, Wikibase data model; base URI {ns.base}",
-              f"Generated with wikibase-static {__version__}; data as of {site.latest_modified or 'unknown'}",
+              f"Generated with wikibase-static {__version__}; data as of {data_date or 'unknown'}",
               f"Licence: {cfg.license_name or 'not stated'}"]
     if ns.family and own:
         header.append(f"The prefixes {ns.family}:, {ns.family}t:, {ns.family}p: and so on are this site's own and are not Wikidata's wd:, wdt:, p:. "

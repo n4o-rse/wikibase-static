@@ -23,6 +23,8 @@ Keys (all optional; a missing file gives the defaults and one note)::
     rdf_prefix: chb                   # optional; short name for the prefix family of the export (chb:, chbt:, chbp:, ...).
                                       # Without it the Wikibase names wd:, wdt:, p:, ... are used, which is right when the base
                                       # URI is the real Wikibase; a site with URIs of its own should not borrow them
+    data_as_of: 2026-10-25            # optional; date (or date and time) of the data, for entities that carry no "modified" of
+                                      # their own (tables kept as CSV); used in the header and the catalogue of the RDF export
 
 ``load_config()`` never raises: unusable values become messages (printed as
 ``WARN`` by the build step) and fall back to the default.
@@ -30,6 +32,7 @@ Keys (all optional; a missing file gives the defaults and one note)::
 
 from __future__ import annotations
 
+import datetime
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -42,10 +45,11 @@ RDF_PREFIX = re.compile(r"^[a-z][a-z0-9]{0,11}$")
 # Prefixes the export declares for vocabularies; a site's own family must not take one of them.
 RESERVED_PREFIXES = frozenset({"cc", "dcat", "dcterms", "geo", "owl", "prov", "rdf", "rdfs", "schema", "skos", "wikibase", "xsd",
                                "crm", "crmdig", "crmsci", "crmgeo", "crmarchaeo", "crminf", "crmba", "crmtex", "lrmoo", "sh"})
+DATA_AS_OF = re.compile(r"^(\d{4}-\d{2}-\d{2})(?:[T ](\d{2}:\d{2}:\d{2}))?Z?$")
 DEFAULT_COLOUR = "#336699"
 DEFAULT_LICENSE = ("CC0 1.0", "https://creativecommons.org/publicdomain/zero/1.0/")   # PRIMER.md, A4
 KNOWN_KEYS = {"title", "description", "logo", "colour", "source", "license", "languages",
-              "imprint", "pages_url", "formatter_property", "rdf_base", "rdf_prefix", "edit_url"}
+              "imprint", "pages_url", "formatter_property", "rdf_base", "rdf_prefix", "edit_url", "data_as_of"}
 
 
 @dataclass
@@ -64,6 +68,7 @@ class SiteConfig:
     pages_url: str | None = None
     rdf_base: str | None = None
     rdf_prefix: str | None = None
+    data_as_of: str | None = None              # ISO instant (YYYY-MM-DDThh:mm:ssZ) for data that carry no modification time of their own
     edit_url: str | None = None                # folder of the CSV tables in the repository editor (S7f), without a trailing slash
     formatter_property: str = "P1630"
     present: bool = False                      # was there a site.yaml at all
@@ -169,6 +174,22 @@ def load_config(path: Path, manifest_source: str | None = None) -> SiteConfig:
         else:
             problems.append(f"site.yaml: rdf_prefix {rdf_prefix!r} is not a short lower-case name (letters and digits, at most 12, "
                             "starting with a letter) that is free of the vocabulary prefixes; the Wikibase names (wd, wdt, ...) used")
+
+    stated = data.get("data_as_of")
+    if stated is not None:
+        if isinstance(stated, datetime.datetime):                    # YAML reads 2026-10-25T08:30:00Z as a point in time
+            if stated.tzinfo is not None:
+                stated = stated.astimezone(datetime.timezone.utc).replace(tzinfo=None)
+            instant = stated.strftime("%Y-%m-%dT%H:%M:%S")
+        elif isinstance(stated, datetime.date):
+            instant = stated.isoformat()
+        else:
+            instant = str(stated).strip()
+        found = DATA_AS_OF.match(instant)
+        if found:
+            cfg.data_as_of = f"{found.group(1)}T{found.group(2) or '00:00:00'}Z"
+        else:
+            problems.append(f"site.yaml: data_as_of {stated!r} is not a date (2026-10-25) or a date and time (2026-10-25T08:30:00Z); ignored")
 
     edit_url = _text(data.get("edit_url"), "edit_url", problems)
     if edit_url:

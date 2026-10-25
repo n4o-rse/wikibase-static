@@ -176,6 +176,7 @@ pages_url: https://example.github.io/repo/   # optional, for the canonical link
 formatter_property: P1630        # property that holds the formatter URL of external-id properties
 rdf_base: https://example.org    # optional: base URI of the RDF export; default is source.url
 rdf_prefix: chb                  # optional: own prefix family (chb:, chbt:, chbp:, ...) instead of wd:, wdt:, p:, ...; see "Prefixes of the export"
+data_as_of: 2026-10-25           # optional: date (or date and time) of the data, for entities without a modification time of their own (CSV tables); used in the header and the catalogue of the RDF export, else "unknown"
 edit_url: https://github.com/OWNER/REPO/edit/main/data/csv   # optional: folder of the CSV tables in the repository editor (tab "Source rows")
 ```
 
@@ -276,7 +277,7 @@ reader takes `wd:Q933` for an item of Wikidata. Set `rdf_prefix: chb` and the fa
 `chbt:` (direct claims), `chbp:`, `chbps:`, `chbpsv:`, `chbpq:`, `chbpqv:`, `chbpr:`, `chbprv:`, `chbno:`, `chbref:`, `chbv:`, plus `chbdata:`, `chbcat:`
 and `chbdist:`. The namespaces do not change, only their names, so the graph is the same. The query page declares the same prefixes.
 
-With a family the dataset of an entity is the file that exists, `<base>/ttl/<ID>.ttl` (Wikibase's own `Special:EntityData/<ID>` does not exist on a static host).
+With a family the Turtle file of an entity is `<base>/ttl/<ID>.ttl` (Wikibase's own `Special:EntityData/<ID>` does not exist on a static host) and the dataset it belongs to is `<base>/ttl/<ID>.ttl#dataset`, so that the dataset and the file (the `dcat:downloadURL` of its Turtle distribution) are two things.
 Only `chb:<ID>` opens a page (`entity/<ID>.html`, which forwards to the page of the entity); the IRIs of statements, references, values and property
 paths are identifiers and do not resolve.
 
@@ -288,7 +289,7 @@ their pages. The start page has the section "Data model": one card per class wit
 the values and the number of statements. It is read from the data, so it shows what the data does and not what a schema says. The same picture
 is `docs/graphs/model.svg` (links with `../`). The colours are fixed in the SVG (real object dark green, class dark orange, other items pale grey,
 properties and statement metadata amber, literals white), so the picture looks the same on the page, as a file and in a paper. The code is
-`py/wikibase_static/modelgraph.py`. Classes whose instances are exactly the same items share one card (header "software · Little Minion"), because their rows would be the same. Under every graphic there are the buttons "Download as SVG" and "Download as PNG" (they work in the browser, `app.js`: the SVG of the page with absolute links, the PNG at twice the size on a white ground; without JavaScript they stay hidden). It needs no network and no layout engine and draws the same picture every time.
+`py/wikibase_static/modelgraph.py`. Classes whose instances are exactly the same items share one card (header "software · Little Minion"), because their rows would be the same. A long name of the entity in the middle is set on two lines. Under every graphic there are the buttons "Download as SVG" and "Download as PNG" (they work in the browser, `app.js`: the SVG of the page with absolute links, the PNG at twice the size on a white ground; without JavaScript they stay hidden). It needs no network and no layout engine and draws the same picture every time.
 
 ### Class hierarchy
 

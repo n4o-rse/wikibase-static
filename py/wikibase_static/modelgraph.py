@@ -70,6 +70,28 @@ def fit(text: str, width: float, size: int = FONT) -> str:
     return out.rstrip() + "…"
 
 
+def wrap(text: str, width: float, size: int = FONT, lines: int = 2) -> list[str]:
+    """``text`` on up to ``lines`` lines of the estimated ``width`` (bold text runs wider, so the estimate is raised); breaks at spaces, the
+    last line is cut with an ellipsis when the rest does not fit."""
+    limit = width / 1.1
+    if text_width(text, size) <= limit:
+        return [text]
+    out: list[str] = []
+    rest = text
+    while rest and len(out) < lines - 1:
+        cut = rest.rfind(" ", 0, max(1, len(rest)))
+        line = rest
+        while text_width(line, size) > limit and cut > 0:
+            line = rest[:cut]
+            cut = rest.rfind(" ", 0, cut)
+        if text_width(line, size) > limit:                 # one word wider than the line: the cut below handles it
+            break
+        out.append(line)
+        rest = rest[len(line):].lstrip()
+    out.append(fit(rest, limit, size))
+    return out
+
+
 def esc(text: str) -> str:
     return escape(str(text), quote=True)
 
@@ -91,11 +113,16 @@ def node(x: float, y: float, w: float, h: float, shape: str, text: str, title: s
     tcls = "mg-w" if white_text else "mg-t"
     cy = y + h / 2
     body = [f'<rect x="{x:g}" y="{y:g}" width="{w:g}" height="{h:g}" rx="{radius:g}" class="{cls}{(" " + extra) if extra else ""}"/>']
+    rows = text.split("\n")                                   # a name on several lines (see ``wrap``)
     if sub:
-        body.append(f'<text x="{x + w / 2:g}" y="{cy - 6:g}" class="{tcls} mg-b" text-anchor="middle" dominant-baseline="central">{esc(text)}</text>')
-        body.append(f'<text x="{x + w / 2:g}" y="{cy + 10:g}" class="{"mg-sw" if white_text else "mg-s"}" text-anchor="middle" dominant-baseline="central">{esc(sub)}</text>')
+        top = cy - 6 - 8 * (len(rows) - 1)
+        for k, row in enumerate(rows):
+            body.append(f'<text x="{x + w / 2:g}" y="{top + 16 * k:g}" class="{tcls} mg-b" text-anchor="middle" dominant-baseline="central">{esc(row)}</text>')
+        body.append(f'<text x="{x + w / 2:g}" y="{top + 16 * len(rows):g}" class="{"mg-sw" if white_text else "mg-s"}" text-anchor="middle" dominant-baseline="central">{esc(sub)}</text>')
     else:
-        body.append(f'<text x="{x + w / 2:g}" y="{cy:g}" class="{tcls}" text-anchor="middle" dominant-baseline="central">{esc(text)}</text>')
+        top = cy - 8 * (len(rows) - 1)
+        for k, row in enumerate(rows):
+            body.append(f'<text x="{x + w / 2:g}" y="{top + 16 * k:g}" class="{tcls}" text-anchor="middle" dominant-baseline="central">{esc(row)}</text>')
     return link(href, "".join(body), title)
 
 
@@ -278,10 +305,13 @@ class ModelGraphs:
             y += 54
 
         height = y + 6
-        centre = max(NODE_H, min(height / 2, height - 30))
         shape = "class" if entity.id in self.class_ids else "prop" if entity.kind == "property" else "self"
         label = self.label(entity.id)
-        body.insert(0, node(10, centre - 26, self_w, 52, "meta" if shape == "prop" else shape, fit(label, self_w - 16), f"{label} ({entity.id})",
+        name = wrap(label, self_w - 16)                        # a long name on two lines, the node grows by one line
+        box = 52 + 16 * (len(name) - 1)
+        centre = max(NODE_H, box / 2 + 4, min(height / 2, height - box / 2 - 4))
+        height = max(height, centre + box / 2 + 6)
+        body.insert(0, node(10, centre - box / 2, self_w, box, "meta" if shape == "prop" else shape, "\n".join(name), f"{label} ({entity.id})",
                             None, shape in ("class", "self"), sub=entity.id))
         for prop, cy in prop_rows:
             body.insert(1, f'<line x1="{10 + self_w:g}" y1="{centre:g}" x2="{prop_x - 3:g}" y2="{cy:g}" class="mg-edge" marker-end="url(#mg-arrow)"/>')

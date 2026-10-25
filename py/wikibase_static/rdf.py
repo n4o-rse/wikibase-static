@@ -208,9 +208,14 @@ class Namespaces:
         self.cat = f"{b}/catalog/"          # not part of Wikibase: the catalogues this export adds
         self.dist = f"{b}/distribution/"    # likewise: the distributions of the datasets
 
-    def dataset(self, entity_id: str) -> str:
-        """The IRI of the dataset (the document) that describes an entity."""
+    def document(self, entity_id: str) -> str:
+        """The IRI of the document that holds the triples of an entity: the Turtle file of the family, else ``Special:EntityData/<ID>``."""
         return f"{self.data}{entity_id}{self.data_suffix}"
+
+    def dataset(self, entity_id: str) -> str:
+        """The IRI of the dataset that describes an entity. Wikidata uses the document for it (``data:Q1``); a family names the
+        dataset ``<file>#dataset``, so that it and the file (the ``dcat:downloadURL`` of its Turtle distribution) are two things."""
+        return self.document(entity_id) + ("#dataset" if self.family else "")
 
     def prefix_name(self, wikidata_name: str) -> str:
         """The prefix this export uses for the namespace that Wikidata calls ``wikidata_name`` (``wdt``, ``ps``, ...)."""

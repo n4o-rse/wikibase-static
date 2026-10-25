@@ -22,7 +22,7 @@ import rdflib  # noqa: E402
 from wikibase_static import rdf  # noqa: E402
 from wikibase_static.loader import Site  # noqa: E402
 from wikibase_static.model import Entity, Snak, Statement  # noqa: E402
-from wikibase_static.modelgraph import ModelGraphs, fit, text_width  # noqa: E402
+from wikibase_static.modelgraph import ModelGraphs, fit, text_width, wrap  # noqa: E402
 from wikibase_static.render import STRINGS, Renderer  # noqa: E402
 from wikibase_static.site_config import SiteConfig, load_config  # noqa: E402
 
@@ -211,6 +211,34 @@ class SiteGraph(unittest.TestCase):
         ET.fromstring(svg.encode("utf-8"))
 
 
+class LongNames(unittest.TestCase):
+    def test_wrap_keeps_short_text_on_one_line(self) -> None:
+        self.assertEqual(wrap("profileAAR", 164), ["profileAAR"])
+
+    def test_wrap_breaks_a_long_name_at_a_space(self) -> None:
+        lines = wrap("Academic Meta Tool (AMT)", 164)
+        self.assertEqual(lines, ["Academic Meta Tool", "(AMT)"])
+
+    def test_wrap_cuts_what_does_not_fit_on_two_lines(self) -> None:
+        lines = wrap("one two three four five six seven eight nine ten eleven twelve", 164)
+        self.assertEqual(len(lines), 2)
+        self.assertTrue(lines[1].endswith("…"))
+
+    def test_wrap_cuts_one_long_word(self) -> None:
+        lines = wrap("Pneumonoultramicroscopicsilicovolcanoconiosis", 164)
+        self.assertEqual(len(lines), 1)
+        self.assertTrue(lines[0].endswith("…"))
+
+    def test_the_central_node_shows_a_long_name_on_two_lines(self) -> None:
+        site = make_site()
+        site.entities["Q10"].labels["en"] = "Academic Meta Tool (AMT)"
+        root = ET.fromstring(graphs_of(site).entity_svg(site.entities["Q10"]))
+        texts = ["".join(t.itertext()) for t in root.iter("text")]
+        self.assertIn("Academic Meta Tool", texts)
+        self.assertIn("(AMT)", texts)
+        self.assertNotIn("…", "".join(texts[:3]))
+
+
 class TextHelpers(unittest.TestCase):
     def test_fit_keeps_short_text_and_cuts_long_text(self) -> None:
         self.assertEqual(fit("short", 200), "short")
@@ -252,9 +280,29 @@ class PrefixFamily(unittest.TestCase):
         for attribute in ("wd", "wds", "wdt", "p", "ps", "psv", "pq", "pqv", "pr", "prv", "wdno", "wdref", "wdv", "cat", "dist"):
             self.assertEqual(getattr(plain, attribute), getattr(family, attribute), attribute)
 
-    def test_a_family_points_the_dataset_at_the_file_that_exists(self) -> None:
+    def test_a_family_points_the_document_at_the_file_that_exists(self) -> None:
         ns = rdf.Namespaces(BASE, "chb")
-        self.assertEqual(ns.dataset("Q933"), BASE + "/ttl/Q933.ttl")
+        self.assertEqual(ns.document("Q933"), BASE + "/ttl/Q933.ttl")
+        self.assertEqual(rdf.Namespaces(BASE).document("Q933"), BASE + "/wiki/Special:EntityData/Q933")
+
+    def test_the_dataset_of_a_family_is_not_the_file(self) -> None:
+        ns = rdf.Namespaces(BASE, "chb")
+        self.assertEqual(ns.dataset("Q933"), BASE + "/ttl/Q933.ttl#dataset")
+        self.assertEqual(rdf.Namespaces(BASE).dataset("Q933"), BASE + "/wiki/Special:EntityData/Q933")   # as on Wikidata
+
+    def test_in_a_family_the_dataset_and_the_download_url_are_two_iris(self) -> None:
+        site = make_site()
+        ns = rdf.Namespaces(BASE, "chb")
+        info = rdf.CatalogInfo(title="t", description=None, license_url=None, source_url=None, pages_url=BASE, modified=None, json_sizes={})
+        result = rdf.build(site, ns, None, info)
+        g = rdflib.Graph()
+        g.parse(data=rdf.to_turtle(result.triples, ns, "h"), format="turtle")          # the fragment IRI is written and read back
+        dataset = rdflib.URIRef(ns.dataset("Q10"))
+        self.assertIn((dataset, rdflib.RDF.type, rdflib.URIRef(rdf.DCAT + "Dataset")), g)
+        downloads = {str(o) for s in g.objects(dataset, rdflib.URIRef(rdf.DCAT + "distribution"))
+                     for o in g.objects(s, rdflib.URIRef(rdf.DCAT + "downloadURL"))}
+        self.assertIn(BASE + "/ttl/Q10.ttl", downloads)
+        self.assertNotIn(str(dataset), downloads)
 
     def test_the_turtle_is_the_same_graph_under_either_naming(self) -> None:
         site = make_site()
@@ -284,7 +332,8 @@ class PrefixFamily(unittest.TestCase):
         self.assertIn("chbdata:Q10.ttl", text)
         graph = rdflib.Graph()
         graph.parse(data=text, format="turtle")
-        self.assertIn(rdflib.URIRef(BASE + "/ttl/Q10.ttl"), set(graph.subjects()))
+        self.assertIn(rdflib.URIRef(BASE + "/ttl/Q10.ttl"), set(graph.objects()))              # the download URL of the file
+        self.assertIn(rdflib.URIRef(BASE + "/ttl/Q10.ttl#dataset"), set(graph.subjects()))     # the dataset, written in full
 
 
 class ConfigKey(unittest.TestCase):
@@ -301,6 +350,20 @@ class ConfigKey(unittest.TestCase):
 
     def test_the_default_is_no_family(self) -> None:
         self.assertIsNone(self.load("title: t\n").rdf_prefix)
+
+    def test_data_as_of_takes_a_date_or_a_date_and_time(self) -> None:
+        for text, want in (("2026-10-25", "2026-10-25T00:00:00Z"), ("'2026-10-25'", "2026-10-25T00:00:00Z"),
+                           ("2026-10-25T08:30:00Z", "2026-10-25T08:30:00Z"), ("'2026-10-25 08:30:00'", "2026-10-25T08:30:00Z")):
+            cfg = self.load(f"title: t\ndata_as_of: {text}\n")
+            self.assertEqual(cfg.data_as_of, want, text)
+            self.assertFalse([p for p in cfg.problems if "data_as_of" in p], text)
+
+    def test_data_as_of_defaults_to_nothing_and_a_bad_value_is_reported(self) -> None:
+        self.assertIsNone(self.load("title: t\n").data_as_of)
+        for bad in ("yesterday", "25.10.2026", "'2026-13-45x'"):
+            cfg = self.load(f"title: t\ndata_as_of: {bad}\n")
+            self.assertIsNone(cfg.data_as_of, bad)
+            self.assertTrue([p for p in cfg.problems if "data_as_of" in p], bad)
 
     def test_a_bad_or_reserved_name_is_reported_and_ignored(self) -> None:
         for bad in ("Chb", "1chb", "a-b", "rdf", "wikibase", "toolongprefixname"):
