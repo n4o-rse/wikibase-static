@@ -11,5 +11,13 @@
     <li><a href="{{ link.href }}">{{ link.title }}</a> <span class="muted">{{ link.note }}</span></li>
     {% endfor %}
   </ul>
+  {% if model_svg %}
+  <section class="model">
+    <h2>{{ ui_model }}</h2>
+    <p class="muted">{{ ui_model_intro }}</p>
+    {{ model_svg }}
+    <p class="model-tools"><a href="graphs/model.svg" download>{{ ui_model_download }}</a></p>
+  </section>
+  {% endif %}
 </article>
 {% endblock %}

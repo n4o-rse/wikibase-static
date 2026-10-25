@@ -171,10 +171,24 @@ def bcp47(code: str) -> str:
 
 
 class Namespaces:
-    """The namespaces of a Wikibase for one base URI (``https://example.wikibase.cloud``), as in ``RdfVocabulary``."""
+    """The namespaces of a Wikibase for one base URI (``https://example.wikibase.cloud``), as in ``RdfVocabulary``.
 
-    def __init__(self, base: str) -> None:
+    ``family`` is the short name of a prefix family (``chb``): ``chb:`` for the entities, ``chbt:`` for the direct claims,
+    ``chbp:``, ``chbps:``, ``chbpq:`` and so on for the rest. Without it the names are those of Wikidata (``wd:``, ``wdt:``,
+    ``p:``, ``ps:``), which is right where the base URI is the real Wikibase and wrong where it is a site's own address: a
+    reader would take ``wd:Q933`` for an item of Wikidata. The namespaces themselves do not depend on the family.
+
+    A family also changes where the dataset of an entity lives (``data``): Wikibase calls the document of an entity
+    ``<base>/wiki/Special:EntityData/<ID>``, which a static host does not have, so the family points it at the file that
+    exists, ``<base>/ttl/<ID>.ttl`` (``data_suffix``)."""
+
+    #: prefix of the Wikidata family -> ending of the name in a family (``chb`` + ending)
+    FAMILY_ENDINGS = {"wd": "", "wds": "s", "wdt": "t", "p": "p", "ps": "ps", "psv": "psv", "pq": "pq", "pqv": "pqv", "pr": "pr",
+                      "prv": "prv", "wdno": "no", "wdref": "ref", "wdv": "v", "data": "data", "cat": "cat", "dist": "dist"}
+
+    def __init__(self, base: str, family: str | None = None) -> None:
         self.base = base.rstrip("/")
+        self.family = family or None
         b = self.base
         self.wd = f"{b}/entity/"
         self.wds = f"{b}/entity/statement/"
@@ -189,18 +203,30 @@ class Namespaces:
         self.pqv = f"{b}/prop/qualifier/value/"
         self.pr = f"{b}/prop/reference/"
         self.prv = f"{b}/prop/reference/value/"
-        self.data = f"{b}/wiki/Special:EntityData/"
+        self.data = f"{b}/ttl/" if self.family else f"{b}/wiki/Special:EntityData/"
+        self.data_suffix = ".ttl" if self.family else ""
         self.cat = f"{b}/catalog/"          # not part of Wikibase: the catalogues this export adds
         self.dist = f"{b}/distribution/"    # likewise: the distributions of the datasets
 
+    def dataset(self, entity_id: str) -> str:
+        """The IRI of the dataset (the document) that describes an entity."""
+        return f"{self.data}{entity_id}{self.data_suffix}"
+
+    def prefix_name(self, wikidata_name: str) -> str:
+        """The prefix this export uses for the namespace that Wikidata calls ``wikidata_name`` (``wdt``, ``ps``, ...)."""
+        if not self.family:
+            return wikidata_name
+        return self.family + self.FAMILY_ENDINGS[wikidata_name]
+
     def prefixes(self) -> dict[str, str]:
         """Prefix to namespace, for the Turtle header and the SPARQL page."""
-        return {
-            "cat": self.cat, "cc": CC, "data": self.data, "dcat": DCAT, "dcterms": DCTERMS, "dist": self.dist, "geo": GEO, "owl": OWL, "p": self.p, "pq": self.pq, "pqv": self.pqv,
-            "pr": self.pr, "prov": PROV, "prv": self.prv, "ps": self.ps, "psv": self.psv, "rdf": RDF, "rdfs": RDFS,
-            "schema": SCHEMA, "skos": SKOS, "wd": self.wd, "wdno": self.wdno, "wdref": self.wdref, "wds": self.wds,
-            "wdt": self.wdt, "wdv": self.wdv, "wikibase": WIKIBASE, "xsd": XSD,
-        }
+        own = {"cat": self.cat, "data": self.data, "dist": self.dist, "p": self.p, "pq": self.pq, "pqv": self.pqv,
+               "pr": self.pr, "prv": self.prv, "ps": self.ps, "psv": self.psv, "wd": self.wd, "wdno": self.wdno,
+               "wdref": self.wdref, "wds": self.wds, "wdt": self.wdt, "wdv": self.wdv}
+        found = {self.prefix_name(name): namespace for name, namespace in own.items()}
+        found.update({"cc": CC, "dcat": DCAT, "dcterms": DCTERMS, "geo": GEO, "owl": OWL, "prov": PROV, "rdf": RDF, "rdfs": RDFS,
+                      "schema": SCHEMA, "skos": SKOS, "wikibase": WIKIBASE, "xsd": XSD})
+        return found
 
 
 def file_stem(base: str) -> str:
@@ -724,7 +750,7 @@ class _Builder:
         info = self.catalog
         assert info is not None
         ns = self.ns
-        dataset = Iri(ns.data + entity.id)
+        dataset = Iri(ns.dataset(entity.id))
         parent = Iri(ns.cat + ("items" if entity.kind == "item" else "properties"))
         self.add(dataset, self._a(), self._dcat("Dataset"))
         self.add(dataset, self._dct("identifier"), Lit(entity.id))
@@ -789,7 +815,7 @@ class _Builder:
             if info.license_url:
                 self.add(part, self._dct("license"), iri(info.license_url))
             for entity in entities:
-                self.add(part, self._dcat("dataset"), Iri(ns.data + entity.id))
+                self.add(part, self._dcat("dataset"), Iri(ns.dataset(entity.id)))
         if not info.pages_url:
             return
         pages = info.pages_url.rstrip("/") + "/"
@@ -827,7 +853,7 @@ class _Builder:
             self.bridge(entity)
         if entity.id in self.site.crm:
             self.crm(entity)
-        document = Iri(ns.data + entity.id)
+        document = Iri(ns.dataset(entity.id))
         self.add(document, self._a(), Iri(SCHEMA + "Dataset"))
         self.add(document, Iri(SCHEMA + "about"), subject)
         if self.license_url:
@@ -893,7 +919,7 @@ def ntriples(triples: Iterable[Triple]) -> str:
     return "\n".join(lines) + ("\n" if lines else "")
 
 
-_LOCAL = re.compile(r"^[A-Za-z0-9_][A-Za-z0-9_-]*$")
+_LOCAL = re.compile(r"^[A-Za-z0-9_](?:[A-Za-z0-9_.-]*[A-Za-z0-9_-])?$")     # a dot is allowed inside a local name, not at its end
 
 
 class _Abbreviator:

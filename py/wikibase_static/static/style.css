@@ -237,3 +237,10 @@ pre.rows { margin: 0; padding: 0.6rem 0.8rem; overflow-x: auto; font-size: 0.78r
 .class-tree > ul { border-left: 0; padding-left: 0.2rem; }
 .class-tree li { margin: 0.1rem 0; }
 .class-tree li.current > strong a { font-weight: 700; }
+
+/* ---- data-model graphics (modelgraph.py): the SVG carries its own colours */
+.statement-graph { margin: 0.8rem 0 1.2rem; }
+.statement-graph summary { cursor: pointer; font-weight: 600; margin-bottom: 0.4rem; }
+.model-graph { display: block; margin: 0.4rem 0; }
+.index .model { margin-top: 1.8rem; }
+.model-tools { font-size: 0.86rem; margin: 0.2rem 0 0; }

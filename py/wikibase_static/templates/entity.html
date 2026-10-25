@@ -105,6 +105,13 @@
     {% endfor %}
   </section>
 
+  {% if graph_svg %}
+  <details class="statement-graph" open>
+    <summary>{{ ui_graph }}</summary>
+    {{ graph_svg }}
+  </details>
+  {% endif %}
+
   {% if source_rows %}
   <section class="source-rows">
     <details id="source-rows">

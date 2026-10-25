@@ -197,6 +197,8 @@ def main(argv: list[str] | None = None) -> int:
 
     # Heavy imports only now, so that --list, --dry-run and an empty repository never need them.
     from wikibase_static import rdf
+    from markupsafe import Markup
+    from wikibase_static.modelgraph import ModelGraphs
     from wikibase_static.render import Renderer
     from wikibase_static.site_config import load_config
     from wikibase_static.step_rdf import raw_file, resolve_base
@@ -212,11 +214,12 @@ def main(argv: list[str] | None = None) -> int:
 
     env = make_env()
     r = Renderer(site, cfg, __version__)
+    graphs = ModelGraphs(r)
     source_rows = SourceRows.load(utils.ROOT / "data" / "csv")          # None for a site that was harvested and not made from CSV
     common = page_context(site, cfg, r, logo)
     base, placeholder = resolve_base(cfg)
     own = cfg.pages_url.rstrip("/") if cfg.pages_url else None
-    concepts = rdf.Namespaces(base).wd if own and not placeholder and base == own else None   # URIs that resolve here (entity/<ID>.html)
+    concepts = rdf.Namespaces(base, cfg.rdf_prefix).wd if own and not placeholder and base == own else None   # URIs that resolve here (entity/<ID>.html)
 
     def copy_target(entity_id: str) -> tuple[str | None, str]:
         """(what the button copies, its text key): the concept URI where it opens a page of this site, else the page's own
@@ -264,6 +267,7 @@ def main(argv: list[str] | None = None) -> int:
             "ui_no_statements": r.ui("no_statements"), "ui_rank_preferred": r.ui("rank_preferred"),
             "ui_rank_deprecated": r.ui("rank_deprecated"),
             "ui_referenced_by": r.ui("referenced_by", n=len(r.incoming.get(entity.id, []))),
+            "graph_svg": Markup(svg) if (svg := graphs.entity_svg(entity)) else None, "ui_graph": r.ui("graph_title"),
         })
         context.update(source_context(r, cfg, source_rows, entity.id))
         utils.write_text(docs / name, env.get_template("entity.html").render(context))
@@ -318,8 +322,17 @@ def main(argv: list[str] | None = None) -> int:
         overview.update({"groups": view_groups, "ui_hierarchy": r.ui("hierarchy"), "overview_intro": r.ui("overview_intro"),
                          "ui_id": r.ui("id"), "ui_label": r.ui("label"), "ui_description": r.ui("description")})
         utils.write_text(docs / "overview.html", env.get_template("overview.html").render(overview))
+    model_inline = graphs.site_svg()
+    model_file = docs / "graphs" / "model.svg"
+    if model_inline:
+        utils.write_text(model_file, graphs.site_svg("../", standalone=True) or "")
+    elif model_file.is_file():
+        model_file.unlink()
+        model_file.parent.rmdir()
     index = common("index.html", cfg.title, cfg.description or None, r.footer(None))
     index.update({
+        "model_svg": Markup(model_inline) if model_inline else None, "ui_model": r.ui("model_title"),
+        "ui_model_intro": r.ui("model_intro"), "ui_model_download": r.ui("model_download"),
         "site_description": cfg.description, "page_links": page_links,
         "ui_counts": r.ui("entities_n", n=len(site.entities), items=len(site.items), properties=len(site.properties)),
     })

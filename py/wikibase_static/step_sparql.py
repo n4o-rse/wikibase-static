@@ -57,7 +57,7 @@ def main(argv: list[str] | None = None) -> int:
 
     cfg = load_config(utils.SITE_YAML, site.source_url)
     base, _placeholder = step_rdf.resolve_base(cfg)
-    ns = rdf.Namespaces(base)
+    ns = rdf.Namespaces(base, cfg.rdf_prefix)
     stem = rdf.file_stem(base)
     ttl = step_rdf.target_file(base)
     if not ttl.is_file():

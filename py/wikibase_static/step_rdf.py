@@ -108,7 +108,7 @@ def write_published(site, ns, result, text: str, stem: str, header: list[str], p
     ttl, raw = {}, {}
     for entity_id, triples in sorted(result.by_entity.items()):
         own = [f"{entity_id}: the part of the RDF export of {header[0].split(' of ', 1)[-1].split(',')[0]} that describes this entity",
-               header[1], header[2]]
+               *header[1:]]
         sections = [(rdf.BRIDGE_TITLE, triples & result.bridge), (rdf.CRM_TITLE, triples & result.crm)]
         ttl[f"{entity_id}.ttl"] = utils_bytes(rdf.to_turtle(triples, ns, "\n".join(own), sections))
         entity = site.entities[entity_id]
@@ -144,7 +144,7 @@ def main(argv: list[str] | None = None) -> int:
 
     cfg = load_config(utils.SITE_YAML, site.source_url)
     base, placeholder = resolve_base(cfg)
-    ns = rdf.Namespaces(base)
+    ns = rdf.Namespaces(base, cfg.rdf_prefix)
     stem = rdf.file_stem(base)
     json_sizes = {e.id: file.stat().st_size for e in site.entities.values() if (file := raw_file(e)) is not None}
     catalog = rdf.CatalogInfo(
@@ -158,6 +158,10 @@ def main(argv: list[str] | None = None) -> int:
     header = [f"RDF export of {cfg.title if own else (cfg.source_url or cfg.title)}, Wikibase data model; base URI {ns.base}",
               f"Generated with wikibase-static {__version__}; data as of {site.latest_modified or 'unknown'}",
               f"Licence: {cfg.license_name or 'not stated'}"]
+    if ns.family and own:
+        header.append(f"The prefixes {ns.family}:, {ns.family}t:, {ns.family}p: and so on are this site's own and are not Wikidata's wd:, wdt:, p:. "
+                      f"Only {ns.family}:<ID> opens a page (entity/<ID>, which forwards to <ID>.html); statement, reference, value and "
+                      f"property-path IRIs are identifiers and do not resolve.")
     text = rdf.to_turtle(result.triples, ns, "\n".join(header), [(rdf.BRIDGE_TITLE, result.bridge), (rdf.CRM_TITLE, result.crm)])
     target = target_file(base)
     utils.write_text(target, text)

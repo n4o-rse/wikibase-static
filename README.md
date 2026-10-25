@@ -175,6 +175,7 @@ imprint: https://example.org/imprint    # text or URL
 pages_url: https://example.github.io/repo/   # optional, for the canonical link
 formatter_property: P1630        # property that holds the formatter URL of external-id properties
 rdf_base: https://example.org    # optional: base URI of the RDF export; default is source.url
+rdf_prefix: chb                  # optional: own prefix family (chb:, chbt:, chbp:, ...) instead of wd:, wdt:, p:, ...; see "Prefixes of the export"
 edit_url: https://github.com/OWNER/REPO/edit/main/data/csv   # optional: folder of the CSV tables in the repository editor (tab "Source rows")
 ```
 
@@ -267,6 +268,28 @@ ends. What the subset does not read (sitelinks, `CREATE_PROPERTY`, removing a la
 New rows have no `origin`, so they count as hand work and no importer overwrites them. The exact syntax is in the docstring of
 `py/wikibase_static/step_apply_qs.py`.
 
+### Prefixes of the export (S16)
+
+By default the Turtle files use the prefix names of Wikidata (`wd:`, `wdt:`, `wds:`, `p:`, `ps:`, `pq:`, `pr:`, `wdref:`, `wdv:`), which is right when
+the base URI is that of the real Wikibase. A site whose base URI is its own address (a demo on GitHub Pages) should not borrow them: a
+reader takes `wd:Q933` for an item of Wikidata. Set `rdf_prefix: chb` and the family becomes `chb:` (entities), `chbs:` (statement nodes),
+`chbt:` (direct claims), `chbp:`, `chbps:`, `chbpsv:`, `chbpq:`, `chbpqv:`, `chbpr:`, `chbprv:`, `chbno:`, `chbref:`, `chbv:`, plus `chbdata:`, `chbcat:`
+and `chbdist:`. The namespaces do not change, only their names, so the graph is the same. The query page declares the same prefixes.
+
+With a family the dataset of an entity is the file that exists, `<base>/ttl/<ID>.ttl` (Wikibase's own `Special:EntityData/<ID>` does not exist on a static host).
+Only `chb:<ID>` opens a page (`entity/<ID>.html`, which forwards to the page of the entity); the IRIs of statements, references, values and property
+paths are identifiers and do not resolve.
+
+### Data-model graphics (S16)
+
+Every entity page has a section "Statement graph": the entity on the left, one box per property, the values to the right, qualifiers as chips,
+references that belong to one statement as dashed chips and a reference that several statements share once at the bottom. Item values link to
+their pages. The start page has the section "Data model": one card per class with the properties its instances use, the class or data type of
+the values and the number of statements. It is read from the data, so it shows what the data does and not what a schema says. The same picture
+is `docs/graphs/model.svg` (links with `../`). The colours are fixed in the SVG (real object dark green, class dark orange, other items pale grey,
+properties and statement metadata amber, literals white), so the picture looks the same on the page, as a file and in a paper. The code is
+`py/wikibase_static/modelgraph.py`; it needs no network and no layout engine and draws the same picture every time.
+
 ### Class hierarchy
 
 On the overview, under the heading of every class, and on the page of every class that has superclasses or subclasses, there is the whole
@@ -322,7 +345,7 @@ changed with the `command` input.
 ```
 main.py                     the only entry point
 py/wikibase_static/         the package (one module per step, utils.py, model.py, loader.py, render.py,
-                            site_config.py, rdf.py, sparql.py, data/ (default queries, ontology), templates/,
+                            site_config.py, rdf.py, modelgraph.py, sparql.py, data/ (default queries, ontology), templates/,
                             static/ with app.js, search.js, sparql.js, map.js, style.css
                             and a copy of Leaflet 1.9.4)
 data/raw/                   harvested JSON, as obtained

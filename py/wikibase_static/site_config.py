@@ -20,6 +20,9 @@ Keys (all optional; a missing file gives the defaults and one note)::
                                       # properties ($1 is replaced); Wikidata uses P1630
     rdf_base: https://example.org/    # optional; base URI of the RDF export (wd:, wdt:, ...). Default: source.url,
                                       # so that the Turtle file uses the URIs of the real Wikibase
+    rdf_prefix: chb                   # optional; short name for the prefix family of the export (chb:, chbt:, chbp:, ...).
+                                      # Without it the Wikibase names wd:, wdt:, p:, ... are used, which is right when the base
+                                      # URI is the real Wikibase; a site with URIs of its own should not borrow them
 
 ``load_config()`` never raises: unusable values become messages (printed as
 ``WARN`` by the build step) and fall back to the default.
@@ -35,10 +38,14 @@ from typing import Any
 LANGUAGE = re.compile(r"^[a-z]{2,3}(-[A-Za-z0-9]+)*$")
 COLOUR = re.compile(r"^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$")
 PROPERTY = re.compile(r"^P[1-9][0-9]*$")
+RDF_PREFIX = re.compile(r"^[a-z][a-z0-9]{0,11}$")
+# Prefixes the export declares for vocabularies; a site's own family must not take one of them.
+RESERVED_PREFIXES = frozenset({"cc", "dcat", "dcterms", "geo", "owl", "prov", "rdf", "rdfs", "schema", "skos", "wikibase", "xsd",
+                               "crm", "crmdig", "crmsci", "crmgeo", "crmarchaeo", "crminf", "crmba", "crmtex", "lrmoo", "sh"})
 DEFAULT_COLOUR = "#336699"
 DEFAULT_LICENSE = ("CC0 1.0", "https://creativecommons.org/publicdomain/zero/1.0/")   # PRIMER.md, A4
 KNOWN_KEYS = {"title", "description", "logo", "colour", "source", "license", "languages",
-              "imprint", "pages_url", "formatter_property", "rdf_base", "edit_url"}
+              "imprint", "pages_url", "formatter_property", "rdf_base", "rdf_prefix", "edit_url"}
 
 
 @dataclass
@@ -56,6 +63,7 @@ class SiteConfig:
     imprint: str | None = None
     pages_url: str | None = None
     rdf_base: str | None = None
+    rdf_prefix: str | None = None
     edit_url: str | None = None                # folder of the CSV tables in the repository editor (S7f), without a trailing slash
     formatter_property: str = "P1630"
     present: bool = False                      # was there a site.yaml at all
@@ -153,6 +161,14 @@ def load_config(path: Path, manifest_source: str | None = None) -> SiteConfig:
             cfg.rdf_base = rdf_base.rstrip("/")
         else:
             problems.append(f"site.yaml: rdf_base {rdf_base!r} is not an http(s) URL without query or fragment; ignored")
+
+    rdf_prefix = _text(data.get("rdf_prefix"), "rdf_prefix", problems)
+    if rdf_prefix:
+        if RDF_PREFIX.match(rdf_prefix) and rdf_prefix not in RESERVED_PREFIXES:
+            cfg.rdf_prefix = rdf_prefix
+        else:
+            problems.append(f"site.yaml: rdf_prefix {rdf_prefix!r} is not a short lower-case name (letters and digits, at most 12, "
+                            "starting with a letter) that is free of the vocabulary prefixes; the Wikibase names (wd, wdt, ...) used")
 
     edit_url = _text(data.get("edit_url"), "edit_url", problems)
     if edit_url:
