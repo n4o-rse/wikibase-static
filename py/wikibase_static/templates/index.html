@@ -11,6 +11,9 @@
     <li><a href="{{ link.href }}">{{ link.title }}</a> <span class="muted">{{ link.note }}</span></li>
     {% endfor %}
   </ul>
+  {% if counterpart_table %}
+  <p class="counterpart-table"><a href="{{ counterpart_table.href }}" download>{{ counterpart_table.text }}</a></p>
+  {% endif %}
   {% if model_svg %}
   <section class="model" data-graph-name="model">
     <h2>{{ ui_model }}</h2>

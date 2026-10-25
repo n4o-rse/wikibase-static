@@ -31,7 +31,7 @@ from pathlib import Path
 if __package__ in (None, ""):  # direct run: python py/wikibase_static/step_rdf.py
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from wikibase_static import __version__, rdf, utils
+from wikibase_static import __version__, counterpart, rdf, utils
 from wikibase_static.loader import load_site
 
 STEP = "rdf"
@@ -102,9 +102,12 @@ def concept_stubs(site, base: str, pages_url: str | None) -> dict[str, bytes]:
     return stubs
 
 
-def write_published(site, ns, result, text: str, stem: str, header: list[str], pages_url: str | None = None) -> int:
+def write_published(site, ns, result, text: str, stem: str, header: list[str], pages_url: str | None = None,
+                    twin=None) -> int:
     """The files that go into docs/; returns how many."""
     downloads = {f"{stem}.ttl": utils_bytes(text), ONTOLOGY_NAME: ONTOLOGY.read_bytes()}
+    if twin is not None and (utils.ROOT / twin.map_file).is_file():
+        downloads[Path(twin.map_file).name] = (utils.ROOT / twin.map_file).read_bytes()      # the table of ids, as it is
     ttl, raw = {}, {}
     for entity_id, triples in sorted(result.by_entity.items()):
         own = [f"{entity_id}: the part of the RDF export of {header[0].split(' of ', 1)[-1].split(',')[0]} that describes this entity",
@@ -146,6 +149,7 @@ def main(argv: list[str] | None = None) -> int:
     base, placeholder = resolve_base(cfg)
     ns = rdf.Namespaces(base, cfg.rdf_prefix)
     stem = rdf.file_stem(base)
+    twin = counterpart.load(cfg.counterpart, utils.ROOT, set(site.entities))        # the same entities in a real Wikibase, or None
     json_sizes = {e.id: file.stat().st_size for e in site.entities.values() if (file := raw_file(e)) is not None}
     data_date = site.latest_modified or cfg.data_as_of         # the archived entities first, else the date stated in site.yaml
     catalog = rdf.CatalogInfo(
@@ -153,7 +157,7 @@ def main(argv: list[str] | None = None) -> int:
         pages_url=cfg.pages_url, modified=data_date, json_sizes=json_sizes,
         export_file=f"downloads/{stem}.ttl", ontology_file=f"downloads/{ONTOLOGY_NAME}",
         ontology_bytes=ONTOLOGY.stat().st_size)
-    result = rdf.build(site, ns, cfg.license_url, catalog)
+    result = rdf.build(site, ns, cfg.license_url, catalog, twin)
 
     own = bool(cfg.pages_url) and ns.base.rstrip("/") == cfg.pages_url.rstrip("/")     # URIs of this site: do not point to the source
     header = [f"RDF export of {cfg.title if own else (cfg.source_url or cfg.title)}, Wikibase data model; base URI {ns.base}",
@@ -166,7 +170,7 @@ def main(argv: list[str] | None = None) -> int:
     text = rdf.to_turtle(result.triples, ns, "\n".join(header), [(rdf.BRIDGE_TITLE, result.bridge), (rdf.CRM_TITLE, result.crm)])
     target = target_file(base)
     utils.write_text(target, text)
-    published = write_published(site, ns, result, text, stem, header, cfg.pages_url)
+    published = write_published(site, ns, result, text, stem, header, cfg.pages_url, twin)
 
     print(f"[{STEP}] {result.entities} entities, {result.statements} statements -> {len(result.triples)} triples")
     print(f"[{STEP}] {published} file(s) in docs/ (downloads, ttl/, json/, entity/); {result.distributions} distributions described")

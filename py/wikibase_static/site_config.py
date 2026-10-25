@@ -25,6 +25,11 @@ Keys (all optional; a missing file gives the defaults and one note)::
                                       # URI is the real Wikibase; a site with URIs of its own should not borrow them
     data_as_of: 2026-10-25            # optional; date (or date and time) of the data, for entities that carry no "modified" of
                                       # their own (tables kept as CSV); used in the header and the catalogue of the RDF export
+    counterpart:                      # optional; the same entities in a real Wikibase (S7g): a link on every page, owl:sameAs in the RDF
+      name: chublets-wikibase.de      # shown on the pages
+      uri: https://chublets-wikibase.de/entity/{id}                 # concept URI, {id} is the id there (owl:sameAs)
+      url: https://chublets-wikibase.de/wiki/Special:EntityPage/{id}   # page address for the link (default: uri)
+      map: data/idmap-chublets-wikibase.de.csv    # table with the columns source_id,target_id (written by the push)
 
 ``load_config()`` never raises: unusable values become messages (printed as
 ``WARN`` by the build step) and fall back to the default.
@@ -38,6 +43,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from wikibase_static.counterpart import Counterpart
+
 LANGUAGE = re.compile(r"^[a-z]{2,3}(-[A-Za-z0-9]+)*$")
 COLOUR = re.compile(r"^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$")
 PROPERTY = re.compile(r"^P[1-9][0-9]*$")
@@ -49,7 +56,7 @@ DATA_AS_OF = re.compile(r"^(\d{4}-\d{2}-\d{2})(?:[T ](\d{2}:\d{2}:\d{2}))?Z?$")
 DEFAULT_COLOUR = "#336699"
 DEFAULT_LICENSE = ("CC0 1.0", "https://creativecommons.org/publicdomain/zero/1.0/")   # PRIMER.md, A4
 KNOWN_KEYS = {"title", "description", "logo", "colour", "source", "license", "languages",
-              "imprint", "pages_url", "formatter_property", "rdf_base", "rdf_prefix", "edit_url", "data_as_of"}
+              "imprint", "pages_url", "formatter_property", "rdf_base", "rdf_prefix", "edit_url", "data_as_of", "counterpart"}
 
 
 @dataclass
@@ -69,6 +76,7 @@ class SiteConfig:
     rdf_base: str | None = None
     rdf_prefix: str | None = None
     data_as_of: str | None = None              # ISO instant (YYYY-MM-DDThh:mm:ssZ) for data that carry no modification time of their own
+    counterpart: Counterpart | None = None     # the same entities in a real Wikibase (S7g): links and owl:sameAs
     edit_url: str | None = None                # folder of the CSV tables in the repository editor (S7f), without a trailing slash
     formatter_property: str = "P1630"
     present: bool = False                      # was there a site.yaml at all
@@ -95,6 +103,32 @@ def _mapping(raw: Any, key: str, problems: list[str]) -> dict[str, Any]:
         return raw
     problems.append(f"site.yaml: {key} must be a mapping; ignored")
     return {}
+
+
+def _counterpart(value: Any, problems: list[str]) -> Counterpart | None:
+    """``counterpart:`` with ``name``, ``uri``, ``url`` and ``map``; a half-written block is a problem and ignored as a whole."""
+    if value is None:
+        return None
+    block = _mapping(value, "counterpart", problems)
+    if not block:
+        return None
+    name = _text(block.get("name"), "counterpart.name", problems)
+    uri = _text(block.get("uri"), "counterpart.uri", problems)
+    url = _text(block.get("url"), "counterpart.url", problems) or uri
+    map_file = _text(block.get("map"), "counterpart.map", problems)
+    for key in sorted(set(block) - {"name", "uri", "url", "map"}):
+        problems.append(f"site.yaml: unknown key counterpart.{key}; ignored")
+    for key, text in (("uri", uri), ("url", url)):
+        if text and not (re.match(r"^https?://[^\s{}]+\{id\}[^\s{}]*$", text)):
+            problems.append(f"site.yaml: counterpart.{key} {text!r} is not an http(s) address with {{id}} in it; counterpart ignored")
+            return None
+    if not (name and uri and map_file):
+        problems.append("site.yaml: counterpart needs name, uri and map; ignored")
+        return None
+    if Path(map_file).is_absolute() or ".." in Path(map_file).parts:
+        problems.append(f"site.yaml: counterpart.map {map_file!r} must be a path inside the repository; counterpart ignored")
+        return None
+    return Counterpart(name=name, uri=uri, url=url or uri, map_file=map_file)
 
 
 def load_config(path: Path, manifest_source: str | None = None) -> SiteConfig:
@@ -191,6 +225,7 @@ def load_config(path: Path, manifest_source: str | None = None) -> SiteConfig:
         else:
             problems.append(f"site.yaml: data_as_of {stated!r} is not a date (2026-10-25) or a date and time (2026-10-25T08:30:00Z); ignored")
 
+    cfg.counterpart = _counterpart(data.get("counterpart"), problems)
     edit_url = _text(data.get("edit_url"), "edit_url", problems)
     if edit_url:
         if re.match(r"^https?://[^\s]+$", edit_url):

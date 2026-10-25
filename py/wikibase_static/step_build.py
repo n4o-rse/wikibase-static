@@ -196,7 +196,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     # Heavy imports only now, so that --list, --dry-run and an empty repository never need them.
-    from wikibase_static import rdf
+    from wikibase_static import counterpart, rdf
     from markupsafe import Markup
     from wikibase_static.modelgraph import ModelGraphs
     from wikibase_static.render import Renderer
@@ -204,7 +204,8 @@ def main(argv: list[str] | None = None) -> int:
     from wikibase_static.step_rdf import raw_file, resolve_base
 
     cfg = load_config(utils.SITE_YAML, site.source_url)
-    problems = list(cfg.problems)
+    twin = counterpart.load(cfg.counterpart, utils.ROOT, set(site.entities))        # the same entities in a real Wikibase, or None
+    problems = list(cfg.problems) + (twin.problems if twin else [])
     if not cfg.present:
         print(f"[{STEP}] no site.yaml: defaults used (title {cfg.title!r})")
     docs = utils.DOCS
@@ -270,6 +271,8 @@ def main(argv: list[str] | None = None) -> int:
             "graph_svg": Markup(svg) if (svg := graphs.entity_svg(entity)) else None, "ui_graph": r.ui("graph_title"), "ui_graph_svg": r.ui("graph_svg"), "ui_graph_png": r.ui("graph_png"),
         })
         context.update(source_context(r, cfg, source_rows, entity.id))
+        context["counterpart"] = ({"label": r.ui("counterpart", name=twin.name), "id": twin.target_id(entity.id),
+                                   "href": twin.target_url(entity.id)} if twin and twin.target_id(entity.id) else None)
         utils.write_text(docs / name, env.get_template("entity.html").render(context))
 
     for source, target in sorted(site.redirects.items(), key=lambda kv: id_sort_key(kv[0])):    # merged ids (S7e): a page that forwards
@@ -329,11 +332,14 @@ def main(argv: list[str] | None = None) -> int:
     elif model_file.is_file():
         model_file.unlink()
         model_file.parent.rmdir()
+    table_href = (f"downloads/{Path(twin.map_file).name}"       # the rdf step publishes the table, after this step
+                  if twin and twin.ids and (utils.ROOT / twin.map_file).is_file() else None)
     index = common("index.html", cfg.title, cfg.description or None, r.footer(None))
     index.update({
         "model_svg": Markup(model_inline) if model_inline else None, "ui_model": r.ui("model_title"),
         "ui_model_intro": r.ui("model_intro"), "ui_model_download": r.ui("model_download"), "ui_graph_png": r.ui("graph_png"),
         "site_description": cfg.description, "page_links": page_links,
+        "counterpart_table": ({"href": table_href, "text": r.ui("counterpart_table", name=twin.name)} if table_href else None),
         "ui_counts": r.ui("entities_n", n=len(site.entities), items=len(site.items), properties=len(site.properties)),
     })
     expected.add("index.html")
@@ -345,7 +351,8 @@ def main(argv: list[str] | None = None) -> int:
 
     entity_pages = sorted(p.name for p in docs.glob("*.html") if ENTITY_PAGE.match(p.name))
     missing = sorted(f"{e}.html" for e in [*site.entities, *site.redirects] if f"{e}.html" not in entity_pages)
-    checked, dead = linkcheck(docs, pending=("sparql.html", "query.html"), pending_dirs=("ttl/", "json/"))
+    checked, dead = linkcheck(docs, pending=("sparql.html", "query.html", *([table_href] if table_href else [])),
+                              pending_dirs=("ttl/", "json/"))
 
     pages = len(entity_pages) - len(site.redirects)
     print(f"[{STEP}] {len(site.entities)} entities -> {pages} entity pages + index.html in docs/ "

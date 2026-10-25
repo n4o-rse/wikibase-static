@@ -28,6 +28,11 @@
     {% endif %}
   </p>
 
+  {% if counterpart %}
+  <p class="counterpart"><span class="muted">{{ counterpart.label }}:</span>
+    <a href="{{ counterpart.href }}" target="_blank" rel="noopener">{{ counterpart.id }}</a></p>
+  {% endif %}
+
   {% if crm_rows is not none %}
   <p class="crm"><span class="muted">{{ ui_crm }}:</span>
     {% for row in crm_rows %}<span class="crm-class" title="{{ row.iri }}"><code>{{ row.curie }}</code>{% if row.via %} <span class="muted">({{ ui_crm_from }} {{ row.via }})</span>{% endif %}</span>{% if not loop.last %}, {% endif %}{% endfor %}

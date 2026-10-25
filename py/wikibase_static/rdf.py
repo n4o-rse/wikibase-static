@@ -37,6 +37,7 @@ from typing import Any, Iterable, Union
 from urllib.parse import quote, urlparse
 
 from wikibase_static import crm
+from wikibase_static.counterpart import Counterpart
 from wikibase_static.loader import Site
 from wikibase_static.model import (
     SUPPORTED_DATATYPES, Entity, Snak, Statement, federated_to_uri, id_sort_key, is_federated,
@@ -393,8 +394,10 @@ class CatalogInfo:
 
 
 class _Builder:
-    def __init__(self, site: Site, ns: Namespaces, license_url: str | None, catalog: CatalogInfo | None = None) -> None:
+    def __init__(self, site: Site, ns: Namespaces, license_url: str | None, catalog: CatalogInfo | None = None,
+                 counterpart: Counterpart | None = None) -> None:
         self.site = site
+        self.counterpart = counterpart
         self.ns = ns
         self.license_url = license_url
         self.catalog = catalog
@@ -854,6 +857,8 @@ class _Builder:
         self.statements(entity)
         if entity.kind == "property":
             self.property_definition(entity)
+        if self.counterpart is not None and (twin := self.counterpart.target_uri(entity.id)):
+            self.add(subject, Iri(OWL + "sameAs"), Iri(twin))       # the same entity in the real Wikibase (S7g)
         if self.kernel:
             self.bridge(entity)
         if entity.id in self.site.crm:
@@ -872,12 +877,13 @@ class _Builder:
         self.owner = None
 
 
-def build(site: Site, ns: Namespaces, license_url: str | None = None, catalog: CatalogInfo | None = None) -> Rdf:
+def build(site: Site, ns: Namespaces, license_url: str | None = None, catalog: CatalogInfo | None = None,
+          counterpart: Counterpart | None = None) -> Rdf:
     """Every loaded entity as triples (and, with ``catalog``, their DCAT description).
 
     ``Rdf.triples`` is the whole export, ``Rdf.by_entity`` the triples of each entity's own file. Problems
     (values that cannot be written) are sorted messages in ``problems``."""
-    builder = _Builder(site, ns, license_url, catalog)
+    builder = _Builder(site, ns, license_url, catalog, counterpart)
     for entity in sorted(site.entities.values(), key=lambda e: id_sort_key(e.id)):
         builder.entity(entity)
     for source, target in sorted(site.redirects.items(), key=lambda kv: id_sort_key(kv[0])):   # merged ids (S7e), as Wikibase writes a redirect
@@ -891,6 +897,8 @@ def build(site: Site, ns: Namespaces, license_url: str | None = None, catalog: C
     builder.spell_out()
     if catalog is not None:
         builder.align_dcat()
+    if counterpart is not None:
+        builder.out.notes.append(f"counterpart {counterpart.name}: owl:sameAs written for {len(counterpart.ids)} of {len(site.entities)} entities")
     if builder.out.bridge:
         builder.out.notes.append(f"the kernel is part of the site: {len(builder.out.bridge)} RDFS bridge triples written (own section in the Turtle file)")
     if builder.out.crm:

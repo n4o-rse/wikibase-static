@@ -178,6 +178,11 @@ rdf_base: https://example.org    # optional: base URI of the RDF export; default
 rdf_prefix: chb                  # optional: own prefix family (chb:, chbt:, chbp:, ...) instead of wd:, wdt:, p:, ...; see "Prefixes of the export"
 data_as_of: 2026-10-25           # optional: date (or date and time) of the data, for entities without a modification time of their own (CSV tables); used in the header and the catalogue of the RDF export, else "unknown"
 edit_url: https://github.com/OWNER/REPO/edit/main/data/csv   # optional: folder of the CSV tables in the repository editor (tab "Source rows")
+counterpart:                     # optional: the same entities in a real Wikibase; see "Counterpart in a real Wikibase"
+  name: wiki.example
+  uri: https://wiki.example/entity/{id}
+  url: https://wiki.example/wiki/Special:EntityPage/{id}
+  map: data/idmap-wiki.example.csv
 ```
 
 Offline tests (a fake Wikibase on localhost, no network needed):
@@ -281,6 +286,19 @@ With a family the Turtle file of an entity is `<base>/ttl/<ID>.ttl` (Wikibase's 
 Only `chb:<ID>` opens a page (`entity/<ID>.html`, which forwards to the page of the entity); the IRIs of statements, references, values and property
 paths are identifiers and do not resolve.
 
+### Counterpart in a real Wikibase (S7g)
+
+A site made from CSV tables has its own numbers (`Q107`). When the same tables were pushed into a real Wikibase with
+`wikibase-federation` (`usecases/chublets`), that Wikibase gave the entities numbers of its own (`Q11`) and the push wrote the
+pairs into `idmap-<target>.csv`. Copy that file into this repository and name it under `counterpart:` in `site.yaml`
+(`name`, `uri` with `{id}` for the concept URI, `url` with `{id}` for the page, `map` for the file; `url` defaults to `uri`).
+
+Then every entity page has the line "The same entity in <name>: Q11" with a link that opens the page there in a new tab,
+the Turtle file of the entity says `owl:sameAs <uri of the counterpart>`, the table is published as
+`downloads/<file name>` and the start page links to it. Entities without a row (the Wikidata stubs, which the push never creates)
+have none of this. A row that is not a pair of ids of the same kind, a second row for the same id, a row for an id that the site does not
+have and a missing table are warnings; nothing is guessed. The table needs the columns `source_id` and `target_id`; others are ignored.
+
 ### Data-model graphics (S16)
 
 Every entity page has a section "Statement graph": the entity on the left, one box per property, the values to the right, qualifiers as chips,
@@ -346,7 +364,7 @@ changed with the `command` input.
 ```
 main.py                     the only entry point
 py/wikibase_static/         the package (one module per step, utils.py, model.py, loader.py, render.py,
-                            site_config.py, rdf.py, modelgraph.py, sparql.py, data/ (default queries, ontology), templates/,
+                            site_config.py, rdf.py, counterpart.py, modelgraph.py, sparql.py, data/ (default queries, ontology), templates/,
                             static/ with app.js, search.js, sparql.js, map.js, style.css
                             and a copy of Leaflet 1.9.4)
 data/raw/                   harvested JSON, as obtained
