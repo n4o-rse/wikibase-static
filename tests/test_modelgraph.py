@@ -176,6 +176,28 @@ class SiteGraph(unittest.TestCase):
         text = "".join(ET.fromstring(graphs_of(site).site_svg()).itertext())
         self.assertIn("plugin", text)
 
+    def test_classes_with_the_same_instances_share_one_card(self) -> None:
+        site = make_site()
+        site.entities["Q4"] = Entity("Q4", "item", labels={"en": "gadget"})
+        for instance in ("Q10", "Q11"):                                  # the same two items are tools and gadgets
+            site.entities[instance].statements.append(statement(item_ref("P1", "Q4")))
+        svg = graphs_of(site).site_svg()
+        root = ET.fromstring(svg)
+        text = "".join(root.itertext())
+        self.assertIn("tool · gadget", text)
+        self.assertEqual(text.count("2 instance(s)"), 1)                 # one card, not two
+        self.assertEqual(sum(1 for r in root.iter("rect") if r.get("class") == "mg-card"), 2)   # tool·gadget and plugin
+        titles = [t.text for t in root.iter("title")]
+        self.assertIn("tool (Q1), gadget (Q4)", titles)
+
+    def test_classes_with_different_instances_keep_their_own_cards(self) -> None:
+        site = make_site()
+        site.entities["Q4"] = Entity("Q4", "item", labels={"en": "gadget"})
+        site.entities["Q10"].statements.append(statement(item_ref("P1", "Q4")))      # only one of the two tools
+        text = "".join(ET.fromstring(graphs_of(site).site_svg()).itertext())
+        self.assertNotIn("·", text)
+        self.assertIn("gadget", text)
+
     def test_a_site_without_classes_has_no_model_graph(self) -> None:
         site = Site()
         site.entities["Q1"] = Entity("Q1", "item", labels={"en": "lonely"})

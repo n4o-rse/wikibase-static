@@ -296,7 +296,14 @@ class ModelGraphs:
             return None
         skip = {p for p in (self.instance_property, self.subclass_property) if p}
         cards = []
+        same: dict[frozenset[str], dict[str, Any]] = {}
         for group in sorted(self._groups, key=lambda g: (-len(g["instances"]), id_sort_key(g["id"]))):
+            members = frozenset(entity.id for entity in group["instances"])
+            if members in same:                           # the same instances: the card would be the same, so the class joins it
+                same[members]["also"].append(group["id"])
+                continue
+            group = {**group, "also": []}
+            same[members] = group
             usage: dict[str, dict[str, Any]] = {}
             for entity in group["instances"]:
                 for statement in entity.statements:
@@ -331,13 +338,14 @@ class ModelGraphs:
             more = len(rows) - len(visible)
             height = 34 + len(visible) * 26 + (22 if more else 0) + (8 if visible else 0)
             class_id = group["id"]
-            label = self.label(class_id)
+            names = [class_id, *group["also"]]
+            label = " · ".join(self.label(name) for name in names)
             count = self.r.ui_text("graph_instances", n=len(group["instances"]))
             body.append(f'<rect x="{x:g}" y="{y:g}" width="{card_w:g}" height="{height:g}" rx="6" class="mg-card"/>')
             head = (f'<path d="M{x:g} {y + 34:g}V{y + 6:g}a6 6 0 0 1 6-6H{x + card_w - 6:g}a6 6 0 0 1 6 6V{y + 34:g}Z" class="mg-class"/>'
                     f'<text x="{x + 12:g}" y="{y + 17:g}" class="mg-w mg-b" dominant-baseline="central">{esc(fit(label, card_w - 24 - text_width(count, SMALL) - 10))}</text>'
                     f'<text x="{x + card_w - 12:g}" y="{y + 17:g}" class="mg-sw" text-anchor="end" dominant-baseline="central">{esc(count)}</text>')
-            body.append(link(self.href(class_id, base), head, f"{label} ({class_id})"))
+            body.append(link(self.href(class_id, base), head, ", ".join(f"{self.label(name)} ({name})" for name in names)))
             ry = y + 34 + 6
             for prop, usage_row in visible:
                 prop_label = fit(self.label(prop), 190 - 16)
