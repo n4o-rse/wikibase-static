@@ -12,11 +12,11 @@
     {% endfor %}
   </ul>
   {% if model_svg %}
-  <section class="model">
+  <section class="model" data-graph-name="model">
     <h2>{{ ui_model }}</h2>
     <p class="muted">{{ ui_model_intro }}</p>
     {{ model_svg }}
-    <p class="model-tools"><a href="graphs/model.svg" download>{{ ui_model_download }}</a></p>
+    <p class="model-tools"><a href="graphs/model.svg" download>{{ ui_model_download }}</a> <button type="button" class="copy-uri" data-graph-download="png" hidden>{{ ui_graph_png }}</button></p>
   </section>
   {% endif %}
 </article>

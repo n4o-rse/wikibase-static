@@ -288,7 +288,7 @@ their pages. The start page has the section "Data model": one card per class wit
 the values and the number of statements. It is read from the data, so it shows what the data does and not what a schema says. The same picture
 is `docs/graphs/model.svg` (links with `../`). The colours are fixed in the SVG (real object dark green, class dark orange, other items pale grey,
 properties and statement metadata amber, literals white), so the picture looks the same on the page, as a file and in a paper. The code is
-`py/wikibase_static/modelgraph.py`. Classes whose instances are exactly the same items share one card (header "software · Little Minion"), because their rows would be the same; it needs no network and no layout engine and draws the same picture every time.
+`py/wikibase_static/modelgraph.py`. Classes whose instances are exactly the same items share one card (header "software · Little Minion"), because their rows would be the same. Under every graphic there are the buttons "Download as SVG" and "Download as PNG" (they work in the browser, `app.js`: the SVG of the page with absolute links, the PNG at twice the size on a white ground; without JavaScript they stay hidden). It needs no network and no layout engine and draws the same picture every time.
 
 ### Class hierarchy
 

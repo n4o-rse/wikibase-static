@@ -86,3 +86,57 @@
   openSource();
   window.addEventListener("hashchange", openSource);
 })();
+
+// Download of a data-model graphic (buttons with data-graph-download="svg" or "png" inside an element with data-graph-name).
+// The SVG is the one on the page, copied with its own styles; links become absolute, so they work in the saved file.
+// The PNG is drawn from it on a canvas (twice the size, white ground). Without JavaScript the buttons stay hidden.
+(function () {
+  var buttons = document.querySelectorAll("[data-graph-download]");
+  function source(box) {
+    var svg = box.querySelector("svg.model-graph");
+    if (!svg) { return null; }
+    var box_ = svg.viewBox.baseVal, copy = svg.cloneNode(true);
+    copy.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+    copy.setAttribute("width", box_.width);
+    copy.setAttribute("height", box_.height);
+    copy.removeAttribute("style");
+    copy.querySelectorAll("a[href]").forEach(function (a) {
+      a.setAttribute("href", new URL(a.getAttribute("href"), document.baseURI).href);
+    });
+    return { xml: '<?xml version="1.0" encoding="UTF-8"?>\n' + new XMLSerializer().serializeToString(copy), width: box_.width, height: box_.height };
+  }
+  function save(blob, name) {
+    var link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = name;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.setTimeout(function () { URL.revokeObjectURL(link.href); }, 1000);
+  }
+  buttons.forEach(function (button) {
+    button.hidden = false;
+    button.addEventListener("click", function () {
+      var box = button.closest("[data-graph-name]");
+      var picture = box && source(box);
+      if (!picture) { return; }
+      var name = box.getAttribute("data-graph-name");
+      if (button.getAttribute("data-graph-download") === "svg") {
+        save(new Blob([picture.xml], { type: "image/svg+xml" }), name + ".svg");
+        return;
+      }
+      var image = new Image();
+      image.onload = function () {
+        var canvas = document.createElement("canvas");
+        canvas.width = picture.width * 2;
+        canvas.height = picture.height * 2;
+        var context = canvas.getContext("2d");
+        context.fillStyle = "#fff";
+        context.fillRect(0, 0, canvas.width, canvas.height);
+        context.drawImage(image, 0, 0, canvas.width, canvas.height);
+        canvas.toBlob(function (blob) { if (blob) { save(blob, name + ".png"); } }, "image/png");
+      };
+      image.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(picture.xml);
+    });
+  });
+})();

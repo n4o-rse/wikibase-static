@@ -243,4 +243,5 @@ pre.rows { margin: 0; padding: 0.6rem 0.8rem; overflow-x: auto; font-size: 0.78r
 .statement-graph summary { cursor: pointer; font-weight: 600; margin-bottom: 0.4rem; }
 .model-graph { display: block; margin: 0.4rem 0; }
 .index .model { margin-top: 1.8rem; }
-.model-tools { font-size: 0.86rem; margin: 0.2rem 0 0; }
+.model-tools, .graph-tools { font-size: 0.86rem; margin: 0.2rem 0 0; display: flex; flex-wrap: wrap; gap: 0.2rem 1rem; }
+.graph-tools button[hidden], .model-tools button[hidden] { display: none; }

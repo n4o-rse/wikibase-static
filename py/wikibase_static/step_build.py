@@ -259,7 +259,7 @@ def main(argv: list[str] | None = None) -> int:
             "ui_language": r.ui("language"), "ui_label": r.ui("label"), "ui_description": r.ui("description"),
             "ui_in_other_languages": r.ui("in_other_languages"), "ui_tools": r.ui("tools"),
             "ui_referenced_by_short": r.ui("referenced_by_short"), "ui_tab_read": r.ui("tab_read"),
-            "concept_uri": copy_target(entity.id)[0],
+            "concept_uri": copy_target(entity.id)[0], "entity_id": entity.id,
             "ttl_href": f"ttl/{entity.id}.ttl", "json_href": f"json/{entity.id}.json" if raw_file(entity) else None,
             "ui_page_downloads": r.ui("page_downloads"), "ui_download_ttl": r.ui("download_ttl"),
             "ui_download_json": r.ui("download_json"), "ui_copy_uri": r.ui(copy_target(entity.id)[1]), "ui_copied": r.ui("copied"),
@@ -267,7 +267,7 @@ def main(argv: list[str] | None = None) -> int:
             "ui_no_statements": r.ui("no_statements"), "ui_rank_preferred": r.ui("rank_preferred"),
             "ui_rank_deprecated": r.ui("rank_deprecated"),
             "ui_referenced_by": r.ui("referenced_by", n=len(r.incoming.get(entity.id, []))),
-            "graph_svg": Markup(svg) if (svg := graphs.entity_svg(entity)) else None, "ui_graph": r.ui("graph_title"),
+            "graph_svg": Markup(svg) if (svg := graphs.entity_svg(entity)) else None, "ui_graph": r.ui("graph_title"), "ui_graph_svg": r.ui("graph_svg"), "ui_graph_png": r.ui("graph_png"),
         })
         context.update(source_context(r, cfg, source_rows, entity.id))
         utils.write_text(docs / name, env.get_template("entity.html").render(context))
@@ -332,7 +332,7 @@ def main(argv: list[str] | None = None) -> int:
     index = common("index.html", cfg.title, cfg.description or None, r.footer(None))
     index.update({
         "model_svg": Markup(model_inline) if model_inline else None, "ui_model": r.ui("model_title"),
-        "ui_model_intro": r.ui("model_intro"), "ui_model_download": r.ui("model_download"),
+        "ui_model_intro": r.ui("model_intro"), "ui_model_download": r.ui("model_download"), "ui_graph_png": r.ui("graph_png"),
         "site_description": cfg.description, "page_links": page_links,
         "ui_counts": r.ui("entities_n", n=len(site.entities), items=len(site.items), properties=len(site.properties)),
     })

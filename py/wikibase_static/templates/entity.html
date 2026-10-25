@@ -106,9 +106,10 @@
   </section>
 
   {% if graph_svg %}
-  <details class="statement-graph" open>
+  <details class="statement-graph" open data-graph-name="{{ entity_id }}-graph">
     <summary>{{ ui_graph }}</summary>
     {{ graph_svg }}
+    <p class="graph-tools"><button type="button" class="copy-uri" data-graph-download="svg" hidden>{{ ui_graph_svg }}</button> <button type="button" class="copy-uri" data-graph-download="png" hidden>{{ ui_graph_png }}</button></p>
   </details>
   {% endif %}
 
