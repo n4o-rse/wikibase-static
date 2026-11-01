@@ -109,7 +109,14 @@ def copy_assets(docs: Path) -> int:
         if not target.is_file() or target.read_bytes() != data:
             target.write_bytes(data)
         count += 1
-    return count
+    # The version is not written into the pages: a page would change with every release of the package although its content did not.
+    # This one small file carries it (the footer of every page has an empty <span data-wbs-version> that it fills).
+    version = docs / "assets" / "version.js"
+    script = ('(function(){var v="' + __version__ + '";Array.prototype.forEach.call(document.querySelectorAll("[data-wbs-version]"),'
+              'function(n){n.textContent=v;});})();\n').encode("utf-8")
+    if not version.is_file() or version.read_bytes() != script:
+        version.write_bytes(script)
+    return count + 1
 
 
 def make_env():

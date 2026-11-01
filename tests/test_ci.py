@@ -90,6 +90,29 @@ class StrictGate(SiteRepo):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
 
+class VersionPlace(SiteRepo):
+    """The version of the package is stated once per kind of file, not in every page and every entity file (0.25.0)."""
+
+    def test_the_version_is_in_version_js_and_the_dataset_files_only(self) -> None:
+        sys.path.insert(0, str(REPO / "py"))
+        from wikibase_static import __version__
+        self.assertEqual(self.pipeline("--strict").returncode, 0)
+        docs = self.site / "docs"
+        self.assertIn(f'var v="{__version__}"', (docs / "assets" / "version.js").read_text(encoding="utf-8"))
+        for page in docs.glob("*.html"):
+            text = page.read_text(encoding="utf-8")
+            self.assertIn("data-wbs-version", text, page.name)
+            self.assertNotIn(__version__, text, page.name)                      # so a new release does not touch the pages
+        for entity in (docs / "ttl").glob("*.ttl"):
+            text = entity.read_text(encoding="utf-8")
+            self.assertIn("# Generated with wikibase-static; data as of", text, entity.name)
+            self.assertNotIn(__version__, text, entity.name)
+        for dataset in (docs / "downloads").glob("*.ttl"):
+            if dataset.name.endswith("wikibase-ontology.ttl"):
+                continue
+            self.assertIn(f"# Generated with wikibase-static {__version__};", dataset.read_text(encoding="utf-8"), dataset.name)
+
+
 @unittest.skipUnless(HAVE_GIT, "git is not installed")
 class TreeIsClean(SiteRepo):
     def status(self) -> str:

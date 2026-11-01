@@ -393,6 +393,8 @@ Every map has a bar of controls (full screen, back to the first view, copy coord
 
 Every version has a tag `vX.Y.Z` on the commit that raised `__version__`, and an entry in [`CHANGELOG.md`](CHANGELOG.md). After a version commit: `python tools/tag_versions.py && git push origin --tags` makes and publishes the missing tags. A site repository can pin one: `wikibase-static @ git+https://github.com/n4o-rse/wikibase-static.git@v0.24.0`.
 
+To bring all site repositories to a version at once, list them in `tools/satellites.txt` and run `python tools/rollout.py` (the version of this package; `python tools/rollout.py 0.25.0` for another; `--dry-run` first if you want to see it). It pulls each repository (a missing one is cloned next to this one), changes the pin, reinstalls, builds twice with `--strict`, commits, checks with a third build that nothing changes any more, and pushes. The version string is not in the pages: the footer fills it from `assets/version.js`, and the entity Turtle files carry none, so an update changes `version.js`, the two Turtle files of the whole dataset and the assets that changed, not every page.
+
 ## Continuous integration
 
 Two workflows live in `.github/workflows/`:

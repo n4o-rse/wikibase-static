@@ -3,6 +3,17 @@
 Every version is a tag `vX.Y.Z` on the commit that raised `__version__` (`tools/tag_versions.py` makes the missing tags;
 `0.1.0` is the last commit before 0.2.0). The newest version is on top. The work plan with the findings behind each version is `PRIMER.md`.
 
+## 0.25.0
+- The version of the package is no longer written into every page and every entity file, so a new release does not change what did not
+  change. The footer has an empty `<span data-wbs-version>`; the build writes `assets/version.js` (one small file) that fills it. The
+  entity Turtle files (`ttl/Q1.ttl`) say "Generated with wikibase-static; data as of …" without the number; the Turtle files of the
+  whole dataset (`downloads/<site>.ttl` and `dist/`) keep it. After an update, only `version.js`, those two files and the assets that
+  really changed differ, instead of every page (the first update to 0.25.0 rewrites the footers once). 20 asset files instead of 19.
+- `tools/rollout.py` brings the satellite repositories listed in `tools/satellites.txt` to a version: pull, change the pin in
+  `requirements.txt`, `pip install --upgrade --force-reinstall`, `main.py --strict` twice (and `check_attribution.py`), commit, a third
+  build as the check of the CI, push. `--dry-run`, `--only NAME`, `--no-push`, `--force`.
+- Tests: 663 in the repository.
+
 ## 0.24.2
 - Full-screen button: the box was 40 px high with a gap on top and the icon sat off-centre (the margin of the icon collapsed out of the
   link); the link is now a flex box, so the button is 30 x 30 px like the zoom buttons and the icon is centred.

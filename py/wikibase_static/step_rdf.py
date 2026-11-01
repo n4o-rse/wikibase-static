@@ -111,7 +111,7 @@ def write_published(site, ns, result, text: str, stem: str, header: list[str], p
     ttl, raw = {}, {}
     for entity_id, triples in sorted(result.by_entity.items()):
         own = [f"{entity_id}: the part of the RDF export of {header[0].split(' of ', 1)[-1].split(',')[0]} that describes this entity",
-               *header[1:]]
+               header[1].replace(f" {__version__};", ";"), *header[2:]]        # the version stands in the files of the whole dataset only
         sections = [(rdf.BRIDGE_TITLE, triples & result.bridge), (rdf.CRM_TITLE, triples & result.crm)]
         ttl[f"{entity_id}.ttl"] = utils_bytes(rdf.to_turtle(triples, ns, "\n".join(own), sections))
         entity = site.entities[entity_id]

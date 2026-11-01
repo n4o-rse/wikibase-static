@@ -75,11 +75,12 @@ html[data-lang="{{ second }}"] .l:not([lang="{{ second }}"]) { display: none; }
         <span class="item">{{ ui_imprint }}: {{ footer.imprint_text }}</span>
         {% endif %}
       </p>
-      <p class="generated">{{ ui_generated }} <a href="https://github.com/n4o-rse/wikibase-static" target="_blank" rel="noopener">wikibase-static</a> {{ footer.version }}</p>
+      <p class="generated">{{ ui_generated }} <a href="https://github.com/n4o-rse/wikibase-static" target="_blank" rel="noopener">wikibase-static</a> <span data-wbs-version></span></p>
     </footer>
   </div>
 </div>
 <script src="assets/app.js"></script>
+<script src="assets/version.js"></script>
 <script src="assets/search.js"></script>
 {% if map_points or leaflet %}
 <script src="assets/vendor/leaflet/leaflet.js"></script>

@@ -1,0 +1,5 @@
+# The satellite repositories: sites that pin a release of wikibase-static in requirements.txt (one owner/repo per line).
+# `python tools/rollout.py` brings every repository listed here to the version of this package.
+n4o-rse/osm-benchmarks-static
+n4o-rse/fuzzy-sl-static
+n4o-rse/chublets-wikibase-demo
