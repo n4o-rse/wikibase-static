@@ -71,7 +71,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "id": "ID", "label": "Label", "description": "Description", "source": "Source", "as_of": "As of",
         "license": "Licence", "license_missing": "Licence not stated", "imprint": "Imprint",
         "generated": "Static read-only copy, generated with", "map": "Map", "item": "Item", "property": "Property",
-        "entities_n": "{n} entities ({items} items, {properties} properties)", "language": "Language",
+        "entities_n": "{n} entities ({items} items, {properties} properties)", "language": "Language", "theme": "Colour theme", "theme_s_auto": "Auto", "theme_s_light": "Light", "theme_s_dark": "Dark", "theme_auto": "Colour theme: automatic (follows the system)", "theme_light": "Colour theme: light", "theme_dark": "Colour theme: dark",
         "open_original": "Original page", "federated": "Wikidata (opens in a new tab)",
         "dt_wikibase-item": "Item", "dt_wikibase-property": "Property", "dt_string": "String",
         "dt_external-id": "External identifier", "dt_url": "URL", "dt_commonsMedia": "Commons media file",
@@ -134,7 +134,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "id": "ID", "label": "Bezeichnung", "description": "Beschreibung", "source": "Quelle", "as_of": "Stand",
         "license": "Lizenz", "license_missing": "Lizenz nicht angegeben", "imprint": "Impressum",
         "generated": "Statische Nur-Lese-Kopie, erzeugt mit", "map": "Karte", "item": "Item", "property": "Property",
-        "entities_n": "{n} Entitäten ({items} Items, {properties} Properties)", "language": "Sprache",
+        "entities_n": "{n} Entitäten ({items} Items, {properties} Properties)", "language": "Sprache", "theme": "Farbschema", "theme_s_auto": "Auto", "theme_s_light": "Hell", "theme_s_dark": "Dunkel", "theme_auto": "Farbschema: automatisch (folgt dem System)", "theme_light": "Farbschema: hell", "theme_dark": "Farbschema: dunkel",
         "open_original": "Originalseite", "federated": "Wikidata (öffnet in neuem Tab)",
         "dt_wikibase-item": "Item", "dt_wikibase-property": "Property", "dt_string": "Zeichenkette",
         "dt_external-id": "Externer Bezeichner", "dt_url": "URL", "dt_commonsMedia": "Commons-Mediendatei",
@@ -371,6 +371,14 @@ class Renderer:
         for language in [self.default] + ([self.second] if self.second else []):
             table = STRINGS.get(language, STRINGS["en"])
             texts[language] = {"placeholder": table["search"], "none": table["search_none"], "error": table["search_error"]}
+        return json.dumps(texts, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
+
+    def theme_labels_json(self) -> str:
+        """The labels of the colour-theme button (``app.js``), one set per language of the site, as JSON."""
+        texts = {}
+        for language in [self.default] + ([self.second] if self.second else []):
+            table = STRINGS.get(language, STRINGS["en"])
+            texts[language] = {state: [table[f"theme_s_{state}"], table[f"theme_{state}"]] for state in ("auto", "light", "dark")}
         return json.dumps(texts, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
 
     def sparql_texts(self) -> dict[str, dict[str, str]]:

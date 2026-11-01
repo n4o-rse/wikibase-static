@@ -34,7 +34,7 @@ from urllib.parse import unquote, urlparse
 if __package__ in (None, ""):  # direct run: python py/wikibase_static/step_build.py
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from wikibase_static import __version__, utils
+from wikibase_static import __version__, site_config, utils
 from wikibase_static.loader import load_site
 from wikibase_static.model import id_sort_key
 from wikibase_static.source_rows import SourceRows
@@ -139,7 +139,8 @@ def page_context(site: Any, cfg: Any, r: Any, logo: str | None):
     def common(page: str, title: str, description: str | None, footer: dict[str, Any],
                map_points: list[Any] | None = None) -> dict[str, Any]:
         return {
-            "default": cfg.default_language, "second": cfg.second_language, "colour": cfg.colour, "logo": logo,
+            "default": cfg.default_language, "second": cfg.second_language, "brand": cfg.colour if cfg.colour.lower() != site_config.DEFAULT_COLOUR.lower() else "", "logo": logo,
+            "theme_label": r.ui_text("theme"), "theme_labels": r.theme_labels_json(),
             "site_title": cfg.title, "language_label": r.ui_text("language"),
             "canonical": f"{base_url}{page}" if base_url else None,
             "title": title, "description": description, "meta_description": description, "footer": footer, "map_points": map_points or [], "leaflet": False,

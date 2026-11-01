@@ -162,7 +162,7 @@ title: My Wikibase
 description: One line for the start page
 logo: assets/logo.png            # a file in the repository (copied to docs/assets/logo/), or a URL;
                                  # a logo with a white background blends into the grey sidebar
-colour: "#336699"                # accent colour, hex
+colour: "#336699"                # optional accent colour, hex; left out: the BeaverBridge plum (light and dark mode)
 source:
   url: https://example.wikibase.cloud   # must match data/raw/manifest.json
 license:                         # optional; without it the footer says CC0 1.0 (Public Domain)
@@ -382,6 +382,16 @@ E31 and a D1, `dcat:Distribution` a D1) and, with an overlay, writes `subclass o
 because the N4O profile does not infer. `python main.py check-crm` (not part of the default run) validates `dist/<host>.ttl` with pySHACL
 against `data/shapes-crm.ttl`: a class of the site or a DCAT class that reaches no CIDOC CRM class over `rdfs:subClassOf` is a violation
 (`WARN`, so `--strict` stops), one that reaches only E1 is a warning.
+
+## Design: light and dark
+
+The pages use the BeaverBridge palette (plum, wood brown, coral, info blue; `beaverbridge-registry/design/PALETTE.md`) in a light and a dark mode. Without a choice the page follows the system (`prefers-color-scheme`); the button in the tab row cycles auto, light and dark and remembers the choice in `localStorage` (`wbs-theme`). The colours are tokens in `assets/style.css`, so a site that wants to restyle everything overrides tokens. `colour` in `site.yaml` is optional: left out, the plum is the accent; set, it is used in light mode and mixed with white in dark mode.
+
+Every map has a full-screen button and uses the OpenFreeMap "Positron" basemap (vector tiles of OpenStreetMap data, drawn by MapLibre GL, which is part of the package in `assets/vendor/maplibre/`); without WebGL, or if the style cannot be fetched, the OpenStreetMap raster tiles are used. The tile servers are the only third parties the map pages call (the query pages also load Pyodide, as before).
+
+## Versions and tags
+
+Every version has a tag `vX.Y.Z` on the commit that raised `__version__`, and an entry in [`CHANGELOG.md`](CHANGELOG.md). After a version commit: `python tools/tag_versions.py && git push origin --tags` makes and publishes the missing tags. A site repository can pin one: `wikibase-static @ git+https://github.com/n4o-rse/wikibase-static.git@v0.24.0`.
 
 ## Continuous integration
 

@@ -433,6 +433,52 @@ class BuildTests(Site):
         self.assertLess(q1.index('href="items.html"'), q1.index('href="overview.html"'))        # the overview follows the items
         self.assertLess(q1.index('href="overview.html"'), q1.index('href="properties.html"'))
 
+    def test_colour_theme_button_and_palette(self) -> None:
+        self.site_yaml("languages:\n  default: en\n  second: de\n")
+        self.build()
+        q1 = self.page("Q1.html")
+        self.assertIn('id="wbs-theme"', q1)
+        self.assertIn('localStorage.getItem("wbs-theme")', q1)                       # set before the first paint
+        self.assertIn("Farbschema: dunkel", q1)                                      # labels of both languages in the button
+        self.assertIn("Hell", q1)
+        self.assertIn("Colour theme: dark", q1)
+        self.assertNotIn("--brand", q1)                                              # no own colour: the palette's primary
+        css = (self.docs / "assets" / "style.css").read_text(encoding="utf-8")
+        self.assertIn('--bg: #FBF7F4', css)
+        self.assertIn(':root[data-theme="dark"]', css)
+        self.assertIn('@media (prefers-color-scheme: dark)', css)
+        rest = css.split("* { box-sizing", 1)[1]
+        self.assertEqual(__import__("re").findall(r"#[0-9a-fA-F]{3,6}\b", rest.split("/* ---- colour theme", 1)[0]), [],
+                         "colours belong in the tokens, not in the rules")
+
+    def test_maps_have_a_full_screen_button_a_vector_basemap_and_are_taller(self) -> None:
+        self.build()
+        assets = self.docs / "assets"
+        js = (assets / "map.js").read_text(encoding="utf-8")
+        self.assertIn("window.wbsFullscreen = function", js)
+        self.assertIn("window.wbsFullscreen(map);", js)                              # the entity and overview maps
+        self.assertIn("https://tiles.openfreemap.org/styles/positron", js)           # the basemap of beaverbridge-registry
+        self.assertIn("tile.openstreetmap.org", js)                                  # the fallback without WebGL or style
+        sparql = (assets / "sparql.js").read_text(encoding="utf-8")
+        self.assertIn("window.wbsFullscreen(map)", sparql)                           # the map of the query results
+        self.assertIn("window.wbsBasemap(map)", sparql)
+        for name in ("maplibre-gl.js", "maplibre-gl.css", "leaflet-maplibre-gl.js", "LICENSE-maplibre-gl.txt"):
+            self.assertTrue((assets / "vendor" / "maplibre" / name).is_file(), name)
+        css = (assets / "style.css").read_text(encoding="utf-8")
+        self.assertIn(".wbs-map { height: 28rem;", css)
+        self.assertIn(".wbs-qmap { height: 40rem;", css)
+        self.assertIn(".wbs-map.wbs-fs", css)
+
+    def test_own_colour_is_light_and_lightened_in_dark_mode(self) -> None:
+        self.site_yaml("colour: '#336699'\n")
+        self.build()
+        q1 = self.page("Q1.html")
+        self.assertIn("--brand: #336699", q1)
+        self.assertIn("--brand-dark: color-mix(in srgb, #336699 55%, #ffffff)", q1)
+        self.site_yaml("colour: '#8e3a63'\n")
+        self.build()
+        self.assertNotIn("--brand", self.page("Q1.html"))                            # the palette colour needs no override
+
     def test_referenced_by_lists_who_points_here(self) -> None:
         self.build()
         q2 = self.page("Q2.html")

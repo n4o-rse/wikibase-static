@@ -5,7 +5,7 @@ Keys (all optional; a missing file gives the defaults and one note)::
     title: My Wikibase                # page title and header
     description: One line for the start page
     logo: assets/logo.png             # URL, or a file in the repository (copied into docs/assets/)
-    colour: "#990000"                 # accent colour, hex only
+    colour: "#990000"                 # optional accent colour, hex only; left out: the plum of the BeaverBridge palette (light and dark mode)
     source:
       url: https://example.wikibase.cloud   # must match data/raw/manifest.json
     license:                          # optional; without it the pages say CC0 1.0 (Public Domain)
@@ -55,7 +55,7 @@ RDF_PREFIX = re.compile(r"^[a-z][a-z0-9]{0,11}$")
 RESERVED_PREFIXES = frozenset({"cc", "dcat", "dcterms", "geo", "owl", "prov", "rdf", "rdfs", "schema", "skos", "wikibase", "xsd",
                                "crm", "crmdig", "crmsci", "crmgeo", "crmarchaeo", "crminf", "crmba", "crmtex", "lrmoo", "sh"})
 DATA_AS_OF = re.compile(r"^(\d{4}-\d{2}-\d{2})(?:[T ](\d{2}:\d{2}:\d{2}))?Z?$")
-DEFAULT_COLOUR = "#336699"
+DEFAULT_COLOUR = "#8E3A63"       # the primary colour of the BeaverBridge palette (0.24.0); a site that keeps it follows the palette in both modes
 DEFAULT_LICENSE = ("CC0 1.0", "https://creativecommons.org/publicdomain/zero/1.0/")   # PRIMER.md, A4
 KNOWN_KEYS = {"title", "description", "logo", "colour", "source", "license", "languages",
               "imprint", "pages_url", "formatter_property", "wkt_property", "rdf_base", "rdf_prefix", "edit_url", "data_as_of", "counterpart"}

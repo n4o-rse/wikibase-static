@@ -450,10 +450,8 @@
       if (!map) {
         L.Icon.Default.imagePath = "assets/vendor/leaflet/images/";
         map = L.map(panels.map, { scrollWheelZoom: false });
-        L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-          maxZoom: 19,
-          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors'
-        }).addTo(map);
+        if (window.wbsFullscreen) { window.wbsFullscreen(map); }
+        if (window.wbsBasemap) { window.wbsBasemap(map); }
         layer = L.layerGroup().addTo(map);
       }
       map.invalidateSize();

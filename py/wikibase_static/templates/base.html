@@ -10,12 +10,15 @@
 {% if canonical %}
 <link rel="canonical" href="{{ canonical }}">
 {% endif %}
+<script>try{var t=localStorage.getItem("wbs-theme");if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t);}catch(e){}</script>
 <link rel="stylesheet" href="assets/style.css">
 {% if map_points or leaflet %}
 <link rel="stylesheet" href="assets/vendor/leaflet/leaflet.css">
 {% endif %}
 <style>
-:root { --accent: {{ colour }}; }
+{% if brand %}
+:root { --brand: {{ brand }}; --brand-dark: color-mix(in srgb, {{ brand }} 55%, #ffffff); }
+{% endif %}
 html[data-lang="{{ default }}"] .l:not([lang="{{ default }}"]) { display: none; }
 {% if second %}
 html[data-lang="{{ second }}"] .l:not([lang="{{ second }}"]) { display: none; }
@@ -46,6 +49,7 @@ html[data-lang="{{ second }}"] .l:not([lang="{{ second }}"]) { display: none; }
           <input type="search" name="q" autocomplete="off" spellcheck="false" placeholder="{{ search_text }}" aria-label="{{ search_text }}" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="wbs-search-list">
           <ul class="search-results" id="wbs-search-list" role="listbox" aria-label="{{ search_text }}" hidden></ul>
         </form>
+        <button type="button" class="theme-switch" id="wbs-theme" hidden data-labels="{{ theme_labels }}" aria-label="{{ theme_label }}" title="{{ theme_label }}">&#9680;</button>
         {% if second %}
         <div class="lang-switch" role="group" aria-label="{{ language_label }}">
           <button type="button" data-set-lang="{{ default }}">{{ default | upper }}</button><button type="button" data-set-lang="{{ second }}">{{ second | upper }}</button>
