@@ -132,7 +132,11 @@ class FullImport(unittest.TestCase):
         self.assertIn("inscription=P.O Dublin 8 Howth 1", tags)
         self.assertNotIn("wikimedia_commons", " ".join(tags))
         label = next(r["label_en"] for r in self.site.table("entities.csv") if r["id"] == subject)
-        self.assertEqual(label, "MilestoneDublin8Howth1")
+        self.assertEqual(label, "Milestone Dublin 8 Howth 1")
+        row = next(r for r in self.site.table("entities.csv") if r["id"] == subject)
+        self.assertEqual(row["label_de"], "Milestone Dublin 8 Howth 1")
+        self.assertEqual(row["description_en"], "Milestone, inscription \u201cP.O Dublin 8 Howth 1\u201d (OpenStreetMap node 6666122939)")
+        self.assertEqual(row["description_de"], "Meilenstein, Inschrift \u201eP.O Dublin 8 Howth 1\u201c (OpenStreetMap-Node 6666122939)")
 
     def test_version_qualifiers(self) -> None:
         subject = next(r["id"] for r in self.idmap if r["key"] == "node/6666122939")
@@ -214,6 +218,24 @@ class SelectionRuns(unittest.TestCase):
         ids = {r["key"]: r["id"] for r in self.site.table("idmap.csv")}
         for number, (_, expected) in cases.items():
             self.assertEqual(labels[ids[f"node/{number}"]], expected)
+
+    def test_clean_title(self) -> None:
+        from wikibase_static.step_import_osm import clean_title
+        self.assertEqual(clean_title("Second_Presbyterian_Church,_Ballybay_-_geograph.org.uk_-_3013138.jpg"),
+                         "Second Presbyterian Church, Ballybay")
+        self.assertEqual(clean_title("MilestoneDublin9Howth.jpg"), "Milestone Dublin 9 Howth")
+        self.assertEqual(clean_title("Milestone Old Dublin Road.jpg"), "Milestone Old Dublin Road")
+
+    def test_inscription_label_and_german_fallback(self) -> None:
+        self.site.put("node", 16, [version(1, tags={"man_made": "survey_point", "inscription": "LM 2"})])
+        self.site.put("node", 17, [version(1, tags={"man_made": "survey_point"})])
+        self.site.run()
+        ids = {r["key"]: r["id"] for r in self.site.table("idmap.csv")}
+        rows = {r["id"]: r for r in self.site.table("entities.csv")}
+        self.assertEqual(rows[ids["node/16"]]["label_en"], "Benchmark LM 2")
+        self.assertEqual(rows[ids["node/17"]]["label_en"], "OSM node 17")
+        self.assertEqual(rows[ids["node/17"]]["label_de"], "OSM-Node 17")
+        self.assertEqual(rows[ids["node/17"]]["description_de"], "Höhenmarke (OpenStreetMap-Node 17)")
 
     def test_commons_category_is_not_an_image(self) -> None:
         self.site.put("node", 14, [version(1, tags={**GOOD, "wikimedia_commons": "Category:Benchmarks"})])

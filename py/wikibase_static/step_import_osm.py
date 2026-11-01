@@ -43,7 +43,11 @@ stored histories of its members (``data/raw/osm/members/``, fetched by the netwo
 (version of the element, or of a member node, qualifier timestamp = that moment; statement ids ``g1``, ``g2``, ...); its
 ``coordinate`` is the middle of the bounding box of the last shape. Without the member histories the item is imported without a shape
 and the report says how many are missing. ``--element way/123`` fetches one element and its members without asking Overpass.
-The label is ``name``, then ``name:en``, then the title of the Commons file, then ``OSM node <id>``. Statements carry a reference
+The label is ``name``, then ``name:en``, then the title of the Commons file (cleaned: ``_`` and a CamelCase run become spaces, a
+`` - geograph.org.uk - <number>`` tail goes), then the inscription, then ``OSM node <id>``; the German label is the same text
+(names and titles are not translated), only the last resort is German (``OSM-Node <id>``). The description says what the thing is
+and where it comes from, in English and German (0.23.0): "Milestone, inscription “P.O Dublin 8 Howth 1” (OpenStreetMap node 1234)",
+"Meilenstein, Inschrift „P.O Dublin 8 Howth 1“ (OpenStreetMap-Node 1234)". Statements carry a reference
 (P6, the URL of the version they were read from), except ``element`` and ``version``, which are that URL themselves. Reimport:
 every row with ``origin=osm`` is replaced; a row whose ``origin`` was emptied counts as written by hand and wins. No clock: the
 output depends on the input files only.
@@ -77,6 +81,11 @@ ROLES = ("class_benchmark", "element", "version", "version_number", "timestamp",
          "selection_since", "selection_until", "selection_name", "coordinate", "geometry_history", "image", "tag")
 FILE_NAME = re.compile(r"^(node|way|relation)_([1-9][0-9]*)\.json$")
 COMMONS_FILE = re.compile(r"^File:(.+)$")
+GEOGRAPH_TAIL = re.compile(r"\s+-\s+geograph\.org\.uk\s+-\s+\d+$")
+CAMEL = re.compile(r"(?<=[a-z])(?=[A-Z0-9])|(?<=[0-9])(?=[A-Z])")
+# (English, German) by the tag that tells the thing apart; the first match wins, the last row is the fallback
+THINGS = (("historic", "milestone", "Milestone", "Meilenstein"), ("", "", "Benchmark", "Höhenmarke"))
+KINDS = {"node": ("node", "Node"), "way": ("way", "Weg"), "relation": ("relation", "Relation")}
 
 
 # --------------------------------------------------------------------------- reading
@@ -206,8 +215,10 @@ class Importer:
         last = live[-1]
         subject = self.idmap.get(element.key)
         label = self.label(element, last)
+        description_en, description_de = self.describe(element, last)
         row = {"id": subject, "kind": "item", "datatype": "", "origin": SOURCE, "label_en": label,
-               "description_en": f"OpenStreetMap {element.kind} {element.number}"}
+               "label_de": label if not label.startswith("OSM ") else f"OSM-{KINDS[element.kind][1]} {element.number}",
+               "description_en": description_en, "description_de": description_de}
         self.out.entities[subject] = row
         self.kinds[element.kind] += 1
 
@@ -287,10 +298,38 @@ class Importer:
                 return tags[key]
         match = COMMONS_FILE.match(tags.get("wikimedia_commons", ""))
         if match:
-            title = re.sub(r"\.[A-Za-z0-9]{2,5}$", "", match.group(1).replace("_", " "))
+            title = clean_title(match.group(1))
             if title:
                 return title
+        if tags.get("inscription"):
+            return f"{self.thing(last)[0]} {tags['inscription']}"
         return f"OSM {element.kind} {element.number}"
+
+    @staticmethod
+    def thing(last: dict) -> tuple[str, str]:
+        tags = last.get("tags") or {}
+        for key, value, english, german in THINGS:
+            if not key or tags.get(key) == value:
+                return english, german
+        return THINGS[-1][2:]
+
+    def describe(self, element: Element, last: dict) -> tuple[str, str]:
+        """What it is and where it comes from, English and German; the inscription (if any) is quoted."""
+        english, german = self.thing(last)
+        inscription = " ".join(str((last.get("tags") or {}).get("inscription", "")).split())
+        kind_en, kind_de = KINDS[element.kind]
+        en = english + (f", inscription \u201c{inscription}\u201d" if inscription else "")
+        de = german + (f", Inschrift \u201e{inscription}\u201c" if inscription else "")
+        return f"{en} (OpenStreetMap {kind_en} {element.number})", f"{de} (OpenStreetMap-{kind_de} {element.number})"
+
+
+def clean_title(name: str) -> str:
+    """The title of a Commons file as a label: no extension, no geograph tail, spaces for ``_`` and for CamelCase."""
+    title = re.sub(r"\.[A-Za-z0-9]{2,5}$", "", name.replace("_", " ")).strip()
+    title = GEOGRAPH_TAIL.sub("", title).strip()
+    if " " not in title:
+        title = CAMEL.sub(" ", title)
+    return title
 
 
 # --------------------------------------------------------------------------- the network part
