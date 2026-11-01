@@ -215,12 +215,22 @@ and why. The rules are described at the top of `py/wikibase_static/step_import_o
 ### Importing OSM element histories (S15a)
 
 ```
-python main.py import-osm --offline                  every file of data/raw/osm/history/
+python main.py import-osm --probe                    one Overpass request: what would be fetched; writes nothing
+python main.py import-osm --contact me@example.org   ask Overpass, fetch what is new or changed, then import
+python main.py import-osm --refresh                  fetch every history again and compare it with the stored one
+python main.py import-osm --offline                  no network: import every file of data/raw/osm/history/
 python main.py import-osm --offline --from-dir DIR   another folder of history files
 python main.py import-osm --offline --dry-run        print the report, write nothing
 ```
 
-Offline in 0.20.0, and a verb of its own because it writes source files. It reads one file per OSM element,
+A verb of its own because it writes source files and uses the network. With the network (0.21.0) it sends the Overpass query
+`data/seeds/overpass-<selection>.overpassql` once (it has to end with `out meta;`, no `geom`), stores the answer byte for byte in
+`data/raw/osm/overpass/<selection>.json` when the list of elements and versions in it has changed, and asks the OSM API for
+`history.json` only of the elements that are new or have a higher version than the stored file; the answers are stored byte for byte.
+A second run without a change at OpenStreetMap sends the one Overpass request and nothing else. An element that is stored but no longer in the
+Overpass answer has left the area or was deleted: its last run in the selection gets an end. The client pauses (`--delay`, default 1 s),
+honours `Retry-After`, retries on 429/5xx, names a contact in its User-Agent (`--contact` or WBS_CONTACT) and sends at most `--limit`
+history requests per run (default 100). It reads one file per OSM element,
 `data/raw/osm/history/<type>_<id>.json` (the answer of `GET /api/0.6/<type>/<id>/history.json`, never edited), a role map
 `data/csv/mapping/osm-properties.csv` (columns `role, id, kind, note`: which local property carries the element URL, the version URL,
 the version number, timestamp, changeset, user name, uid, the selection, the coordinate, the geometry history, the image and the tags) and

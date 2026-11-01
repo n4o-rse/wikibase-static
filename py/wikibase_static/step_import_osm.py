@@ -1,8 +1,21 @@
-"""S15a -- import the version history of OpenStreetMap elements into the CSV tables (a verb of its own, offline in 0.20.0).
+"""S15a/S5 -- harvest the version history of OpenStreetMap elements and import it into the CSV tables (a verb of its own).
 
-    python main.py import-osm --offline                 every file of data/raw/osm/history/
+    python main.py import-osm                           ask Overpass, fetch what is new or changed, then import
+    python main.py import-osm --probe                   one Overpass request: say what would be fetched, write nothing
+    python main.py import-osm --refresh                 fetch every history again and compare it with the stored one
+    python main.py import-osm --offline                 no network: import every file of data/raw/osm/history/
     python main.py import-osm --offline --from-dir DIR  another folder of history files
     python main.py import-osm --offline --dry-run       print the report, write nothing
+
+The network part (``osm_net.py``): the Overpass query of the selection, ``data/seeds/overpass-<selection>.overpassql`` (``out meta``,
+no ``geom``), is sent once; its answer is stored byte for byte in ``data/raw/osm/overpass/<selection>.json`` when the list of
+(element, version) in it has changed. Each element it names is compared with the history file on disk: new (no file) or changed (a
+higher version) elements get ``GET /api/0.6/<type>/<id>/history.json`` and the answer is stored byte for byte in
+``data/raw/osm/history/<type>_<id>.json``; the others cost no request. A second run without any change at OpenStreetMap therefore
+sends one Overpass request and nothing else. An element that is in the history folder but no longer in the Overpass answer has left
+the area (or was deleted): its last run of versions in the selection gets ``selection_until``. ``--limit N`` caps the history
+requests of one run (default 100, so a large first run is spread over several), ``--delay`` is the pause between requests (default 1 s),
+``--contact`` names a contact in the User-Agent (or set WBS_CONTACT). ``--probe`` and, with the network, ``--dry-run`` send the Overpass request only.
 
 Reads one file per element, ``data/raw/osm/history/<type>_<id>.json`` (the answer of ``GET /api/0.6/<type>/<id>/history.json``,
 never edited), the role map ``data/csv/mapping/osm-properties.csv`` (columns ``role, id, kind, note``: which local property
@@ -24,7 +37,7 @@ The model (PRIMER.md of osm-benchmarks-static, A2 and A4):
     ``image``              the Commons file of the tag ``wikimedia_commons`` of the last version
     ``tag``                every other tag of the last version as ``key=value``; older tags stay at OpenStreetMap
 
-Only nodes are imported in 0.20.0; a way or a relation is reported and left out (their geometry needs a Wikibase-side WKT, S15b).
+Only nodes are imported in 0.21.0; a way or a relation is reported and left out (their geometry needs a Wikibase-side WKT, S15b).
 The label is ``name``, then ``name:en``, then the title of the Commons file, then ``OSM node <id>``. Statements carry a reference
 (P6, the URL of the version they were read from), except ``element`` and ``version``, which are that URL themselves. Reimport:
 every row with ``origin=osm`` is replaced; a row whose ``origin`` was emptied counts as written by hand and wins. No clock: the
@@ -36,6 +49,7 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import os
 import re
 import sys
 from collections import Counter
@@ -45,10 +59,12 @@ from pathlib import Path
 if __package__ in (None, ""):  # direct run: python py/wikibase_static/step_import_osm.py
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from wikibase_static import csvbuild, csvio, utils
+from wikibase_static import __version__, csvbuild, csvio, osm_net, utils
+from wikibase_static.step_harvest import DEFAULT_CONTACT
 from wikibase_static.step_import_open_archaeo import IdMap, ImportProblem, Out, merge, read_rows, shown
 
 STEP = "import-osm"
+CLIENT_FACTORY = None      # the tests put a client with a fake transport here
 SOURCE = "osm"
 INSTANCE, REFERENCE_URL = "P2", "P6"
 OSM = "https://www.openstreetmap.org"
@@ -139,8 +155,11 @@ def coord(value: float) -> str:
 
 
 class Importer:
-    def __init__(self, roles: dict[str, str], condition: list[tuple[str, str]], selection: str, idmap: IdMap) -> None:
+    def __init__(self, roles: dict[str, str], condition: list[tuple[str, str]], selection: str, idmap: IdMap,
+                 present: dict[str, int] | None = None) -> None:
         self.roles, self.condition, self.selection, self.idmap = roles, condition, selection, idmap
+        self.present = present            # key -> version of the last Overpass answer; None: no answer stored, nobody has left
+        self.left = 0
         self.out = Out()
         self.gaps: Counter[str] = Counter()
         self.kinds: Counter[str] = Counter()
@@ -227,10 +246,13 @@ class Importer:
             inside = ok
         if not runs:
             self.gaps["element that never met the selection"] += 1
+        gone = self.present is not None and element.key not in self.present
+        if gone and runs:
+            self.left += 1
         for run in runs:
             first, last = run[0], run[-1]
             qualifiers = [("selection_name", self.selection)]
-            if last is not element.versions[-1]:
+            if last is not element.versions[-1] or (gone and run is runs[-1]):
                 qualifiers.append(("selection_until", element.url(last["version"])))
             self.add(subject, "selection_since", element.url(first["version"]), str(first["version"]), qualifiers)
 
@@ -245,6 +267,85 @@ class Importer:
             if title:
                 return title
         return f"OSM {element.kind} {element.number}"
+
+
+# --------------------------------------------------------------------------- the network part
+
+
+def run_network(args: argparse.Namespace, client: "osm_net.OsmClient | None" = None) -> int | None:
+    """Ask Overpass, fetch the new and changed histories, store the answers. Returns an exit code when the run is over
+    (probe, error), ``None`` when the import is to follow."""
+    query_file = args.query or args.seeds / f"overpass-{args.selection}.overpassql"
+    if not query_file.is_file():
+        print(f"ERROR: [{STEP}] the Overpass query {shown(query_file)} does not exist; the selection {args.selection!r} needs one for the network "
+              f"(or run with --offline)")
+        return 2
+    query = query_file.read_text(encoding="utf-8")
+    if "out meta" not in query or "geom" in query.split("out meta", 1)[1].split(";", 1)[0]:
+        print(f"ERROR: [{STEP}] {shown(query_file)} has to end with `out meta;` (no `geom`: the history comes from the API, not from Overpass)")
+        return 2
+    contact = args.contact or os.environ.get("WBS_CONTACT") or DEFAULT_CONTACT
+    client = client or osm_net.OsmClient(f"wikibase-static/{__version__} (+{contact}; static archive, read-only)", delay=args.delay)
+    history_dir = args.from_dir
+    overpass_path = args.overpass_file or utils.DATA_RAW / "osm" / "overpass" / f"{args.selection}.json"
+    try:
+        body = client.fetch(args.overpass, "overpass", data={"data": query}, timeout=240.0)
+        answer = osm_net.parse_overpass(body)
+        stored = osm_net.stored_histories(history_dir)
+        plan = osm_net.make_plan(answer, stored)
+        todo = plan.to_fetch(args.refresh)
+        probing = args.probe or args.dry_run
+        print(f"[{STEP}] Overpass: {len(answer)} element(s) in the answer (1 request); stored histories: {len(stored)}; "
+              f"new {len(plan.new)}, changed {len(plan.changed)}, unchanged {len(plan.unchanged)}, no longer in the answer {len(plan.gone)}")
+        if plan.gone:
+            print(f"[{STEP}] no longer in the answer (left the area, or deleted): " + ", ".join(plan.gone[:10]) + (" ..." if len(plan.gone) > 10 else ""))
+        if probing:
+            print(f"[{STEP}] probe: {len(todo)} history request(s) would follow{' (--refresh)' if args.refresh else ''}; nothing written")
+            return 0
+        previous = osm_net.stored_overpass(overpass_path)
+        if previous != answer:
+            overpass_path.parent.mkdir(parents=True, exist_ok=True)
+            overpass_path.write_bytes(body)
+            print(f"[{STEP}] stored the Overpass answer: {shown(overpass_path)}")
+        batch, rest = todo[:args.limit], todo[args.limit:]
+        history_dir.mkdir(parents=True, exist_ok=True)
+        new_versions = changed_versions = same = differ = 0
+        differing: list[str] = []
+        for key in batch:
+            raw = client.fetch(osm_net.history_url(args.api, key), "history")
+            elements = osm_net.check_history(key, raw)
+            if max(e["version"] for e in elements) != answer[key]:
+                utils.warn(STEP, f"{key}: Overpass says version {answer[key]}, the history ends at {max(e['version'] for e in elements)}; "
+                                 f"the history is stored, a later run settles it")
+            path = history_dir / f"{key.replace('/', '_')}.json"
+            if key in stored:
+                old = osm_net.check_history(key, path.read_bytes())
+                if osm_net.same_in_common(old, elements):
+                    same += 1
+                else:
+                    differ += 1
+                    differing.append(key)
+                changed_versions += max(0, len(elements) - len(old))
+            else:
+                new_versions += len(elements)
+            path.write_bytes(raw)
+        print(f"[{STEP}] fetched {len(batch)} histor{'y' if len(batch) == 1 else 'ies'} "
+              f"({client.by_kind.get('history', 0)} history request(s), {client.by_kind.get('overpass', 0)} Overpass request(s)): "
+              f"{len([k for k in batch if k in plan.new])} new element(s) with {new_versions} version(s), "
+              f"{len([k for k in batch if k not in plan.new])} known element(s) with {changed_versions} new version(s)")
+        if args.refresh and batch:
+            print(f"[{STEP}] refresh: {same} stored histor{'y' if same == 1 else 'ies'} agree with the API in the versions they share, {differ} differ")
+            for key in differing[:10]:
+                utils.warn(STEP, f"{key}: a stored version differs from what the API says now (the stored file was replaced)")
+        if rest:
+            print(f"[{STEP}] {len(rest)} element(s) are left for the next run (--limit {args.limit})")
+        return None
+    except osm_net.Unreachable as err:
+        print(f"ERROR: [{STEP}] {err}\n  the network is needed for this run; with --offline the stored files are imported instead")
+        return 1
+    except osm_net.OsmError as err:
+        print(f"ERROR: [{STEP}] {err}")
+        return 1
 
 
 # --------------------------------------------------------------------------- the step
@@ -264,13 +365,30 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--mapping", type=Path, default=csv_dir / "mapping" / "osm-properties.csv")
     parser.add_argument("--seeds", type=Path, default=utils.ROOT / "data" / "seeds", help="folder with the selections")
     parser.add_argument("--selection", default="benchmarks", help="name of the selection (default benchmarks)")
-    parser.add_argument("--offline", action="store_true", help="read the files of --from-dir (the only mode of 0.20.0)")
-    parser.add_argument("--dry-run", action="store_true", help="print the report, write nothing")
+    parser.add_argument("--offline", action="store_true", help="no network: import the files of --from-dir")
+    parser.add_argument("--probe", action="store_true", help="one Overpass request: report what would be fetched, write nothing")
+    parser.add_argument("--refresh", action="store_true", help="fetch every history again and compare it with the stored one")
+    parser.add_argument("--limit", type=int, default=100, help="at most this many history requests per run (default 100)")
+    parser.add_argument("--delay", type=float, default=1.0, help="seconds between requests (default 1)")
+    parser.add_argument("--contact", help="contact (address or URL) named in the User-Agent; or set WBS_CONTACT (default: the repository URL)")
+    parser.add_argument("--overpass", default=osm_net.OVERPASS, help="Overpass endpoint")
+    parser.add_argument("--api", default=osm_net.API, help="base URL of the OSM API")
+    parser.add_argument("--query", type=Path, help="the Overpass query (default data/seeds/overpass-<selection>.overpassql)")
+    parser.add_argument("--overpass-file", type=Path, help="where the Overpass answer is stored (default data/raw/osm/overpass/<selection>.json)")
+    parser.add_argument("--dry-run", action="store_true", help="print the report, write nothing (with the network: the probe)")
     args = parser.parse_args(argv)
+    args.overpass_file = args.overpass_file or utils.DATA_RAW / "osm" / "overpass" / f"{args.selection}.json"
+    if args.offline and (args.probe or args.refresh):
+        print(f"ERROR: [{STEP}] --probe and --refresh need the network; drop --offline")
+        return 2
 
     try:
         roles = read_roles(args.mapping)
         condition = read_selection(args.seeds, args.selection)
+        if not args.offline:
+            code = run_network(args, CLIENT_FACTORY() if CLIENT_FACTORY else None)
+            if code is not None:
+                return code
         if not args.from_dir.is_dir():
             raise ImportProblem(f"input: {args.from_dir} does not exist")
         files = sorted(p for p in args.from_dir.iterdir() if p.suffix == ".json")
@@ -279,7 +397,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"ERROR: [{STEP}] {err}")
         return 2
     if not elements:
-        utils.nothing_to_do(STEP, f"no history files in {shown(args.from_dir)}")
+        utils.nothing_to_do(STEP, f"no history files in {shown(args.from_dir)}" + ("" if args.offline else " (the Overpass answer named no element)"))
         return 0
 
     problems: list[str] = []
@@ -296,7 +414,7 @@ def main(argv: list[str] | None = None) -> int:
     # an element that a person described by hand is not described a second time
     by_hand = {r["value"]: r["subject"] for r in site.statements.rows
                if r["property"] == roles["element"] and r.get("origin", "") != SOURCE}
-    importer = Importer(roles, condition, args.selection, idmap)
+    importer = Importer(roles, condition, args.selection, idmap, osm_net.stored_overpass(args.overpass_file))
     for element in elements:
         if element.url() in by_hand and idmap.ids.get((SOURCE, element.key)) != by_hand[element.url()]:
             messages.append(f"{element.key} is already described by hand as {by_hand[element.url()]}; "
@@ -308,7 +426,8 @@ def main(argv: list[str] | None = None) -> int:
     print(f"[{STEP}] {len(files)} history file(s) in {shown(args.from_dir)}; selection {args.selection}: "
           + " and ".join(f"{k}" + (f"={v}" if v else "") for k, v in condition))
     print(f"[{STEP}] items: {len(importer.out.entities)} ({', '.join(f'{n} {k}' for k, n in sorted(importer.kinds.items())) or 'none'}); "
-          f"{importer.versions} version statement(s); {idmap.new} new id(s) in idmap.csv")
+          f"{importer.versions} version statement(s); {idmap.new} new id(s) in idmap.csv"
+          + (f"; {importer.left} element(s) left the selection area" if importer.left else ""))
     print(f"[{STEP}] rows from the importer: {len(importer.out.entities)} entities, {len(importer.out.statements)} statements, "
           f"{len(importer.out.qualifiers)} qualifiers, {len(importer.out.references)} references; "
           f"{merged.replaced} earlier importer statement(s) replaced; hand rows protect {merged.skipped + merged.kept_by_hand}")
