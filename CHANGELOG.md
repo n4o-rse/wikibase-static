@@ -3,10 +3,15 @@
 Every version is a tag `vX.Y.Z` on the commit that raised `__version__` (`tools/tag_versions.py` makes the missing tags;
 `0.1.0` is the last commit before 0.2.0). The newest version is on top. The work plan with the findings behind each version is `PRIMER.md`.
 
+## 0.24.1
+- The light mode is the default and the system setting is no longer consulted. The button in the tab row switches between light and dark
+  (two states instead of three) and remembers the choice (`wbs-theme`); the `prefers-color-scheme` rules are gone.
+- Full-screen button: it shows two arrows pointing in while the map is full screen (before: the same icon), is drawn like the zoom buttons
+  and a little larger, and the mouse wheel zooms the map in full screen (it stays off on the page, so that it does not catch the scrolling).
+
 ## 0.24.0
 - Design: all pages use the BeaverBridge palette of `beaverbridge-registry` (plum, wood brown, coral, info blue) as CSS tokens in a
-  light and a dark mode. Without a choice the page follows the system; a button in the tab row cycles auto, light and dark and
-  remembers the choice (`localStorage` key `wbs-theme`); a script in the head sets it before the first paint. No fixed colour is left
+  light and a dark mode. A button in the tab row switches between them and remembers the choice (`localStorage` key `wbs-theme`); a script in the head sets it before the first paint. No fixed colour is left
   in the rules (test).
 - `site.yaml` `colour` is optional: left out, the plum of the palette is the accent; set, it is used in light mode and mixed with white
   in dark mode. `DEFAULT_COLOUR` is now `#8E3A63`.

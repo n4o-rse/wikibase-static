@@ -446,7 +446,8 @@ class BuildTests(Site):
         css = (self.docs / "assets" / "style.css").read_text(encoding="utf-8")
         self.assertIn('--bg: #FBF7F4', css)
         self.assertIn(':root[data-theme="dark"]', css)
-        self.assertIn('@media (prefers-color-scheme: dark)', css)
+        self.assertNotIn('prefers-color-scheme', css)                               # light is the default; the system setting is not consulted
+        self.assertNotIn('theme_auto', q1)
         rest = css.split("* { box-sizing", 1)[1]
         self.assertEqual(__import__("re").findall(r"#[0-9a-fA-F]{3,6}\b", rest.split("/* ---- colour theme", 1)[0]), [],
                          "colours belong in the tokens, not in the rules")

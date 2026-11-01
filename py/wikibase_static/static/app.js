@@ -25,16 +25,16 @@
   });
 })();
 
-// Colour theme: auto (follows the system) -> light -> dark. html[data-theme] is set before the first paint by the head script;
-// the choice is kept in localStorage ("wbs-theme", shared by the sites of one host). Without JavaScript the button stays hidden.
+// Colour theme: light (the default) or dark. html[data-theme="dark"] is set before the first paint by the head script; the choice is kept
+// in localStorage ("wbs-theme", shared by the sites of one host). The system setting is not consulted. Without JavaScript the button stays hidden.
 (function () {
   var button = document.getElementById("wbs-theme");
   if (!button) { return; }
   var root = document.documentElement;
-  var icons = { auto: "\u25D0", light: "\u2600", dark: "\u263E" };    // shown before the short word
+  var icons = { light: "\u2600", dark: "\u263E" };    // shown before the short word
   var labels = {};
   try { labels = JSON.parse(button.getAttribute("data-labels") || "{}"); } catch (e) { labels = {}; }
-  function state() { var t = root.getAttribute("data-theme"); return t === "light" || t === "dark" ? t : "auto"; }
+  function state() { return root.getAttribute("data-theme") === "dark" ? "dark" : "light"; }
   function show() {
     var s = state(), lang = root.getAttribute("data-lang") || "en";
     var table = labels[lang] || labels.en || {};
@@ -45,9 +45,9 @@
   }
   button.hidden = false;
   button.addEventListener("click", function () {
-    var next = { auto: "light", light: "dark", dark: "auto" }[state()];
-    if (next === "auto") { root.removeAttribute("data-theme"); } else { root.setAttribute("data-theme", next); }
-    try { if (next === "auto") { window.localStorage.removeItem("wbs-theme"); } else { window.localStorage.setItem("wbs-theme", next); } } catch (e) { /* ignore */ }
+    var next = state() === "dark" ? "light" : "dark";
+    root.setAttribute("data-theme", next);
+    try { window.localStorage.setItem("wbs-theme", next); } catch (e) { /* ignore */ }
     show();
   });
   new MutationObserver(show).observe(root, { attributes: true, attributeFilter: ["data-lang"] });

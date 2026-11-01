@@ -1,7 +1,7 @@
 /* wikibase-static: a Wikibase-like layout (sidebar, tabs, one box per property, qualifier grid) in the BeaverBridge colours.
    The palette is the one of beaverbridge-registry (design/PALETTE.md): a light and a dark mode, the plum of the logo as the
-   primary colour, wood brown, coral and info blue as accents. Without a choice the page follows the system
-   (prefers-color-scheme); the button in the tab row sets html[data-theme] to "light" or "dark" and remembers it (wbs-theme).
+   primary colour, wood brown, coral and info blue as accents. The light mode is the default; the button in the
+   tab row sets html[data-theme] to "dark" (or back to "light") and remembers it (wbs-theme). The system setting is not consulted.
    site.yaml `colour` is optional: left out, --accent is the primary colour of the palette; a site that names one gets that
    colour in light mode and a lightened mix of it in dark mode (the page head sets --brand and --brand-dark). */
 :root {
@@ -18,20 +18,6 @@
   --font-mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
   --dot: #C2B0A8;
   color-scheme: light;
-}
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --bg: #1C1218;  --surface: #271A22;  --surface-alt: #33232D;  --head-bg: #3B2A35;
-    --text: #F3E9EE;  --text-muted: #BBA6B1;
-    --border: #5E4756;  --soft-border: #4A3643;
-    --primary: #D777A6;  --primary-hover: #E597BD;  --on-primary: #1C1218;
-    --link: #E39BC1;  --link-visited: #C9A0D8;  --wood: #C9A27A;  --coral: #F0866F;
-    --cream: #F2E3B0;  --info: #6FC0CC;
-    --accent: var(--brand-dark, var(--primary));  --on-accent: #1C1218;
-    --shadow: rgba(0, 0, 0, 0.6);
-    --dot: #6B5663;
-    color-scheme: dark;
-  }
 }
 :root[data-theme="dark"] {
   --bg: #1C1218;  --surface: #271A22;  --surface-alt: #33232D;  --head-bg: #3B2A35;
@@ -296,10 +282,6 @@ h2 { color: var(--accent); }
 .nav a[aria-current="page"] { font-weight: 600; color: var(--text); }
 mark { background: var(--cream); color: #2B1B24; }
 /* The logo is usually a picture with a white ground: multiply hides that ground on the light sidebar; in dark mode it sits on a light chip. */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .logo img { mix-blend-mode: normal; background: #fff; padding: 4px; border-radius: 0.5rem; }
-  :root:not([data-theme="light"]) .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(0.85) contrast(0.9); }
-}
 :root[data-theme="dark"] .logo img { mix-blend-mode: normal; background: #fff; padding: 4px; border-radius: 0.5rem; }
 :root[data-theme="dark"] .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(0.85) contrast(0.9); }
 /* The data-model graphics keep their own colours (the same in every repository), so they sit on a light panel in both modes. */
@@ -310,4 +292,6 @@ mark { background: var(--cream); color: #2B1B24; }
 /* ---- full screen for the maps (map.js): the browser's full screen, or this class where there is none */
 .wbs-map.wbs-fs, .wbs-qmap.wbs-fs { position: fixed; inset: 0; z-index: 5000; width: 100%; height: 100% !important; max-height: none; border: 0; }
 .wbs-map:fullscreen, .wbs-qmap:fullscreen { max-height: none; }
-.wbs-fs-button svg { display: block; margin: 7px auto; color: #000; }
+.leaflet-bar a.wbs-fs-button { display: block; width: 30px; height: 30px; line-height: 30px; padding: 0; background: #fff; color: #000; }
+.leaflet-bar a.wbs-fs-button:hover { background: #f4f4f4; }
+.wbs-fs-button svg { display: block; margin: 6px; }

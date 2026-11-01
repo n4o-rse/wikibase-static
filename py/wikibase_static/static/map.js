@@ -54,6 +54,8 @@
   // Full-screen button for every map (0.24.0; also used by sparql.js through window.wbsFullscreen). It asks the browser for real
   // full screen and, where that is not allowed or not there (an old browser, an iframe), stretches the map over the page
   // (class wbs-fs). Escape or a second click returns; the map is resized either way.
+  var ICON_ENTER = '<svg viewBox="0 0 16 16" width="18" height="18" aria-hidden="true" focusable="false"><path d="M2 6V2h4M10 2h4v4M14 10v4h-4M6 14H2v-4" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>';
+  var ICON_LEAVE = '<svg viewBox="0 0 16 16" width="18" height="18" aria-hidden="true" focusable="false"><path d="M6 2v4H2M14 6h-4V2M10 14v-4h4M2 10h4v4" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>';
   window.wbsFullscreen = function (map) {
     var el = map.getContainer();
     var Control = L.Control.extend({
@@ -63,7 +65,7 @@
         var a = L.DomUtil.create("a", "wbs-fs-button", bar);
         a.href = "#";
         a.setAttribute("role", "button");
-        a.innerHTML = '<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false"><path d="M2 6V2h4M10 2h4v4M14 10v4h-4M6 14H2v-4" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>';
+        a.innerHTML = ICON_ENTER;
         L.DomEvent.disableClickPropagation(bar);
         L.DomEvent.on(a, "click", function (event) { L.DomEvent.preventDefault(event); toggle(); });
         L.DomEvent.on(a, "mouseover focus", label);
@@ -73,20 +75,29 @@
           var text = active() ? (german ? "Vollbild beenden" : "Exit full screen") : (german ? "Vollbild" : "Full screen");
           a.title = text;
           a.setAttribute("aria-label", text);
+          var want = active() ? "leave" : "enter";
+          if (a.getAttribute("data-icon") !== want) {      // only on a change: replacing the icon under the pointer would lose the click
+            a.setAttribute("data-icon", want);
+            a.innerHTML = want === "leave" ? ICON_LEAVE : ICON_ENTER;
+          }
         }
         this._label = label;
         return bar;
       }
     });
     var control = new Control();
+    el._wbsMap = map;
     function active() { return document.fullscreenElement === el || el.classList.contains("wbs-fs"); }
-    function refresh() { window.setTimeout(function () { map.invalidateSize(); if (control._label) { control._label(); } }, 60); }
+    // In full screen the wheel zooms (it is off on the page, where it would catch the scrolling of the page).
+    function refresh() {
+      if (active()) { map.scrollWheelZoom.enable(); } else { map.scrollWheelZoom.disable(); }
+      window.setTimeout(function () { map.invalidateSize(); if (control._label) { control._label(); } }, 60);
+    }
     function enter() {
       if (el.requestFullscreen) {
         var request = el.requestFullscreen();
-        if (request && request.catch) { request.catch(function () { el.classList.add("wbs-fs"); refresh(); }); }
-      } else { el.classList.add("wbs-fs"); }
-      refresh();
+        if (request && request.then) { request.then(refresh, function () { el.classList.add("wbs-fs"); refresh(); }); }
+      } else { el.classList.add("wbs-fs"); refresh(); }
     }
     function leave() {
       if (document.fullscreenElement === el) { document.exitFullscreen(); }
