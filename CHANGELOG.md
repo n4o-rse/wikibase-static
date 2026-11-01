@@ -3,6 +3,15 @@
 Every version is a tag `vX.Y.Z` on the commit that raised `__version__` (`tools/tag_versions.py` makes the missing tags;
 `0.1.0` is the last commit before 0.2.0). The newest version is on top. The work plan with the findings behind each version is `PRIMER.md`.
 
+## 0.26.0
+- `.github/workflows/update.yml`, a reusable workflow for the site repositories: it looks for a newer release of wikibase-static, changes the
+  pin in `requirements.txt`, builds the site twice with `--strict` (and runs `check_attribution.py` where there is one) and opens a pull
+  request; merging it starts the Site workflow as usual. `examples/update-caller.yml` is the caller (every morning and by hand).
+  Once per repository: Settings, Actions, General, tick "Allow GitHub Actions to create and approve pull requests".
+- `tools/rollout.py`: `--here` does the first half for the repository in the current folder (what the workflow runs); the package is
+  installed once per run, not once per repository, which saves most of the time of an update of several repositories.
+- Tests: 666 in the repository.
+
 ## 0.25.0
 - The version of the package is no longer written into every page and every entity file, so a new release does not change what did not
   change. The footer has an empty `<span data-wbs-version>`; the build writes `assets/version.js` (one small file) that fills it. The

@@ -397,7 +397,7 @@ To bring all site repositories to a version at once, list them in `tools/satelli
 
 ## Continuous integration
 
-Two workflows live in `.github/workflows/`:
+Three workflows live in `.github/workflows/`:
 
 - `ci.yml` guards this repository: the unit tests (Ubuntu with Python 3.10 and 3.13, Windows with 3.13), then
   `python main.py --strict` twice, with `git status --porcelain` required to be empty after each run.
@@ -406,7 +406,12 @@ Two workflows live in `.github/workflows/`:
   and on the default branch publishes `docs/` to GitHub Pages. A dead internal link is a `WARN` line of the
   build step, so `--strict` turns it into a red run.
 
-To use it in a site repository, copy [`examples/site-caller.yml`](examples/site-caller.yml) to
+- `update.yml` is a reusable workflow that keeps a site repository on the newest release: it changes the pin in `requirements.txt`, builds
+  twice with `--strict` and opens a pull request (merging it starts `site.yml`). Copy [`examples/update-caller.yml`](examples/update-caller.yml)
+  to `.github/workflows/update.yml` and tick "Allow GitHub Actions to create and approve pull requests" under Settings, Actions, General.
+  It runs every morning and by hand; `python tools/rollout.py` does the same from your computer for all repositories of `tools/satellites.txt`.
+
+To use `site.yml` in a site repository, copy [`examples/site-caller.yml`](examples/site-caller.yml) to
 `.github/workflows/site.yml` and set Settings → Pages → Source to "GitHub Actions". The repository's
 `requirements.txt` must install `wikibase-static`; `python main.py --strict` is the default command and can be
 changed with the `command` input.
@@ -423,8 +428,8 @@ data/raw/                   harvested JSON, as obtained
 data/derived/               intermediates made from CSV
 dist/                       versioned products: RDF, pipeline report
 docs/                       the site, served by GitHub Pages
-.github/workflows/          ci.yml (this repository), site.yml (reusable, for site repositories)
-examples/                   site-caller.yml, the few lines a site repository needs to call site.yml
+.github/workflows/          ci.yml (this repository), site.yml and update.yml (reusable, for site repositories)
+examples/                   site-caller.yml and update-caller.yml, the few lines a site repository needs to call them
 PRIMER.md                   work plan and decisions (German)
 ```
 

@@ -1,0 +1,80 @@
+name: Update
+
+# Reusable workflow for a site repository: it brings the pin of wikibase-static in requirements.txt to the
+# newest release, builds the site twice with `--strict` (and runs check_attribution.py where the repository
+# has it), and opens a pull request with the result. PRIMER.md, 95 and 96.
+#
+# Merging the pull request is the only step left; the merge starts the Site workflow of the repository,
+# which checks the site once more and publishes it. The pull request itself shows no checks (a pull request
+# that the workflow token opens does not start other workflows), but the job here has built the site twice
+# with --strict and stops when anything is wrong, and a third build is the check of the Site workflow.
+#
+# Call it like this (examples/update-caller.yml has the same text):
+#
+#   on:
+#     schedule:
+#       - cron: "17 5 * * *"
+#     workflow_dispatch:
+#   jobs:
+#     update:
+#       uses: n4o-rse/wikibase-static/.github/workflows/update.yml@main
+#       permissions: { contents: write, pull-requests: write }
+#
+# Once per repository: Settings -> Actions -> General -> Workflow permissions -> tick
+# "Allow GitHub Actions to create and approve pull requests".
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: "Release to use, X.Y.Z (default: the newest tag of wikibase-static)"
+        type: string
+        default: ""
+      python-version:
+        type: string
+        default: "3.13"
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update:
+    name: pin to the newest release, build, open a pull request
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ inputs.python-version }}
+      - name: Fetch tools/rollout.py
+        run: curl -fsSL https://raw.githubusercontent.com/n4o-rse/wikibase-static/main/tools/rollout.py -o "$RUNNER_TEMP/rollout.py"
+      - name: Pin the newest release and build twice
+        id: prepare
+        env:
+          VERSION: ${{ inputs.version }}
+        run: python "$RUNNER_TEMP/rollout.py" --here $VERSION
+      - name: Open a pull request
+        if: steps.prepare.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.prepare.outputs.version }}
+          OLD: ${{ steps.prepare.outputs.old }}
+        run: |
+          branch="update/wikibase-static-$VERSION"
+          if git ls-remote --exit-code --heads origin "$branch" > /dev/null; then
+            echo "The branch $branch exists already: its pull request is open or was closed on purpose."
+            exit 0
+          fi
+          base="$(gh repo view --json defaultBranchRef --jq .defaultBranchRef.name)"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$branch"
+          git add -A
+          git commit -m "Use wikibase-static $VERSION and rebuild"
+          git push -u origin "$branch"
+          gh pr create --base "$base" --head "$branch" --title "Use wikibase-static $VERSION and rebuild" \
+            --body "The pin of wikibase-static goes from \`$OLD\` to \`$VERSION\`; docs/ and dist/ are rebuilt. The site was built twice with \`--strict\` without a warning. What changed in the package: https://github.com/n4o-rse/wikibase-static/blob/$VERSION/CHANGELOG.md"

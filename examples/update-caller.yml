@@ -1,0 +1,22 @@
+# Copy to .github/workflows/update.yml in a site repository. Every morning (and when you press "Run workflow") it looks for a newer
+# release of wikibase-static; if there is one it changes the pin in requirements.txt, builds the site twice with --strict and opens a
+# pull request. You merge it, and the Site workflow checks and publishes as usual.
+#
+# Once per repository: Settings -> Actions -> General -> Workflow permissions ->
+# tick "Allow GitHub Actions to create and approve pull requests".
+
+name: Update wikibase-static
+
+on:
+  schedule:
+    - cron: "17 5 * * *"
+  workflow_dispatch:
+
+jobs:
+  update:
+    uses: n4o-rse/wikibase-static/.github/workflows/update.yml@main
+    permissions:
+      contents: write
+      pull-requests: write
+    # with:
+    #   version: "0.26.0"    # a given release instead of the newest
