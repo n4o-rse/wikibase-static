@@ -387,7 +387,7 @@ against `data/shapes-crm.ttl`: a class of the site or a DCAT class that reaches 
 
 The pages use the BeaverBridge palette (plum, wood brown, coral, info blue; `beaverbridge-registry/design/PALETTE.md`) in a light and a dark mode. The light mode is the default (the system setting is not consulted); the button in the tab row switches to dark and back and remembers the choice in `localStorage` (`wbs-theme`). The colours are tokens in `assets/style.css`, so a site that wants to restyle everything overrides tokens. `colour` in `site.yaml` is optional: left out, the plum is the accent; set, it is used in light mode and mixed with white in dark mode.
 
-Every map has a full-screen button and uses the OpenFreeMap "Positron" basemap (vector tiles of OpenStreetMap data, drawn by MapLibre GL, which is part of the package in `assets/vendor/maplibre/`); without WebGL, or if the style cannot be fetched, the OpenStreetMap raster tiles are used. The tile servers are the only third parties the map pages call (the query pages also load Pyodide, as before).
+Every map has a bar of controls (full screen, back to the first view, copy coordinates, open on openstreetmap.org, save as PNG with the credit of the basemap in the picture, download the shown points and shapes as GeoJSON), a metric scale bar, wheel zoom, and uses the OpenFreeMap "Positron" basemap (vector tiles of OpenStreetMap data, drawn by MapLibre GL, which is part of the package in `assets/vendor/maplibre/`); without WebGL, or if the style cannot be fetched, the OpenStreetMap raster tiles are used. The tile servers are the only third parties the map pages call (the query pages also load Pyodide, as before).
 
 ## Versions and tags
 

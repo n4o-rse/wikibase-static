@@ -449,8 +449,8 @@
       var points = extractPoints(last, config);
       if (!map) {
         L.Icon.Default.imagePath = "assets/vendor/leaflet/images/";
-        map = L.map(panels.map, { scrollWheelZoom: false });
-        if (window.wbsFullscreen) { window.wbsFullscreen(map); }
+        map = L.map(panels.map);
+        if (window.wbsControls) { window.wbsControls(map); }
         if (window.wbsBasemap) { window.wbsBasemap(map); }
         layer = L.layerGroup().addTo(map);
       }
@@ -465,7 +465,9 @@
         if (p.href) { marker.bindPopup('<a href="' + esc(p.href) + '">' + esc(p.label || p.href) + "</a>"); }
         bounds.push([p.lat, p.lon]);
       });
-      if (bounds.length === 1) { map.setView(bounds[0], 13); } else { map.fitBounds(bounds, { padding: [24, 24], maxZoom: 14 }); }
+      map._wbsFeatures = function () { return { points: points.map(function (p) { return { lat: p.lat, lon: p.lon, text: p.label, href: p.href }; }), shapes: [] }; };
+      map._wbsHome = function () { if (bounds.length === 1) { map.setView(bounds[0], 13); } else { map.fitBounds(bounds, { padding: [24, 24], maxZoom: 14 }); } };
+      map._wbsHome();
     }
 
     function show(data, view) {

@@ -456,12 +456,18 @@ class BuildTests(Site):
         self.build()
         assets = self.docs / "assets"
         js = (assets / "map.js").read_text(encoding="utf-8")
-        self.assertIn("window.wbsFullscreen = function", js)
-        self.assertIn("window.wbsFullscreen(map);", js)                              # the entity and overview maps
+        self.assertIn("window.wbsControls = function", js)
+        self.assertIn("window.wbsControls(map);", js)                                # the entity and overview maps
+        self.assertIn("window.wbsFullscreen = window.wbsControls", js)               # the older name still works
+        for needle in ("exportPng", "geojson(map)", "preserveDrawingBuffer", "L.control.scale", "_wbsHome", "www.openstreetmap.org/#map="):
+            self.assertIn(needle, js)
+        self.assertNotIn("scrollWheelZoom", js)                                      # the wheel zooms every map
         self.assertIn("https://tiles.openfreemap.org/styles/positron", js)           # the basemap of beaverbridge-registry
         self.assertIn("tile.openstreetmap.org", js)                                  # the fallback without WebGL or style
         sparql = (assets / "sparql.js").read_text(encoding="utf-8")
-        self.assertIn("window.wbsFullscreen(map)", sparql)                           # the map of the query results
+        self.assertIn("window.wbsControls(map)", sparql)                             # the map of the query results
+        self.assertIn("_wbsFeatures", sparql)
+        self.assertNotIn("scrollWheelZoom", sparql)
         self.assertIn("window.wbsBasemap(map)", sparql)
         for name in ("maplibre-gl.js", "maplibre-gl.css", "leaflet-maplibre-gl.js", "LICENSE-maplibre-gl.txt"):
             self.assertTrue((assets / "vendor" / "maplibre" / name).is_file(), name)
@@ -469,6 +475,10 @@ class BuildTests(Site):
         self.assertIn(".wbs-map { height: 28rem;", css)
         self.assertIn(".wbs-qmap { height: 40rem;", css)
         self.assertIn(".wbs-map.wbs-fs", css)
+        self.assertIn(".leaflet-bar a.wbs-btn {", css)
+        self.assertIn(".wbs-readout", css)
+        self.assertIn(".wbs-legend", css)                                            # the legend under the map
+        self.assertIn("data-tip", css)                                               # tooltips at once
 
     def test_own_colour_is_light_and_lightened_in_dark_mode(self) -> None:
         self.site_yaml("colour: '#336699'\n")

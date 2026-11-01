@@ -3,6 +3,18 @@
 Every version is a tag `vX.Y.Z` on the commit that raised `__version__` (`tools/tag_versions.py` makes the missing tags;
 `0.1.0` is the last commit before 0.2.0). The newest version is on top. The work plan with the findings behind each version is `PRIMER.md`.
 
+## 0.24.2
+- Full-screen button: the box was 40 px high with a gap on top and the icon sat off-centre (the margin of the icon collapsed out of the
+  link); the link is now a flex box, so the button is 30 x 30 px like the zoom buttons and the icon is centred.
+- The mouse wheel zooms every map all the time (before: only in full screen), also the result map of the query page.
+- One bar of map controls under the zoom buttons (`window.wbsControls`; `wbsFullscreen` stays as an alias): full screen, back to the first
+  view, copy coordinates (switch on, move the pointer, click the map), open the view on openstreetmap.org, save the map as PNG and
+  download the shown points and shapes as GeoJSON. Plus a metric scale bar.
+- Every button has a tooltip that shows at once, and a legend under each map names the buttons with their icons (English and German).
+- PNG: the basemap is copied off the MapLibre canvas (it is created with `preserveDrawingBuffer`) or drawn from the raster tiles
+  (`crossOrigin`), markers and shapes are drawn on top, and the credit of the basemap is part of the picture. The picture is always light,
+  also in dark mode. Idea and method from `LinkedOpenOgham/tei--epidoc-crosswalk`.
+
 ## 0.24.1
 - The light mode is the default and the system setting is no longer consulted. The button in the tab row switches between light and dark
   (two states instead of three) and remembers the choice (`wbs-theme`); the `prefers-color-scheme` rules are gone.
