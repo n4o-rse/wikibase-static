@@ -1,0 +1,62 @@
+{
+  "version": "0.6",
+  "generator": "openstreetmap-cgimap 2.1.0 (811317 spike-07.openstreetmap.org)",
+  "copyright": "OpenStreetMap and contributors",
+  "attribution": "http://www.openstreetmap.org/copyright",
+  "license": "http://opendatacommons.org/licenses/odbl/1-0/",
+  "elements": [
+    {
+      "type": "node",
+      "id": 12923752174,
+      "lat": 55.8568545,
+      "lon": -4.2453563,
+      "timestamp": "2025-06-18T17:52:38Z",
+      "version": 1,
+      "changeset": 167793402,
+      "user": "b-unicycling",
+      "uid": 1713634,
+      "tags": {
+        "benchmark": "yes",
+        "man_made": "survey_point",
+        "survey:date": "2025-06-18",
+        "survey_point:structure": "cut"
+      }
+    },
+    {
+      "type": "node",
+      "id": 12923752174,
+      "lat": 55.8568545,
+      "lon": -4.2453563,
+      "timestamp": "2025-06-18T18:27:47Z",
+      "version": 2,
+      "changeset": 167794779,
+      "user": "b-unicycling",
+      "uid": 1713634,
+      "tags": {
+        "benchmark": "yes",
+        "man_made": "survey_point",
+        "survey:date": "2025-06-18",
+        "survey_point:structure": "cut",
+        "wikimedia_commons": "File:Benchmark at the corner of Trongate- Chrisholm Street.jpg"
+      }
+    },
+    {
+      "type": "node",
+      "id": 12923752174,
+      "lat": 55.8568563,
+      "lon": -4.2453643,
+      "timestamp": "2025-08-06T20:45:09Z",
+      "version": 3,
+      "changeset": 170078132,
+      "user": "tagishsimon",
+      "uid": 9198745,
+      "tags": {
+        "benchmark": "yes",
+        "man_made": "survey_point",
+        "survey:date": "2025-06-18",
+        "survey_point:structure": "cut",
+        "wikimedia_commons": "File:Benchmark at the corner of Trongate- Chrisholm Street.jpg"
+      }
+    }
+  ]
+}

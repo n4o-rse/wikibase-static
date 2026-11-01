@@ -1,0 +1,16 @@
+role,id,kind,note
+class_benchmark,Q100,class,Class of every item of this site
+element,P100,property,"URL of the OSM element (statement)"
+version,P101,property,"URL of one OSM version (statement, one per version; also a qualifier of geometry_history)"
+version_number,P102,property,"Qualifier of version"
+timestamp,P103,property,"Qualifier of version and of geometry_history; ISO 8601 text, UTC, to the second"
+changeset,P104,property,"Qualifier of version; external-id with formatter URL"
+user_name,P105,property,"Qualifier of version"
+user_id,P106,property,"Qualifier of version; external-id without formatter"
+selection_since,P107,property,"URL of the first version that meets the selection (statement)"
+selection_until,P108,property,"URL of the last version that meets the selection (qualifier of selection_since)"
+selection_name,P109,property,"Export type (qualifier of selection_since)"
+coordinate,P110,property,"Current position (statement)"
+geometry_history,P111,property,"WKT, one statement per change; qualifiers version and timestamp"
+image,P112,property,"Commons file from the tag wikimedia_commons"
+tag,P113,property,"One current tag as key=value"

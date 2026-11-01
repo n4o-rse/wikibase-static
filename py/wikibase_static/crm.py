@@ -48,6 +48,7 @@ CLASSES: dict[str, tuple[str, str | None]] = {
     "crm:E24_Physical_Human-Made_Thing": ("Physical Human-Made Thing", "crm:E18_Physical_Thing"),
     "crm:E18_Physical_Thing": ("Physical Thing", "crm:E72_Legal_Object"),
     "crm:E72_Legal_Object": ("Legal Object", "crm:E70_Thing"),
+    "crm:E25_Human-Made_Feature": ("Human-Made Feature", "crm:E24_Physical_Human-Made_Thing"),   # also a E26 Physical Feature; the chain keeps one
     "crm:E53_Place": ("Place", "crm:E1_CRM_Entity"),
     "crmdig:D1_Digital_Object": ("Digital Object", "crm:E73_Information_Object"),
     "crmdig:D14_Software": ("Software", "crmdig:D1_Digital_Object"),

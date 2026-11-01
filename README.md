@@ -212,6 +212,26 @@ a reference (P6, the page of the entry). A reimport replaces the rows of the imp
 written by hand and wins (the importer then leaves that property of that subject alone). The report lists what was not imported
 and why. The rules are described at the top of `py/wikibase_static/step_import_open_archaeo.py`.
 
+### Importing OSM element histories (S15a)
+
+```
+python main.py import-osm --offline                  every file of data/raw/osm/history/
+python main.py import-osm --offline --from-dir DIR   another folder of history files
+python main.py import-osm --offline --dry-run        print the report, write nothing
+```
+
+Offline in 0.20.0, and a verb of its own because it writes source files. It reads one file per OSM element,
+`data/raw/osm/history/<type>_<id>.json` (the answer of `GET /api/0.6/<type>/<id>/history.json`, never edited), a role map
+`data/csv/mapping/osm-properties.csv` (columns `role, id, kind, note`: which local property carries the element URL, the version URL,
+the version number, timestamp, changeset, user name, uid, the selection, the coordinate, the geometry history, the image and the tags) and
+a selection `data/seeds/<name>.csv` (columns `selection, key, value`; an empty value means the key only has to exist). It writes rows with
+`origin=osm` into the four tables and `idmap.csv` (source `osm`, key `node/<id>`). One item per element, one statement per version, an
+entry marker for every run of versions that meet the selection, the position of the last version as coordinate and every change of
+position as WKT. Only nodes are imported; ways and relations are reported and left out. A reimport replaces the rows of the importer; a row
+whose `origin` you emptied counts as written by hand and wins. The rules are described at the top of
+`py/wikibase_static/step_import_osm.py`; the model is the one of
+[`osm-benchmarks-static`](https://github.com/n4o-rse/osm-benchmarks-static).
+
 ### Importing Wikidata items (S7d)
 
 ```

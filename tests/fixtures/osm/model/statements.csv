@@ -1,0 +1,12 @@
+sid,subject,property,value,rank,origin
+,Q100,P1,Q3,,
+,P104,P5,https://www.openstreetmap.org/changeset/$1,,
+,P100,P9,Q100,,
+,P101,P9,Q100,,
+,P107,P9,Q100,,
+,P110,P9,Q100,,
+,P111,P9,Q100,,
+,P112,P9,Q100,,
+,P113,P9,Q100,,
+,P110,P4,P625,,
+,P112,P4,P18,,

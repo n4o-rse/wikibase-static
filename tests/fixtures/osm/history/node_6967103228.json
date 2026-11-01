@@ -1,0 +1,98 @@
+{
+  "version": "0.6",
+  "generator": "openstreetmap-cgimap 2.1.0 (755543 spike-07.openstreetmap.org)",
+  "copyright": "OpenStreetMap and contributors",
+  "attribution": "http://www.openstreetmap.org/copyright",
+  "license": "http://opendatacommons.org/licenses/odbl/1-0/",
+  "elements": [
+    {
+      "type": "node",
+      "id": 6967103228,
+      "lat": 52.6468593,
+      "lon": -7.2121484,
+      "timestamp": "2019-11-11T17:35:05Z",
+      "version": 1,
+      "changeset": 76923018,
+      "user": "b-unicycling",
+      "uid": 1713634,
+      "tags": {
+        "highway": "milestone"
+      }
+    },
+    {
+      "type": "node",
+      "id": 6967103228,
+      "lat": 52.6468593,
+      "lon": -7.2121484,
+      "timestamp": "2021-06-13T12:45:56Z",
+      "version": 2,
+      "changeset": 106282681,
+      "user": "b-unicycling",
+      "uid": 1713634,
+      "tags": {
+        "benchmark": "yes",
+        "historic": "milestone",
+        "man_made": "survey_point",
+        "source": "survey",
+        "survey_date": "2021-06-13"
+      }
+    },
+    {
+      "type": "node",
+      "id": 6967103228,
+      "lat": 52.6468593,
+      "lon": -7.2121484,
+      "timestamp": "2023-01-02T17:04:20Z",
+      "version": 3,
+      "changeset": 130795879,
+      "user": "b-unicycling",
+      "uid": 1713634,
+      "tags": {
+        "benchmark": "yes",
+        "historic": "milestone",
+        "man_made": "survey_point",
+        "source": "survey",
+        "survey:date": "2021-06-13"
+      }
+    },
+    {
+      "type": "node",
+      "id": 6967103228,
+      "lat": 52.6468593,
+      "lon": -7.2121484,
+      "timestamp": "2023-02-15T16:33:21Z",
+      "version": 4,
+      "changeset": 132590533,
+      "user": "b-unicycling",
+      "uid": 1713634,
+      "tags": {
+        "benchmark": "yes",
+        "historic": "milestone",
+        "man_made": "survey_point",
+        "note": "might actually be gone, another survey needed",
+        "source": "survey",
+        "survey:date": "2021-06-13"
+      }
+    },
+    {
+      "type": "node",
+      "id": 6967103228,
+      "lat": 52.6468593,
+      "lon": -7.2121484,
+      "timestamp": "2024-04-04T21:41:21Z",
+      "version": 5,
+      "changeset": 149588608,
+      "user": "b-unicycling",
+      "uid": 1713634,
+      "tags": {
+        "benchmark": "yes",
+        "historic": "milestone",
+        "inscription": "CARLOW 17 [...] ROYAL OAK 9",
+        "man_made": "survey_point",
+        "source": "survey",
+        "survey:date": "2024-04-02",
+        "wikimedia_commons": "File:Milestone Old Dublin Road.jpg"
+      }
+    }
+  ]
+}

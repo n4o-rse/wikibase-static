@@ -1,0 +1,116 @@
+{
+  "version": "0.6",
+  "generator": "openstreetmap-cgimap 2.1.0 (828005 spike-07.openstreetmap.org)",
+  "copyright": "OpenStreetMap and contributors",
+  "attribution": "http://www.openstreetmap.org/copyright",
+  "license": "http://opendatacommons.org/licenses/odbl/1-0/",
+  "elements": [
+    {
+      "type": "node",
+      "id": 12919476068,
+      "lat": 55.8642366,
+      "lon": -4.2607179,
+      "timestamp": "2025-06-16T14:32:42Z",
+      "version": 1,
+      "changeset": 167697647,
+      "user": "b-unicycling",
+      "uid": 1713634,
+      "tags": {
+        "benchmark": "yes",
+        "man_made": "survey_point",
+        "survey:date": "2025-06-16"
+      }
+    },
+    {
+      "type": "node",
+      "id": 12919476068,
+      "lat": 55.8642448,
+      "lon": -4.260726,
+      "timestamp": "2025-06-16T20:35:12Z",
+      "version": 2,
+      "changeset": 167712339,
+      "user": "b-unicycling",
+      "uid": 1713634,
+      "tags": {
+        "benchmark": "yes",
+        "man_made": "survey_point",
+        "survey:date": "2025-06-16"
+      }
+    },
+    {
+      "type": "node",
+      "id": 12919476068,
+      "lat": 55.8642448,
+      "lon": -4.260726,
+      "timestamp": "2025-06-17T21:34:31Z",
+      "version": 3,
+      "changeset": 167757456,
+      "user": "b-unicycling",
+      "uid": 1713634,
+      "tags": {
+        "benchmark": "yes",
+        "man_made": "survey_point",
+        "survey:date": "2025-06-16",
+        "wikimedia_commons": "File:Benchmark at the corner of West Campbell Street and Bath Street.jpg"
+      }
+    },
+    {
+      "type": "node",
+      "id": 12919476068,
+      "lat": 55.8642448,
+      "lon": -4.260726,
+      "timestamp": "2025-06-24T22:07:27Z",
+      "version": 4,
+      "changeset": 168069083,
+      "user": "b-unicycling",
+      "uid": 1713634,
+      "tags": {
+        "benchmark": "yes",
+        "man_made": "survey_point",
+        "survey:date": "2025-06-16",
+        "survey_point:structure": "cut",
+        "wikimedia_commons": "File:Benchmark at the corner of West Campbell Street and Bath Street.jpg"
+      }
+    },
+    {
+      "type": "node",
+      "id": 12919476068,
+      "lat": 55.8642448,
+      "lon": -4.260726,
+      "timestamp": "2026-04-10T11:27:20Z",
+      "version": 5,
+      "changeset": 181140940,
+      "user": "fthierygeo",
+      "uid": 8813335,
+      "tags": {
+        "benchmark": "yes",
+        "man_made": "survey_point",
+        "name:en": "NO145 BATH ST SE FACE E ANG 1989 37,995m",
+        "survey:date": "2025-06-16",
+        "survey_point:structure": "cut",
+        "wikimedia_commons": "File:Benchmark at the corner of West Campbell Street and Bath Street.jpg"
+      }
+    },
+    {
+      "type": "node",
+      "id": 12919476068,
+      "lat": 55.8642448,
+      "lon": -4.260726,
+      "timestamp": "2026-04-10T11:33:35Z",
+      "version": 6,
+      "changeset": 181141238,
+      "user": "fthierygeo",
+      "uid": 8813335,
+      "tags": {
+        "benchmark": "yes",
+        "man_made": "survey_point",
+        "name:en": "NO145 BATH ST SE FACE E ANG 1989 37,995m",
+        "survey:date": "2025-06-16",
+        "survey_point:purpose": "vertical",
+        "survey_point:structure": "cut",
+        "survey_point:type": "benchmark",
+        "wikimedia_commons": "File:Benchmark at the corner of West Campbell Street and Bath Street.jpg"
+      }
+    }
+  ]
+}

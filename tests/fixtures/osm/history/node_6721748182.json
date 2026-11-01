@@ -1,0 +1,60 @@
+{
+  "version": "0.6",
+  "generator": "openstreetmap-cgimap 2.1.0 (834669 spike-07.openstreetmap.org)",
+  "copyright": "OpenStreetMap and contributors",
+  "attribution": "http://www.openstreetmap.org/copyright",
+  "license": "http://opendatacommons.org/licenses/odbl/1-0/",
+  "elements": [
+    {
+      "type": "node",
+      "id": 6721748182,
+      "lat": 53.387743,
+      "lon": -6.06809,
+      "timestamp": "2019-08-18T20:28:36Z",
+      "version": 1,
+      "changeset": 73473044,
+      "user": "VictorIE",
+      "uid": 2008037,
+      "tags": {
+        "distance": "9 miles",
+        "highway": "milestone"
+      }
+    },
+    {
+      "type": "node",
+      "id": 6721748182,
+      "lat": 53.387749,
+      "lon": -6.0681842,
+      "timestamp": "2019-08-18T22:11:42Z",
+      "version": 2,
+      "changeset": 73474758,
+      "user": "VictorIE",
+      "uid": 2008037,
+      "tags": {
+        "distance": "9 miles",
+        "highway": "milestone"
+      }
+    },
+    {
+      "type": "node",
+      "id": 6721748182,
+      "lat": 53.387749,
+      "lon": -6.0681842,
+      "timestamp": "2024-02-26T18:41:14Z",
+      "version": 3,
+      "changeset": 147944514,
+      "user": "b-unicycling",
+      "uid": 1713634,
+      "tags": {
+        "benchmark": "yes",
+        "distance": "9 miles",
+        "highway": "milestone",
+        "historic": "milestone",
+        "inscription": "P.O Dublin 9 Howth",
+        "man_made": "survey_point",
+        "milestone:destination": "post_office",
+        "wikimedia_commons": "File:MilestoneDublin9Howth.jpg"
+      }
+    }
+  ]
+}

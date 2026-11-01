@@ -1,0 +1,42 @@
+{
+  "version": "0.6",
+  "generator": "openstreetmap-cgimap 2.1.0 (827991 spike-07.openstreetmap.org)",
+  "copyright": "OpenStreetMap and contributors",
+  "attribution": "http://www.openstreetmap.org/copyright",
+  "license": "http://opendatacommons.org/licenses/odbl/1-0/",
+  "elements": [
+    {
+      "type": "node",
+      "id": 12888689968,
+      "lat": 52.9774212,
+      "lon": -6.9789703,
+      "timestamp": "2025-06-05T12:21:00Z",
+      "version": 1,
+      "changeset": 167220621,
+      "user": "b-unicycling",
+      "uid": 1713634,
+      "tags": {
+        "benchmark": "yes",
+        "man_made": "survey_point",
+        "survey:date": "2025-06-05"
+      }
+    },
+    {
+      "type": "node",
+      "id": 12888689968,
+      "lat": 52.9774432,
+      "lon": -6.9790004,
+      "timestamp": "2025-06-05T20:53:32Z",
+      "version": 2,
+      "changeset": 167241460,
+      "user": "b-unicycling",
+      "uid": 1713634,
+      "tags": {
+        "benchmark": "yes",
+        "man_made": "survey_point",
+        "survey:date": "2025-06-05",
+        "wikimedia_commons": "File:Benchmark at Ardreigh Lock.jpg"
+      }
+    }
+  ]
+}
