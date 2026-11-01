@@ -26,7 +26,7 @@ from urllib.parse import quote
 
 from markupsafe import Markup, escape
 
-from wikibase_static import crm
+from wikibase_static import crm, wkt
 from wikibase_static.loader import LabelResolver, Site
 from wikibase_static.model import Entity, Snak, Statement, id_sort_key, is_federated, pick_text
 from wikibase_static.site_config import SiteConfig
@@ -576,6 +576,24 @@ class Renderer:
             if not any((p.lat, p.lon) == point for p in points):
                 points.append(MapPoint(point[0], point[1], text))
         return points
+
+    def map_shapes(self, entity: Entity) -> list[dict[str, Any]]:
+        """The last WKT geometry of the property ``wkt_property`` (site.yaml) as GeoJSON for the map, unless it is a point (the
+        coordinate marker already shows that); empty when the site names no such property or the value is not WKT."""
+        prop = self.cfg.wkt_property
+        if not prop:
+            return []
+        values = [s.mainsnak.value for s in entity.statements
+                  if s.mainsnak.property == prop and s.mainsnak.snaktype == "value" and isinstance(s.mainsnak.value, str)]
+        if not values:
+            return []
+        try:
+            geometry = wkt.parse(values[-1])
+        except wkt.WktError:
+            return []
+        if geometry["type"] in ("Point", "MultiPoint"):
+            return []
+        return [{"geometry": geometry, "text": self.label_text(entity.id)}]
 
     # ---- overview: instances by class
 

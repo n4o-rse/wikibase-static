@@ -60,10 +60,10 @@
     {{ class_tree(class_tree_nodes) }}
   </div>
   {% endif %}
-  {% if map_points %}
+  {% if map_points or shapes_json %}
   <section class="map-section">
     <h2>{{ ui_map }}</h2>
-    <div class="wbs-map" data-points="{{ points_json }}" role="img" aria-label="{{ ui_map_text }}"></div>
+    <div class="wbs-map" data-points="{{ points_json }}"{% if shapes_json %} data-shapes="{{ shapes_json }}"{% endif %} role="img" aria-label="{{ ui_map_text }}"></div>
   </section>
   {% endif %}
 

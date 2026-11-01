@@ -95,7 +95,8 @@ class Site:
         try:
             with contextlib.redirect_stdout(buffer):
                 code = imp.main(["--csv", str(self.csv), "--from-dir", str(self.history), "--mapping", str(self.csv / "mapping" / "osm-properties.csv"),
-                                 "--seeds", str(self.seeds), "--overpass-file", str(self.overpass_file), *extra])
+                                 "--seeds", str(self.seeds), "--overpass-file", str(self.overpass_file),
+                                 "--members-dir", str(self.root / "data" / "raw" / "osm" / "members"), *extra])
         finally:
             imp.CLIENT_FACTORY = None
         return code, buffer.getvalue()

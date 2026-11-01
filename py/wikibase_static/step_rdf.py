@@ -157,7 +157,7 @@ def main(argv: list[str] | None = None) -> int:
         pages_url=cfg.pages_url, modified=data_date, json_sizes=json_sizes,
         export_file=f"downloads/{stem}.ttl", ontology_file=f"downloads/{ONTOLOGY_NAME}",
         ontology_bytes=ONTOLOGY.stat().st_size)
-    result = rdf.build(site, ns, cfg.license_url, catalog, twin)
+    result = rdf.build(site, ns, cfg.license_url, catalog, twin, cfg.wkt_property)
 
     own = bool(cfg.pages_url) and ns.base.rstrip("/") == cfg.pages_url.rstrip("/")     # URIs of this site: do not point to the source
     header = [f"RDF export of {cfg.title if own else (cfg.source_url or cfg.title)}, Wikibase data model; base URI {ns.base}",

@@ -62,7 +62,8 @@ class Site:
         buffer = io.StringIO()
         with contextlib.redirect_stdout(buffer):
             code = imp.main(["--csv", str(self.csv), "--from-dir", str(self.history), "--mapping", str(self.csv / "mapping" / "osm-properties.csv"),
-                             "--seeds", str(self.root / "data" / "seeds"), "--offline", *extra])
+                             "--seeds", str(self.root / "data" / "seeds"), "--offline",
+                             "--members-dir", str(self.root / "data" / "raw" / "osm" / "members"), *extra])
         return code, buffer.getvalue()
 
     def table(self, name: str) -> list[dict[str, str]]:
@@ -188,12 +189,13 @@ class SelectionRuns(unittest.TestCase):
         self.assertEqual(self.statements("P107"), [])
         self.assertIn("element that never met the selection", out)
 
-    def test_way_is_left_out(self) -> None:
+    def test_way_without_member_histories_is_an_item_without_a_shape(self) -> None:
         self.site.put("way", 8, [{"version": 1, "timestamp": "2020-01-01T10:00:00Z", "changeset": 1, "user": "u", "uid": 1,
                                   "nodes": [1, 2, 3], "tags": GOOD}])
         _, out = self.site.run()
-        self.assertEqual(self.statements("P100"), [])
-        self.assertIn("way (geometry needs S15b)", out)
+        self.assertEqual(len(self.statements("P100")), 1)
+        self.assertEqual(self.statements("P111"), [])
+        self.assertIn("way without a shape (3 member histories not stored", out)
 
     def test_deleted_version_breaks_the_run(self) -> None:
         self.site.put("node", 9, [version(1, tags=GOOD), {"version": 2, "visible": False, "timestamp": "2020-01-02T10:00:00Z",

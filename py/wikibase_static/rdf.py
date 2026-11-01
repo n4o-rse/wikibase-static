@@ -36,7 +36,7 @@ from dataclasses import dataclass, field
 from typing import Any, Iterable, Union
 from urllib.parse import quote, urlparse
 
-from wikibase_static import crm
+from wikibase_static import crm, wkt
 from wikibase_static.counterpart import Counterpart
 from wikibase_static.loader import Site
 from wikibase_static.model import (
@@ -395,8 +395,9 @@ class CatalogInfo:
 
 class _Builder:
     def __init__(self, site: Site, ns: Namespaces, license_url: str | None, catalog: CatalogInfo | None = None,
-                 counterpart: Counterpart | None = None) -> None:
+                 counterpart: Counterpart | None = None, wkt_property: str | None = None) -> None:
         self.site = site
+        self.wkt_property = wkt_property
         self.counterpart = counterpart
         self.ns = ns
         self.license_url = license_url
@@ -567,6 +568,31 @@ class _Builder:
                                    statement.mainsnak.value]))
         return f"{entity.id}-g{digest[:32]}"
 
+    @staticmethod
+    def _wkt_ok(text: str) -> bool:
+        try:
+            wkt.parse(text)
+            return True
+        except wkt.WktError:
+            return False
+
+    def geometry(self, subject: Iri, node: Iri, statement: Statement, last: bool) -> None:
+        """GeoSPARQL (S6): the item is a ``geo:Feature``, the statement node a ``geo:Geometry`` with ``geo:asWKT``; the last entry is the default."""
+        value = statement.mainsnak.value
+        if statement.mainsnak.snaktype != "value" or not isinstance(value, str):
+            return
+        try:
+            wkt.parse(value)
+        except wkt.WktError as err:
+            self._problem(f"rdf: {statement.id or node.value} is not WKT ({err}); written as a string only")
+            return
+        self.add(subject, self._a(), Iri(GEO + "Feature"))
+        self.add(subject, Iri(GEO + "hasGeometry"), node)
+        if last:
+            self.add(subject, Iri(GEO + "hasDefaultGeometry"), node)
+        self.add(node, self._a(), Iri(GEO + "Geometry"))
+        self.add(node, Iri(GEO + "asWKT"), Lit(value, GEO + "wktLiteral"))
+
     def reference(self, node: Iri, group: list[Snak]) -> None:
         self.add(node, self._a(), self._wb("Reference"))
         for snak in group:
@@ -584,6 +610,11 @@ class _Builder:
                 continue
             ranks = [s.rank for _pos, s in group]
             best_rank = "preferred" if "preferred" in ranks else "normal"
+            last_wkt = None
+            if prop == self.wkt_property:
+                valid = [s for _pos, s in group if isinstance(s.mainsnak.value, str) and s.mainsnak.snaktype == "value"
+                         and self._wkt_ok(s.mainsnak.value)]
+                last_wkt = valid[-1] if valid else None
             for position, statement in group:
                 self.out.statements += 1
                 name = self.statement_name(entity, statement, position)
@@ -599,6 +630,8 @@ class _Builder:
                 else:
                     self._problem(f"rdf: statement {statement.id or name} has the unknown rank {statement.rank!r}")
                 self.snak(node, statement.mainsnak, "statement", name)
+                if prop == self.wkt_property:
+                    self.geometry(subject, node, statement, last_wkt is statement)
                 if is_best:
                     self.snak(subject, statement.mainsnak, "direct", name)
                 for qualifier in statement.qualifiers:
@@ -878,12 +911,12 @@ class _Builder:
 
 
 def build(site: Site, ns: Namespaces, license_url: str | None = None, catalog: CatalogInfo | None = None,
-          counterpart: Counterpart | None = None) -> Rdf:
+          counterpart: Counterpart | None = None, wkt_property: str | None = None) -> Rdf:
     """Every loaded entity as triples (and, with ``catalog``, their DCAT description).
 
     ``Rdf.triples`` is the whole export, ``Rdf.by_entity`` the triples of each entity's own file. Problems
     (values that cannot be written) are sorted messages in ``problems``."""
-    builder = _Builder(site, ns, license_url, catalog, counterpart)
+    builder = _Builder(site, ns, license_url, catalog, counterpart, wkt_property)
     for entity in sorted(site.entities.values(), key=lambda e: id_sort_key(e.id)):
         builder.entity(entity)
     for source, target in sorted(site.redirects.items(), key=lambda kv: id_sort_key(kv[0])):   # merged ids (S7e), as Wikibase writes a redirect

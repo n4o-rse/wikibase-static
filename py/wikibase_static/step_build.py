@@ -246,7 +246,10 @@ def main(argv: list[str] | None = None) -> int:
         if entity.datatype:
             datatype_label = r.ui(f"dt_{entity.datatype}") if f"dt_{entity.datatype}" in _known_datatypes() else entity.datatype
         context = common(name, f"{title} – {cfg.title}", r.description_text(entity), r.footer(entity), points)
+        shapes = r.map_shapes(entity)
+        context["leaflet"] = bool(shapes)
         context.update({
+            "shapes_json": json.dumps(shapes, ensure_ascii=False, separators=(",", ":")) if shapes else "",
             "heading": r.heading(entity.id), "description": r.description(entity),
             "language_rows": r.language_rows(entity), "crm_rows": r.crm_rows(entity),
             "ui_crm": r.ui("crm"), "ui_crm_from": r.ui("crm_from"), "ui_crm_none": r.ui("crm_none"),

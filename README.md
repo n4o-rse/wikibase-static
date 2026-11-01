@@ -174,6 +174,8 @@ languages:
 imprint: https://example.org/imprint    # text or URL
 pages_url: https://example.github.io/repo/   # optional, for the canonical link
 formatter_property: P1630        # property that holds the formatter URL of external-id properties
+wkt_property: P111               # optional: a string property whose values are WKT; the page draws the last one on the map (not a point), the RDF
+                                 # export types the item geo:Feature and each entry geo:Geometry with geo:asWKT, the last one also geo:hasDefaultGeometry
 rdf_base: https://example.org    # optional: base URI of the RDF export; default is source.url
 rdf_prefix: chb                  # optional: own prefix family (chb:, chbt:, chbp:, ...) instead of wd:, wdt:, p:, ...; see "Prefixes of the export"
 data_as_of: 2026-10-25           # optional: date (or date and time) of the data, for entities without a modification time of their own (CSV tables); used in the header and the catalogue of the RDF export, else "unknown"
@@ -221,6 +223,7 @@ python main.py import-osm --refresh                  fetch every history again a
 python main.py import-osm --offline                  no network: import every file of data/raw/osm/history/
 python main.py import-osm --offline --from-dir DIR   another folder of history files
 python main.py import-osm --offline --dry-run        print the report, write nothing
+python main.py import-osm --element way/123           fetch one element (and its members) without asking Overpass, then import
 ```
 
 A verb of its own because it writes source files and uses the network. With the network (0.21.0) it sends the Overpass query
@@ -237,7 +240,14 @@ the version number, timestamp, changeset, user name, uid, the selection, the coo
 a selection `data/seeds/<name>.csv` (columns `selection, key, value`; an empty value means the key only has to exist). It writes rows with
 `origin=osm` into the four tables and `idmap.csv` (source `osm`, key `node/<id>`). One item per element, one statement per version, an
 entry marker for every run of versions that meet the selection, the position of the last version as coordinate and every change of
-position as WKT. Only nodes are imported; ways and relations are reported and left out. A reimport replaces the rows of the importer; a row
+position as WKT. Ways and relations (0.22.0) are items too: a way has no coordinates, so its shape is built from the stored histories of its
+member nodes (relations: of their member ways and nodes), fetched into `data/raw/osm/members/` (`--members-dir`, at most `--member-limit` requests
+per run, default 500; `--refresh` fetches them again and compares). The shape is entered each time it changed, that is when the element or any member
+node got a new version: a closed way that is not a linear feature (a highway, barrier, waterway, ...) is a POLYGON, any other way a LINESTRING; a
+`multipolygon` or `boundary` relation is assembled from its outer and inner ways into a POLYGON or MULTIPOLYGON; another relation is a MULTILINESTRING,
+a MULTIPOINT or a GEOMETRYCOLLECTION. The coordinate is the middle of the bounding box of the last shape. Without the member histories the item is
+imported without a shape and the report says how many are missing. A moved node does not raise the version of its way, so Overpass cannot say that a
+way changed: run with `--refresh` now and then. A reimport replaces the rows of the importer; a row
 whose `origin` you emptied counts as written by hand and wins. The rules are described at the top of
 `py/wikibase_static/step_import_osm.py`; the model is the one of
 [`osm-benchmarks-static`](https://github.com/n4o-rse/osm-benchmarks-static).

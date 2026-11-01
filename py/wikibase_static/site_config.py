@@ -16,6 +16,8 @@ Keys (all optional; a missing file gives the defaults and one note)::
       second: de                      # optional; gives the language switch
     imprint: https://example.org/imprint    # text or URL
     pages_url: https://example.github.io/repo/   # optional, for the canonical link
+    wkt_property: P111                # optional; a string property whose values are WKT geometries (S6): the entity page draws the
+                                      # last one on its map, and the RDF export types each as geo:Geometry with geo:asWKT
     formatter_property: P18           # property that holds the formatter URL of external-id
                                       # properties ($1 is replaced); Wikidata uses P1630
     rdf_base: https://example.org/    # optional; base URI of the RDF export (wd:, wdt:, ...). Default: source.url,
@@ -56,7 +58,7 @@ DATA_AS_OF = re.compile(r"^(\d{4}-\d{2}-\d{2})(?:[T ](\d{2}:\d{2}:\d{2}))?Z?$")
 DEFAULT_COLOUR = "#336699"
 DEFAULT_LICENSE = ("CC0 1.0", "https://creativecommons.org/publicdomain/zero/1.0/")   # PRIMER.md, A4
 KNOWN_KEYS = {"title", "description", "logo", "colour", "source", "license", "languages",
-              "imprint", "pages_url", "formatter_property", "rdf_base", "rdf_prefix", "edit_url", "data_as_of", "counterpart"}
+              "imprint", "pages_url", "formatter_property", "wkt_property", "rdf_base", "rdf_prefix", "edit_url", "data_as_of", "counterpart"}
 
 
 @dataclass
@@ -79,6 +81,7 @@ class SiteConfig:
     counterpart: Counterpart | None = None     # the same entities in a real Wikibase (S7g): links and owl:sameAs
     edit_url: str | None = None                # folder of the CSV tables in the repository editor (S7f), without a trailing slash
     formatter_property: str = "P1630"
+    wkt_property: str | None = None            # a string property that holds WKT geometries (S6)
     present: bool = False                      # was there a site.yaml at all
     problems: list[str] = field(default_factory=list)
 
@@ -239,6 +242,13 @@ def load_config(path: Path, manifest_source: str | None = None) -> SiteConfig:
             cfg.formatter_property = formatter
         else:
             problems.append(f"site.yaml: formatter_property {formatter!r} is not a property id; {cfg.formatter_property} used")
+
+    wkt = _text(data.get("wkt_property"), "wkt_property", problems)
+    if wkt:
+        if PROPERTY.match(wkt):
+            cfg.wkt_property = wkt
+        else:
+            problems.append(f"site.yaml: wkt_property {wkt!r} is not a property id; ignored")
 
     if not cfg.title:
         cfg.title = (re.sub(r"^https?://", "", cfg.source_url) if cfg.source_url else "Wikibase archive")
