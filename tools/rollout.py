@@ -33,6 +33,7 @@ INIT = PACKAGE / "py" / "wikibase_static" / "__init__.py"
 SATELLITES = HERE / "satellites.txt"
 REPO_URL = "https://github.com/n4o-rse/wikibase-static.git"
 PIN = re.compile(r"(wikibase-static\s*@\s*git\+https://github\.com/n4o-rse/wikibase-static\.git@)(\S+)")
+UNPINNED = re.compile(r"(wikibase-static\s*@\s*git\+https://github\.com/n4o-rse/wikibase-static\.git)(?=\s|$)")     # no @ref at all
 VERSION = re.compile(r'^__version__ = "([^"]+)"', re.M)
 
 
@@ -64,6 +65,10 @@ def repin(text: str, tag: str) -> tuple[str, str | None]:
         return match.group(1) + tag
 
     new = PIN.sub(swap, text)
+    if not old:                                  # a requirement without any ref follows the default branch: it gets the pin now
+        new, count = UNPINNED.subn(lambda m: m.group(1) + "@" + tag, text)
+        if count:
+            return new, "main (no tag)"
     return new, (old[0] if old else None)
 
 

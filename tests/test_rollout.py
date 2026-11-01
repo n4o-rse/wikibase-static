@@ -25,9 +25,15 @@ class Pin(unittest.TestCase):
         new, _ = rollout.repin(f"{PIN}\r\nrdflib\r\n", "v0.25.0")
         self.assertEqual(new, "wikibase-static @ git+https://github.com/n4o-rse/wikibase-static.git@v0.25.0\r\nrdflib\r\n")
 
-    def test_without_a_pin_nothing_is_changed(self) -> None:
-        text = "wikibase-static @ git+https://github.com/n4o-rse/wikibase-static.git\n"
-        self.assertEqual(rollout.repin(text, "v0.25.0"), (text, None))
+    def test_a_requirement_without_any_ref_gets_the_pin(self) -> None:
+        text = "wikibase-static @ git+https://github.com/n4o-rse/wikibase-static.git\nPyYAML\n"
+        new, old = rollout.repin(text, "v0.26.1")
+        self.assertEqual(new, "wikibase-static @ git+https://github.com/n4o-rse/wikibase-static.git@v0.26.1\nPyYAML\n")
+        self.assertEqual(old, "main (no tag)")
+
+    def test_without_a_wikibase_static_requirement_nothing_is_changed(self) -> None:
+        text = "PyYAML\nrdflib\n"
+        self.assertEqual(rollout.repin(text, "v0.26.1"), (text, None))
 
     def test_a_commit_pin_is_replaced_too(self) -> None:
         new, old = rollout.repin(PIN.replace("v0.24.2", "76d9722"), "v0.25.0")

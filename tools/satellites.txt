@@ -3,3 +3,6 @@
 n4o-rse/osm-benchmarks-static
 n4o-rse/fuzzy-sl-static
 n4o-rse/chublets-wikibase-demo
+n4o-rse/osm-sisal-static
+n4o-rse/osm-ogham-static
+n4o-rse/osm-holywells-static

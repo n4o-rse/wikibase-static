@@ -3,6 +3,12 @@
 Every version is a tag `vX.Y.Z` on the commit that raised `__version__` (`tools/tag_versions.py` makes the missing tags;
 `0.1.0` is the last commit before 0.2.0). The newest version is on top. The work plan with the findings behind each version is `PRIMER.md`.
 
+## 0.26.1
+- `tools/satellites.txt` lists three more site repositories: `osm-sisal-static`, `osm-ogham-static`, `osm-holywells-static`.
+- `tools/rollout.py` (and so the update workflow) also pins a requirement that has no ref at all (`...wikibase-static.git`, which follows
+  the default branch): it gets `@vX.Y.Z`.
+- Tests: 667 in the repository.
+
 ## 0.26.0
 - `.github/workflows/update.yml`, a reusable workflow for the site repositories: it looks for a newer release of wikibase-static, changes the
   pin in `requirements.txt`, builds the site twice with `--strict` (and runs `check_attribution.py` where there is one) and opens a pull
