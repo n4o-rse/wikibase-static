@@ -10,12 +10,12 @@ type: software
 authors:
   - family-names: Thiery
     given-names: Florian
-    # orcid: "https://orcid.org/..."  # TODO: insert ORCID
+    orcid: "https://orcid.org/0000-0002-3246-3531"
+    affiliation: "Leibniz-Zentrum für Archäologie (LEIZA)"
 license: MIT
 version: "0.26.1"
 repository-code: "https://github.com/n4o-rse/wikibase-static"
-# date-released: ""  # TODO: set when the first release is tagged
-# doi: ""            # TODO: add Zenodo DOI once minted
+date-released: "2026-11-01"
 keywords:
   - Wikibase
   - Linked Data
