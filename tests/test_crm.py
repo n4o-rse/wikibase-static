@@ -309,6 +309,14 @@ class Page(test_build.Site):
         self.assertIn("none yet", self.page("Q2.html"))
         self.assertNotIn('<p class="crm">', self.page("P1.html"))              # a property has no CRM class
 
+    def test_site_and_physical_object_are_known_classes(self) -> None:
+        from wikibase_static import crm
+        self.assertEqual(crm.label("crm:E27"), "E27 Site")
+        self.assertEqual(crm.label("crm:E27_Site"), "E27 Site")
+        self.assertEqual(crm.label("crm:E19"), "E19 Physical Object")
+        self.assertIn("crm:E26_Physical_Feature", crm.CLASSES["crm:E27_Site"])
+        self.assertIn("crm:E18_Physical_Thing", crm.CLASSES["crm:E19_Physical_Object"])
+
     def test_a_class_marked_model_says_so_instead_of_none_yet(self) -> None:
         (self.root / "data" / "crm.csv").write_text("class,crm_class,note\nQ1,crm:E73,x\nQ2,model,y\n", encoding="utf-8")
         self.build()

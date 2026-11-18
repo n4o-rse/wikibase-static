@@ -1,0 +1,3 @@
+# Repositories besides tools/satellites.txt whose Actions tools/check_status.py also looks at (one owner/repo per line).
+n4o-rse/wikibase-static
+beaverbridge-framework/beaverbridge-registry

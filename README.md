@@ -433,7 +433,7 @@ To bring all site repositories to a version at once, list them in `tools/satelli
 
 ## Continuous integration
 
-Three workflows live in `.github/workflows/`:
+Four workflows live in `.github/workflows/`:
 
 - `ci.yml` guards this repository: the unit tests (Ubuntu with Python 3.10 and 3.13, Windows with 3.13), then
   `python main.py --strict` twice, with `git status --porcelain` required to be empty after each run.
@@ -449,6 +449,13 @@ Three workflows live in `.github/workflows/`:
   twice with `--strict` and opens a pull request (merging it starts `site.yml`). Copy [`examples/update-caller.yml`](examples/update-caller.yml)
   to `.github/workflows/update.yml` and tick "Allow GitHub Actions to create and approve pull requests" under Settings, Actions, General.
   It runs every morning and by hand; `python tools/rollout.py` does the same from your computer for all repositories of `tools/satellites.txt`.
+
+- `status.yml` watches the other repositories: every morning (and by hand) `tools/check_status.py` reads the latest GitHub Actions runs of all
+  repositories in `tools/satellites.txt` and `tools/status-extra.txt`. A red workflow turns the job red, is listed in the job summary and opens
+  (or updates) the issue "Satellite status"; the issue closes itself when all is green. On Mondays a comment with the whole table goes to the
+  issue "Satellite weekly report"; subscribe to it for a weekly mail. For a mail of its own set the repository secrets `MAIL_SERVER`,
+  `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_TO` (and `MAIL_FROM`). Run `python tools/check_status.py` on your computer
+  for the table (it uses `GITHUB_TOKEN`, `GH_TOKEN` or `gh auth token`).
 
 To use `site.yml` in a site repository, copy [`examples/site-caller.yml`](examples/site-caller.yml) to
 `.github/workflows/site.yml` and set Settings → Pages → Source to "GitHub Actions". The repository's
@@ -467,7 +474,7 @@ data/raw/                   harvested JSON, as obtained
 data/derived/               intermediates made from CSV
 dist/                       versioned products: RDF, pipeline report
 docs/                       the site, served by GitHub Pages
-.github/workflows/          ci.yml (this repository), site.yml and update.yml (reusable, for site repositories)
+.github/workflows/          ci.yml and status.yml (this repository), site.yml and update.yml (reusable, for site repositories)
 examples/                   site-caller.yml and update-caller.yml, the few lines a site repository needs to call them
 PRIMER.md                   work plan and decisions (German)
 ```

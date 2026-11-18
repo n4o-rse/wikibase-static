@@ -1,0 +1,67 @@
+name: Status
+
+# Looks at the latest GitHub Actions runs of every satellite (tools/satellites.txt), of the registry and of this repository
+# (tools/status-extra.txt) and reports what is red (tools/check_status.py; PRIMER.md, 107):
+#   - the job is red when a workflow of one of them is red, so GitHub's own mail for a failed run reaches you;
+#   - the issue "Satellite status" of this repository is opened and kept up to date while something is red, and closed when it is
+#     green again;
+#   - every Monday (and when started by hand with "digest") a comment with the whole table goes to the issue "Satellite weekly
+#     report"; subscribe to that issue, or watch the repository, and GitHub sends it as the weekly mail;
+#   - optionally the weekly report is also sent as a mail of its own: set the repository secrets MAIL_SERVER, MAIL_PORT, MAIL_USERNAME,
+#     MAIL_PASSWORD, MAIL_TO (and MAIL_FROM); without MAIL_SERVER that step is skipped.
+# It reads the Actions of public repositories with the token of this run; it needs no secret of its own.
+
+on:
+  schedule:
+    - cron: "43 5 * * *"
+    - cron: "11 6 * * 1"
+  workflow_dispatch:
+    inputs:
+      digest:
+        description: "Also post the weekly report"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  actions: read
+  issues: write
+
+concurrency:
+  group: status
+  cancel-in-progress: false
+
+jobs:
+  status:
+    name: latest runs of the satellites
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      HAVE_MAIL: ${{ secrets.MAIL_SERVER != '' }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - name: Weekly report today?
+        id: week
+        env:
+          SCHEDULE: ${{ github.event.schedule }}
+          ASKED: ${{ inputs.digest }}
+        run: |
+          if [ "$SCHEDULE" = "11 6 * * 1" ] || [ "$ASKED" = "true" ]; then echo "digest=--digest" >> "$GITHUB_OUTPUT"; echo "weekly=true" >> "$GITHUB_OUTPUT"; fi
+      - name: Look at the latest runs
+        run: python tools/check_status.py --issue "$GITHUB_REPOSITORY" --summary "$GITHUB_STEP_SUMMARY" --report status-report.md ${{ steps.week.outputs.digest }}
+      - name: Mail the weekly report
+        if: always() && steps.week.outputs.weekly == 'true' && env.HAVE_MAIL == 'true'
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: ${{ secrets.MAIL_SERVER }}
+          server_port: ${{ secrets.MAIL_PORT }}
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          subject: Satellite status, weekly report
+          to: ${{ secrets.MAIL_TO }}
+          from: ${{ secrets.MAIL_FROM }}
+          body: file://status-report.md
+          convert_markdown: true

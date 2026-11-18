@@ -54,6 +54,8 @@ CLASSES: dict[str, tuple[str, str | None]] = {
     "crm:E5_Event": ("Event", "crm:E4_Period"),
     "crm:E21_Person": ("Person", "crm:E20_Biological_Object"),
     "crm:E26_Physical_Feature": ("Physical Feature", "crm:E18_Physical_Thing"),
+    "crm:E27_Site": ("Site", "crm:E26_Physical_Feature"),
+    "crm:E19_Physical_Object": ("Physical Object", "crm:E18_Physical_Thing"),
     "crm:E40_Legal_Body": ("Legal Body", "crm:E74_Group"),
     "crm:E78_Curated_Holding": ("Curated Holding", "crm:E24_Physical_Human-Made_Thing"),
     "crmdig:D1_Digital_Object": ("Digital Object", "crm:E73_Information_Object"),

@@ -3,6 +3,17 @@
 Every version is a tag `vX.Y.Z` on the commit that raised `__version__` (`tools/tag_versions.py` makes the missing tags;
 `0.1.0` is the last commit before 0.2.0). The newest version is on top. The work plan with the findings behind each version is `PRIMER.md`.
 
+## 0.33.0
+- New workflow `status.yml` and tool `tools/check_status.py`: look at the latest GitHub Actions runs of every repository in `tools/satellites.txt` and
+  `tools/status-extra.txt` (the registry and this repository) and report what is red. The latest run of each workflow on the default branch counts;
+  cancelled, skipped and pull-request runs and runs waiting for approval (a bot pull request nobody approved) are ignored. A red workflow or an
+  unreadable repository turns the job red (so GitHub mails the failure), is listed in the job summary and keeps the issue "Satellite status" of this
+  repository open (updated on change, closed when all is green). Every Monday a comment with the whole table goes to the issue "Satellite weekly
+  report" (GitHub mails it to its subscribers); with the secrets `MAIL_SERVER`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_TO` (and
+  `MAIL_FROM`) the report is also sent as a mail of its own. Tested with a fake API (`tests/test_status.py`).
+- `crm.CLASSES` knows `crm:E27_Site` and `crm:E19_Physical_Object` with labels and superclasses, so classes anchored there show "E27 Site" and
+  "E19 Physical Object" and their place in the hierarchy.
+
 ## 0.32.0
 - `check-crm` works on every site. Its shapes took P1 and P2 of the kernel as "subclass of" and "instance of", so on a harvested Wikibase they flagged
   the items (the subjects of P1 where P1 is "instance of") and, with Q1 to Q3 left out unconditionally, missed real classes at those ids.
