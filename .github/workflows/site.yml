@@ -7,8 +7,11 @@ name: Site
 # What "check" means (PRIMER.md, A2 properties 3 and 4):
 #   1. `python main.py --strict` runs the whole pipeline; any WARN line, including a dead internal
 #      link from the linkcheck of the build step, makes it fail.
-#   2. `git status` must be clean afterwards: the committed docs/ and dist/ are what a fresh build makes.
-#   3. The pipeline runs a second time and the tree must still be clean: the build is deterministic.
+#   2. `git status` must be clean afterwards: whatever of docs/, dist/ and data/derived/ is committed is what a fresh
+#      build makes. A repository may leave docs/ and data/derived/ out of git (both in .gitignore, `tools/untrack_output.py`
+#      does that safely): then only the committed part is compared, and the Pages artifact comes from this very build.
+#   3. The pipeline runs a second time and the tree must still be clean, and a hash over docs/, dist/ and data/derived/
+#      (ignored or not) must be the same as after the first run: the build is deterministic.
 #
 # Call it like this (examples/site-caller.yml has the same text):
 #
@@ -69,6 +72,8 @@ jobs:
             git --no-pager diff --stat
             exit 1
           fi
+      - name: Hash of the output after run 1
+        run: echo "OUTPUT_HASH_1=$(find docs dist data/derived -type f -print0 2>/dev/null | LC_ALL=C sort -z | xargs -0 -r sha256sum | sha256sum | cut -d' ' -f1)" >> "$GITHUB_ENV"
       - name: Run 2
         run: bash -c "$COMMAND"
       - name: The second run changed nothing
@@ -79,6 +84,18 @@ jobs:
             git --no-pager diff --stat
             exit 1
           fi
+      - name: The output is the same after run 2 (docs/, dist/ and data/derived/, committed or not)
+        run: |
+          now="$(find docs dist data/derived -type f -print0 2>/dev/null | LC_ALL=C sort -z | xargs -0 -r sha256sum | sha256sum | cut -d' ' -f1)"
+          if [ "$now" != "$OUTPUT_HASH_1" ]; then
+            echo "::error::run 2 wrote other files than run 1 (an ignored folder such as docs/ differs): the pipeline is not deterministic"
+            exit 1
+          fi
+      - name: Pages artifact (the docs/ of this build)
+        if: inputs.deploy && github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: docs
 
   deploy:
     name: deploy to GitHub Pages
@@ -96,10 +113,5 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v4
-        with:
-          path: docs
       - id: deployment
         uses: actions/deploy-pages@v4

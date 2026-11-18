@@ -24,9 +24,10 @@ config.local.json
 .DS_Store
 Thumbs.db
 
-# --- Note ---
-# dist/, docs/ and data/ are deliberately NOT ignored: dist/ holds the
-# versioned products, docs/ is served by GitHub Pages, data/raw/ is the
-# archived source. Ignoring any of them breaks the Pages build silently.
+# --- Built by the pipeline, published by the CI ---
+# docs/ and data/derived/ are made by `python main.py` (and by the Site workflow, which publishes docs/). They are not committed:
+# a build is a function of data/ and the pinned package. dist/ (the Turtle and the report) is committed: it is what is cited.
+docs/
+data/derived/
 
 PATCH-README.md

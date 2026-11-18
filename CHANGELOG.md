@@ -3,6 +3,20 @@
 Every version is a tag `vX.Y.Z` on the commit that raised `__version__` (`tools/tag_versions.py` makes the missing tags;
 `0.1.0` is the last commit before 0.2.0). The newest version is on top. The work plan with the findings behind each version is `PRIMER.md`.
 
+## 0.29.0
+- The CI builds and publishes the site; `docs/` and `data/derived/` need not be committed any more. `.github/workflows/site.yml`
+  (reusable): the Pages artifact is made in the `check` job from the very build that was checked (the `deploy` job only
+  publishes it), and after run 2 a hash over `docs/`, `dist/` and `data/derived/` must equal the one after run 1, so the
+  determinism check also covers folders that are in `.gitignore`. Whatever is committed is still compared with a fresh build
+  (`git status`). A repository that commits `docs/` works as before; nothing has to change in a caller.
+- `tools/untrack_output.py`: changes a site repository over. It checks that the repository is clean and that GitHub Pages is
+  served by GitHub Actions (a site served from the branch would vanish), moves `docs/` and `data/derived/` away, builds from
+  the sources and compares: a file only the committed folder has (made by hand) stops it and everything is put back. Then it
+  writes `.gitignore`, takes the folders out of the index (`git rm --cached`) and prints the one-line commit. `--check` only
+  tests. `dist/` stays in git (the cited products).
+- `tools/satellite-template/`: new satellites start without `docs/` and `data/derived/` in git (`.gitignore`).
+- 11 new tests (733 in all).
+
 ## 0.28.2
 - Dates in the Julian calendar are imported. `import-wikidata` used to drop every date that was not Gregorian, which lost e.g. the
   inception (P571) of 71 Irish round towers (centuries of the Julian calendar). The CSV form of such a date is the full form with

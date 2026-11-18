@@ -426,8 +426,11 @@ Three workflows live in `.github/workflows/`:
 - `ci.yml` guards this repository: the unit tests (Ubuntu with Python 3.10 and 3.13, Windows with 3.13), then
   `python main.py --strict` twice, with `git status --porcelain` required to be empty after each run.
 - `site.yml` is a reusable workflow for a site repository (a demo, or a repository made from the template).
-  It runs the same strict pipeline twice, fails if the committed `docs/` and `dist/` differ from a fresh build,
-  and on the default branch publishes `docs/` to GitHub Pages. A dead internal link is a `WARN` line of the
+  It runs the same strict pipeline twice, fails if what is committed of `docs/`, `dist/` and `data/derived/` differs from a fresh
+  build or if a second run writes other files than the first (a hash over the three folders, committed or not), and on the default
+  branch publishes the `docs/` of that build to GitHub Pages. A repository may leave `docs/` and `data/derived/` out of git
+  (`.gitignore`; `python tools/untrack_output.py` changes a site over after checking that a build from the sources equals what is
+  committed): the workflow notices nothing special, it always publishes its own build. A dead internal link is a `WARN` line of the
   build step, so `--strict` turns it into a red run.
 
 - `update.yml` is a reusable workflow that keeps a site repository on the newest release: it changes the pin in `requirements.txt`, builds

@@ -191,6 +191,15 @@ class WorkflowFiles(unittest.TestCase):
         self.assertIn("default_branch", deploy["if"])
         self.assertIn("pull_request", deploy["if"])
 
+    def test_site_publishes_the_artifact_of_the_checked_build_and_hashes_the_output(self) -> None:
+        site = self.load("site.yml")
+        check = site["jobs"]["check"]["steps"]
+        self.assertTrue(any(step.get("uses", "").startswith("actions/upload-pages-artifact@") for step in check))
+        self.assertEqual(sum("sha256sum" in step.get("run", "") for step in check), 2)
+        self.assertTrue(all("data/derived" in step["run"] for step in check if "sha256sum" in step.get("run", "")))
+        deploy_steps = site["jobs"]["deploy"]["steps"]
+        self.assertFalse(any("upload-pages-artifact" in step.get("uses", "") or "checkout" in step.get("uses", "") for step in deploy_steps))
+
     def test_site_never_interpolates_inputs_into_a_shell_line(self) -> None:
         for line in self.run_lines(self.load("site.yml")["jobs"]["check"]):
             self.assertNotIn("${{", line)
