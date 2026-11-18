@@ -3,6 +3,13 @@
 Every version is a tag `vX.Y.Z` on the commit that raised `__version__` (`tools/tag_versions.py` makes the missing tags;
 `0.1.0` is the last commit before 0.2.0). The newest version is on top. The work plan with the findings behind each version is `PRIMER.md`.
 
+## 0.27.1
+- `import-wikidata`: a Wikidata item that was only a *stub* in an earlier run (labels, descriptions, aliases) and is a seed now is
+  fetched again in full. Before, `refresh` compared only the revision, so such an item kept its stub copy and stayed without
+  statements (found in the first real run of `wd-govanstones-static`: the 31 stones were stubs of the collection item, became seeds
+  through the new query, and came out with the twin only; `item Q113 is not an instance of a class`). A stored copy without
+  `claims` counts as not current when the full item is wanted.
+
 ## 0.27.0
 - `import-wikidata --generic` (S14a): for a site that is a set of Wikidata items and has no model of its own. A Wikidata property
   without a twin is not only reported but created as a local property (`P100` and up, `origin=wikidata`, numbered through

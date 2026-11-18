@@ -13,7 +13,7 @@ authors:
     orcid: "https://orcid.org/0000-0002-3246-3531"
     affiliation: "Leibniz-Zentrum für Archäologie (LEIZA)"
 license: MIT
-version: "0.27.0"
+version: "0.27.1"
 repository-code: "https://github.com/n4o-rse/wikibase-static"
 date-released: "2026-11-14"
 keywords:

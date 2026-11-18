@@ -46,6 +46,7 @@ nothing is merged.
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import re
 import sys
@@ -60,7 +61,7 @@ if __package__ in (None, ""):  # direct run: python py/wikibase_static/step_impo
 from wikibase_static import __version__, csvbuild, csvio, utils
 from wikibase_static.model import id_sort_key
 from wikibase_static.step_harvest import (
-    BATCH, Client, HarvestError, is_current, load_manifest, read_saved, store_entity, write_manifest,
+    BATCH, Client, HarvestError, entity_path, is_current, load_manifest, read_saved, store_entity, write_manifest,
 )
 from wikibase_static.step_import_open_archaeo import (
     IdMap, ImportProblem, Out, merge, read_rows, shown, twin_map,
@@ -452,12 +453,22 @@ def fetch(client: Client, ids: list[str], full: bool, languages: tuple[str, ...]
     return got
 
 
+def has_claims(raw: Path, entity_id: str) -> bool:
+    """Does the stored copy hold the statements? A copy stored as a stub (labels only) does not; an item that was a stub in an
+    earlier run and is a seed now must be fetched in full although its revision did not change."""
+    try:
+        return "claims" in json.loads(entity_path(raw, entity_id).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return False
+
+
 def refresh(client: Client, raw: Path, ids: list[str], full: bool, languages: tuple[str, ...]) -> tuple[int, int]:
     """Fetch what is new or changed; returns (changed, unchanged)."""
     manifest = load_manifest(raw)
     rows: dict[str, Any] = manifest["entities"]
     current = info(client, ids)
-    todo = [i for i in ids if i in current and not is_current(raw, i, rows.get(i), int(current[i]["lastrevid"]))]
+    todo = [i for i in ids if i in current and (not is_current(raw, i, rows.get(i), int(current[i]["lastrevid"]))
+                                                or (full and not has_claims(raw, i)))]
     for entity in fetch(client, todo, full, languages):
         rows[entity["id"]] = store_entity(raw, entity)
     manifest["source"] = {"url": "https://www.wikidata.org", "api": client.api}

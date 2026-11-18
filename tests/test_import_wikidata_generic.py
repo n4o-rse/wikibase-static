@@ -372,6 +372,25 @@ class Network(Case):
         self.assertIn("fetched 0 changed", out)
         self.assertEqual(self.snapshot(), before)
 
+    def test_a_stub_of_an_earlier_run_that_is_a_seed_now_is_fetched_in_full(self) -> None:
+        """First real run of wd-govanstones-static: the stones were stubs (labels only) and, as seeds, were not fetched again
+        because their revision had not changed; they stayed without statements."""
+        from wikibase_static import step_harvest as harvest
+        client = FakeClient(self.world)
+        code, out = self.run_step("--generic", client=client)
+        self.assertEqual(code, 0, out)
+        raw = self.folder / "data" / "raw" / "wikidata"
+        seed = SEEDS[0]
+        manifest = harvest.load_manifest(raw)
+        stub = {k: v for k, v in json.loads(harvest.entity_path(raw, seed).read_text(encoding="utf-8")).items() if k != "claims"}
+        manifest["entities"][seed] = harvest.store_entity(raw, stub)
+        harvest.write_manifest(raw, manifest)
+        client2 = FakeClient(self.world)
+        code, out = self.run_step("--generic", client=client2)
+        self.assertEqual(code, 0, out)
+        self.assertIn("fetched 1 changed", out)
+        self.assertIn("claims", harvest.entity_path(raw, seed).read_text(encoding="utf-8"))
+
 
 class SavedFiles(Case):
     def test_from_dir_stores_property_files_too(self) -> None:
