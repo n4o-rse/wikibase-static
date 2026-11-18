@@ -3,6 +3,14 @@
 Every version is a tag `vX.Y.Z` on the commit that raised `__version__` (`tools/tag_versions.py` makes the missing tags;
 `0.1.0` is the last commit before 0.2.0). The newest version is on top. The work plan with the findings behind each version is `PRIMER.md`.
 
+## 0.28.2
+- Dates in the Julian calendar are imported. `import-wikidata` used to drop every date that was not Gregorian, which lost e.g. the
+  inception (P571) of 71 Irish round towers (centuries of the Julian calendar). The CSV form of such a date is the full form with
+  a calendar suffix: `+1100-00-00T00:00:00Z/7/julian` (`/gregorian` is the default and is left out). `csvio.parse_time` reads it,
+  `format_time` writes it, `to-csv` no longer reports the calendar model as lost for Julian dates. RDF (`wikibase:timeCalendarModel`)
+  and the pages ("11th century (Julian)") knew the Julian model already. Other calendars and dates finer than a day are still
+  not imported and are counted in the report. 1 new test, 1 changed (722 in all).
+
 ## 0.28.1
 - `tools/new_satellite.py` and `tools/satellite-template/`: the skeleton of a new satellite site that is a set of Wikidata items
   (`wd-ogham-static` and the sites after it). One call writes the folder: the wrapper `main.py` (`import-wikidata` with `--generic

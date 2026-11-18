@@ -280,7 +280,7 @@ class Gaps(Case):
         converter = imp.Converter([], {}, {"Q5": "Q200"}, {"P150": "time", "P151": "quantity", "P152": "globe-coordinate", "P153": "string"},
                                   imp.IdMap([], set(), "wikidata"), ("en",))
         julian = {"snaktype": "value", "datatype": "time", "datavalue": {"type": "time", "value": {
-            "time": "+1500-01-01T00:00:00Z", "precision": 11, "calendarmodel": "http://www.wikidata.org/entity/Q1985786", "timezone": 0, "before": 0, "after": 0}}}
+            "time": "+1500-01-01T00:00:00Z", "precision": 11, "calendarmodel": "http://www.wikidata.org/entity/Q1985999", "timezone": 0, "before": 0, "after": 0}}}
         mars = {"snaktype": "value", "datatype": "globe-coordinate", "datavalue": {"type": "globecoordinate", "value": {
             "latitude": 1, "longitude": 2, "globe": "http://www.wikidata.org/entity/Q111", "precision": 1}}}
         wrong = {"snaktype": "value", "datatype": "url", "datavalue": {"type": "string", "value": "https://x.example"}}
@@ -314,6 +314,20 @@ class Values(unittest.TestCase):
         self.assertEqual(c.value(self.snak("globe-coordinate", "globecoordinate", {"latitude": 50.5, "longitude": 8, "globe": "http://www.wikidata.org/entity/Q2", "precision": 1e-06}), "P152", "P625", "Q1"), "50.5,8")
         self.assertEqual(c.value(self.snak("string", "string", None, "somevalue"), "P153", "P1", "Q1"), "?")
         self.assertEqual(c.value(self.snak("string", "string", None, "novalue"), "P153", "P1", "Q1"), "-")
+
+    def test_julian_and_coarse_dates_are_kept_with_their_calendar(self) -> None:
+        c = self.converter()
+        julian = lambda t, p: self.snak("time", "time", {"time": t, "precision": p, "calendarmodel": "http://www.wikidata.org/entity/Q1985786", "timezone": 0, "before": 0, "after": 0})
+        century = c.value(julian("+1100-00-00T00:00:00Z", 7), "P150", "P571", "Q1")
+        self.assertEqual(century, "+1100-00-00T00:00:00Z/7/julian")
+        day = c.value(julian("+1500-01-01T00:00:00Z", 11), "P150", "P571", "Q1")
+        self.assertEqual(day, "+1500-01-01T00:00:00Z/11/julian")
+        self.assertEqual(len(c.gaps.other), 0)
+        from wikibase_static import csvio
+        back = csvio.parse_time(century)
+        self.assertEqual((back["precision"], back["calendarmodel"]), (7, csvio.JULIAN))
+        self.assertEqual(csvio.format_time(back), century)
+        self.assertEqual(csvio.format_time(csvio.parse_time("+1100-00-00T00:00:00Z/7")), "+1100-00-00T00:00:00Z/7")
 
     def test_an_item_value_is_the_twin_or_a_stub_and_a_unit_too(self) -> None:
         c = self.converter()

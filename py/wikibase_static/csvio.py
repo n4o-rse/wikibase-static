@@ -56,6 +56,8 @@ RANKS = ("normal", "preferred", "deprecated")
 DEFAULT_PRECISION = 1e-06            # coordinate precision in degrees when the CSV gives none (about 0.1 m)
 EARTH = WIKIDATA_ENTITY + "Q2"
 GREGORIAN = WIKIDATA_ENTITY + "Q1985727"
+JULIAN = WIKIDATA_ENTITY + "Q1985786"
+CALENDARS = {"gregorian": GREGORIAN, "julian": JULIAN}
 LANGUAGE = re.compile(r"^[A-Za-z][A-Za-z0-9-]*$")
 STATEMENT_GUID = re.compile(r"^([QP][1-9][0-9]*)\$[A-Za-z0-9-]+$")
 
@@ -124,14 +126,16 @@ def _entity_value(text: str, expect: str) -> dict[str, Any]:
 
 
 def parse_time(text: str) -> dict[str, Any]:
-    """``2021``, ``2021-06``, ``2021-06-04``, ``-0500`` or ``+2021-06-04T00:00:00Z/11`` as a Wikibase time value."""
-    full = re.match(r"^([+-])(\d{1,12})-(\d\d)-(\d\d)T00:00:00Z/(\d{1,2})$", text)
+    """``2021``, ``2021-06``, ``2021-06-04``, ``-0500`` or ``+2021-06-04T00:00:00Z/11`` as a Wikibase time value.
+
+    The full form may end in ``/julian``: ``+1000-00-00T00:00:00Z/7/julian`` is a century of the Julian calendar."""
+    full = re.match(r"^([+-])(\d{1,12})-(\d\d)-(\d\d)T00:00:00Z/(\d{1,2})(?:/(gregorian|julian))?$", text)
     if full:
-        sign, year, month, day, precision = full.groups()
+        sign, year, month, day, precision, calendar = full.groups()
         precision_value = int(precision)
         if not 0 <= precision_value <= 14:
             raise CsvError(f"time precision {precision} is outside 0 to 14")
-        return _time_value(sign, int(year), int(month), int(day), precision_value)
+        return _time_value(sign, int(year), int(month), int(day), precision_value, CALENDARS[calendar or "gregorian"])
     short = re.match(r"^(-?)(\d{1,12})(?:-(\d\d)(?:-(\d\d))?)?$", text)
     if not short:
         raise CsvError(f"{text!r} is not a date (2021, 2021-06, 2021-06-04, -0500 or +2021-06-04T00:00:00Z/11)")
@@ -140,7 +144,7 @@ def parse_time(text: str) -> dict[str, Any]:
     return _time_value("-" if minus else "+", int(year), int(month or 0), int(day or 0), precision)
 
 
-def _time_value(sign: str, year: int, month: int, day: int, precision: int) -> dict[str, Any]:
+def _time_value(sign: str, year: int, month: int, day: int, precision: int, calendar: str = GREGORIAN) -> dict[str, Any]:
     if month > 12 or day > 31:
         raise CsvError(f"month {month} or day {day} is out of range")
     if precision >= 10 and month == 0:
@@ -148,7 +152,7 @@ def _time_value(sign: str, year: int, month: int, day: int, precision: int) -> d
     if precision >= 11 and day == 0:
         raise CsvError("a day is needed for this precision")
     return {"time": f"{sign}{year:04d}-{month:02d}-{day:02d}T00:00:00Z", "timezone": 0, "before": 0, "after": 0,
-            "precision": precision, "calendarmodel": GREGORIAN}
+            "precision": precision, "calendarmodel": calendar}
 
 
 def format_time(value: dict[str, Any]) -> str:
@@ -171,7 +175,8 @@ def format_time(value: dict[str, Any]) -> str:
                 and all(value.get(key, default) == default for key, default in
                         (("timezone", 0), ("before", 0), ("after", 0), ("calendarmodel", GREGORIAN))):
             return candidate
-    return f"{time_text}/{precision}"
+    suffix = "/julian" if str(value.get("calendarmodel", GREGORIAN)) == JULIAN else ""
+    return f"{time_text}/{precision}{suffix}"
 
 
 def parse_quantity(text: str, base: str | None) -> dict[str, Any]:
@@ -319,7 +324,7 @@ def lossy_parts(snak: Snak) -> list[str]:
     if snak.vtype == "time" and isinstance(value, dict):
         if value.get("timezone", 0) != 0 or value.get("before", 0) != 0 or value.get("after", 0) != 0:
             lost.append("time timezone/before/after")
-        if value.get("calendarmodel", GREGORIAN) != GREGORIAN:
+        if value.get("calendarmodel", GREGORIAN) not in (GREGORIAN, JULIAN):
             lost.append("time calendar model")
     return lost
 

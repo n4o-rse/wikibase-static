@@ -313,8 +313,8 @@ class Converter:
         if vtype == "monolingualtext":
             return f"{value['language']}:{value['text']}"
         if vtype == "time":
-            if value.get("calendarmodel", GREGORIAN) != GREGORIAN or value.get("precision", 11) > 11:
-                self.gaps.other[f"{pid}: a date outside the Gregorian calendar or finer than a day; not imported"] += 1
+            if value.get("calendarmodel", GREGORIAN) not in (GREGORIAN, csvio.JULIAN) or value.get("precision", 11) > 11:
+                self.gaps.other[f"{pid}: a date in another calendar than Gregorian or Julian, or finer than a day; not imported"] += 1
                 return None
             return csvio.format_time(value)
         if vtype == "quantity":
