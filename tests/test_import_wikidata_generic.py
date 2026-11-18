@@ -392,6 +392,37 @@ class Network(Case):
         self.assertIn("claims", harvest.entity_path(raw, seed).read_text(encoding="utf-8"))
 
 
+class Provenance(Case):
+    def test_statement_is_the_default_every_statement_names_the_wikidata_page(self) -> None:
+        self.generic()
+        statements = [r for r in self.table("statements.csv") if r["origin"] == "wikidata" and r["property"] != "P4"]
+        pages = {r["sid"] for r in self.table("references.csv") if r["property"] == "P6"}
+        self.assertTrue(statements)
+        self.assertTrue(all(r["sid"] in pages for r in statements))
+
+    def test_item_keeps_the_reference_on_the_twin_statement_only(self) -> None:
+        self.load()
+        code, out = self.run_step("--offline", "--generic", "--provenance", "item")
+        self.assertEqual(code, 0, out)
+        references = self.table("references.csv")
+        twins = {r["sid"] for r in self.table("statements.csv") if r["property"] == "P4"}
+        for r in references:                                  # "retrieved" and "stated in" are item-level now: only the twins say them
+            if r["value"].startswith("https://www.wikidata.org/wiki/Q"):
+                self.assertIn(r["sid"], twins, r)
+        stone = next(r["id"] for r in self.table("idmap.csv") if r["key"] == "Q9000001")
+        own = [r for r in references if r["sid"].startswith(f"{stone}-") and not r["sid"].endswith("-P4-wd1")]
+        self.assertTrue(all(r["group"] != "0" for r in own))
+        self.assertEqual(min((int(r["group"]) for r in own), default=1), 1)      # Wikidata's own references start at group 1
+
+    def test_item_twin_names_date_and_source(self) -> None:
+        self.load()
+        self.run_step("--offline", "--generic", "--provenance", "item")
+        stone = next(r["id"] for r in self.table("idmap.csv") if r["key"] == "Q9000001")
+        sid = f"{stone}-P4-wd1"
+        found = {r["property"] for r in self.table("references.csv") if r["sid"] == sid}
+        self.assertEqual(found, {"P6", "P7", "P8"})
+
+
 class SavedFiles(Case):
     def test_from_dir_stores_property_files_too(self) -> None:
         code, out = self.load()

@@ -27,6 +27,11 @@ Keys (all optional; a missing file gives the defaults and one note)::
                                       # URI is the real Wikibase; a site with URIs of its own should not borrow them
     data_as_of: 2026-10-25            # optional; date (or date and time) of the data, for entities that carry no "modified" of
                                       # their own (tables kept as CSV); used in the header and the catalogue of the RDF export
+    entity_files: false               # optional, default true; false: no docs/ttl/<ID>.ttl and docs/json/<ID>.json per entity, no download links
+                                      # on the pages, no per-entity DCAT distributions (for sites of thousands of items; the complete
+                                      # Turtle file in downloads/ stays)
+    browser_graph: slim               # optional, default full; slim: the query page loads a Turtle file without the DCAT description
+                                      # of each entity (a third fewer triples); the complete file stays in downloads/
     counterpart:                      # optional; the same entities in a real Wikibase (S7g): a link on every page, owl:sameAs in the RDF
       name: chublets-wikibase.de      # shown on the pages
       uri: https://chublets-wikibase.de/entity/{id}                 # concept URI, {id} is the id there (owl:sameAs)
@@ -58,7 +63,7 @@ DATA_AS_OF = re.compile(r"^(\d{4}-\d{2}-\d{2})(?:[T ](\d{2}:\d{2}:\d{2}))?Z?$")
 DEFAULT_COLOUR = "#8E3A63"       # the primary colour of the BeaverBridge palette (0.24.0); a site that keeps it follows the palette in both modes
 DEFAULT_LICENSE = ("CC0 1.0", "https://creativecommons.org/publicdomain/zero/1.0/")   # PRIMER.md, A4
 KNOWN_KEYS = {"title", "description", "logo", "colour", "source", "license", "languages",
-              "imprint", "pages_url", "formatter_property", "wkt_property", "rdf_base", "rdf_prefix", "edit_url", "data_as_of", "counterpart"}
+              "imprint", "pages_url", "formatter_property", "wkt_property", "rdf_base", "rdf_prefix", "edit_url", "data_as_of", "counterpart", "entity_files", "browser_graph"}
 
 
 @dataclass
@@ -82,6 +87,8 @@ class SiteConfig:
     edit_url: str | None = None                # folder of the CSV tables in the repository editor (S7f), without a trailing slash
     formatter_property: str = "P1630"
     wkt_property: str | None = None            # a string property that holds WKT geometries (S6)
+    entity_files: bool = True                  # a Turtle and a JSON file per entity in docs/ttl and docs/json
+    browser_graph: str = "full"                # "full" or "slim": the Turtle file the query page loads
     present: bool = False                      # was there a site.yaml at all
     problems: list[str] = field(default_factory=list)
 
@@ -229,6 +236,16 @@ def load_config(path: Path, manifest_source: str | None = None) -> SiteConfig:
             problems.append(f"site.yaml: data_as_of {stated!r} is not a date (2026-10-25) or a date and time (2026-10-25T08:30:00Z); ignored")
 
     cfg.counterpart = _counterpart(data.get("counterpart"), problems)
+    if "entity_files" in data:
+        if isinstance(data["entity_files"], bool):
+            cfg.entity_files = data["entity_files"]
+        else:
+            problems.append(f"site.yaml: entity_files {data['entity_files']!r} is not true or false; true used")
+    if "browser_graph" in data:
+        if data["browser_graph"] in ("full", "slim"):
+            cfg.browser_graph = data["browser_graph"]
+        else:
+            problems.append(f"site.yaml: browser_graph {data['browser_graph']!r} is not full or slim; full used")
     edit_url = _text(data.get("edit_url"), "edit_url", problems)
     if edit_url:
         if re.match(r"^https?://[^\s]+$", edit_url):

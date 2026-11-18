@@ -67,11 +67,16 @@ def main(argv: list[str] | None = None) -> int:
     problems: list[str] = []
     if not published.is_file() or published.read_bytes() != ttl.read_bytes():
         problems.append(f"docs/downloads/{stem}.ttl is missing or differs from {ttl.relative_to(utils.ROOT).as_posix()}; run the rdf step")
+    graph_name = step_rdf.slim_file(stem) if cfg.browser_graph == "slim" else f"{stem}.ttl"      # what the page loads and the queries run over
+    graph = utils.DOCS / "downloads" / graph_name
+    if not graph.is_file():
+        utils.warn(STEP, f"docs/downloads/{graph_name} not found; run the rdf step (python main.py rdf)")
+        return 0
 
     queries = sparql.load_queries(utils.ROOT / QUERIES_FILE)
     problems += queries.problems
     sparql.apply_language(queries, cfg.default_language)
-    sparql.apply_requirements(queries, sparql.site_features(site, cfg.pages_url))
+    sparql.apply_requirements(queries, sparql.site_features(site, cfg.pages_url, cfg.entity_files and cfg.browser_graph == "full"))
     print(f"[{STEP}] {len(queries.queries)} queries from {queries.source}"
           + (f"; left out because the data has nothing for them: {', '.join(queries.left_out)}" if queries.left_out else ""))
     if not queries.queries:
@@ -81,7 +86,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     prefixes = ns.prefixes()
-    results = sparql.run_all(ttl.read_text(encoding="utf-8"), queries.queries, prefixes)
+    results = sparql.run_all(graph.read_text(encoding="utf-8"), queries.queries, prefixes)
     for result in results:
         if result["error"]:
             problems.append(f"query {result['id']} failed: {result['error']}")
@@ -118,18 +123,19 @@ def main(argv: list[str] | None = None) -> int:
 
     config = {
         "default": default, "pyodideUrl": f"https://cdn.jsdelivr.net/pyodide/v{sparql.PYODIDE_VERSION}/full/pyodide.js",
-        "rdflibVersion": sparql.RDFLIB_VERSION, "graphUrl": f"downloads/{stem}.ttl", "maxRows": sparql.MAX_ROWS,
+        "rdflibVersion": sparql.RDFLIB_VERSION, "graphUrl": f"downloads/{graph_name}", "maxRows": sparql.MAX_ROWS,
         "entityBase": ns.wd, "prefixes": prefixes, "prefixText": sparql.prefix_block(prefixes), "texts": r.sparql_texts(),
     }
     context = common("sparql.html", f"{heading_text} – {cfg.title}", None, r.footer(None))
     context.update({
         "heading": heading, "intro": both(queries.intro) if queries.intro else None, "queries": rows,
-        "graph_url": f"downloads/{stem}.ttl", "graph_name": f"{stem}.ttl",
+        "graph_url": f"downloads/{graph_name}", "graph_name": graph_name,
+        "graph_full_url": f"downloads/{stem}.ttl" if cfg.browser_graph == "slim" else None,
         "ontology_url": "downloads/wikibase-ontology.ttl" if (utils.DOCS / "downloads" / "wikibase-ontology.ttl").is_file() else None,
-        "pages_known": bool(cfg.pages_url), "prefix_text": sparql.prefix_block(prefixes),
+        "pages_known": bool(cfg.pages_url) and cfg.entity_files, "prefix_text": sparql.prefix_block(prefixes),
         "config_json": js_json(config), "runner_json": js_json(sparql.RUNNER_PY),
         "ui_sq_data": r.ui("sq_data"), "ui_sq_data_text": r.ui("sq_data_text", n=triples),
-        "ui_sq_ontology": r.ui("sq_ontology"), "ui_sq_files": r.ui("sq_files"), "ui_sq_files_text": r.ui("sq_files_text"),
+        "ui_sq_ontology": r.ui("sq_ontology"), "ui_sq_full": r.ui("sq_full"), "ui_sq_files": r.ui("sq_files"), "ui_sq_files_text": r.ui("sq_files_text"),
         "ui_sq_start": r.ui("sq_start"), "ui_sq_noscript": r.ui("sq_noscript"), "ui_sq_note": r.ui("sq_note"),
         "ui_sq_prefixes": r.ui("sq_prefixes"), "ui_sq_run": r.ui("sq_run"), "ui_sq_reset": r.ui("sq_reset"), "ui_sq_rq": r.ui("sq_rq"),
     })

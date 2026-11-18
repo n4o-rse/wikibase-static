@@ -6,9 +6,10 @@ Reads the loaded entities and ``site.yaml`` and writes::
 
     dist/<host>.ttl                        everything (for https://fuzzy-sl.wikibase.cloud: fuzzy-sl.wikibase.cloud.ttl)
     docs/downloads/<host>.ttl              the same file, byte for byte, as published
+    docs/downloads/<host>.slim.ttl         only with ``browser_graph: slim``: the same without the DCAT description of each entity
     docs/downloads/wikibase-ontology.ttl   the Wikibase system ontology (CC0), copied from the package
-    docs/ttl/Q1.ttl                        the triples of each entity on its own, with its DCAT description
-    docs/json/Q1.json                      each entity as archived, byte for byte
+    docs/ttl/Q1.ttl                        the triples of each entity on its own, with its DCAT description (not with ``entity_files: false``)
+    docs/json/Q1.json                      each entity as archived, byte for byte (likewise)
     docs/entity/Q1.html                    only when the concept URIs lie under ``pages_url`` (see ``concept_stubs``)
 
 The URIs are those of the real Wikibase (``site.yaml``: ``rdf_base``, else ``source.url``), so a query written for
@@ -77,18 +78,26 @@ STUB = """<!doctype html>
 <title>{id}</title>
 <meta http-equiv="refresh" content="0; url=../{id}.html">
 <link rel="canonical" href="../{id}.html">
-<link rel="alternate" type="text/turtle" href="../ttl/{id}.ttl">
-<link rel="alternate" type="application/json" href="../json/{id}.json">
-</head>
+{links}</head>
 <body>
-<p>The concept <code>{id}</code> is described on <a href="../{id}.html">{id}.html</a>
-(<a href="../ttl/{id}.ttl">RDF, Turtle</a>).</p>
+<p>The concept <code>{id}</code> is described on <a href="../{id}.html">{id}.html</a>{turtle}.</p>
 </body>
 </html>
 """
 
 
-def concept_stubs(site, base: str, pages_url: str | None) -> dict[str, bytes]:
+STUB_LINKS = """<link rel="alternate" type="text/turtle" href="../ttl/{id}.ttl">
+<link rel="alternate" type="application/json" href="../json/{id}.json">
+"""
+STUB_TURTLE = ' (<a href="../ttl/{id}.ttl">RDF, Turtle</a>)'
+
+
+def stub(entity_id: str, entity_files: bool) -> bytes:
+    return utils_bytes(STUB.format(id=entity_id, links=STUB_LINKS.format(id=entity_id) if entity_files else "",
+                                   turtle=STUB_TURTLE.format(id=entity_id) if entity_files else ""))
+
+
+def concept_stubs(site, base: str, pages_url: str | None, entity_files: bool = True) -> dict[str, bytes]:
     """``entity/<ID>.html`` for each entity, when the concept URIs (``<base>/entity/<ID>``) lie under the published site.
 
     A static host cannot answer ``/entity/Q1`` with a redirect or with Turtle; GitHub Pages does serve ``entity/Q1.html``
@@ -97,19 +106,29 @@ def concept_stubs(site, base: str, pages_url: str | None) -> dict[str, bytes]:
     base URI is that of the live Wikibase nothing is written."""
     if not pages_url or pages_url.rstrip("/") != base.rstrip("/"):
         return {}
-    stubs = {f"{entity_id}.html": utils_bytes(STUB.format(id=entity_id)) for entity_id in sorted(site.entities)}
-    stubs.update({f"{source}.html": utils_bytes(STUB.format(id=target)) for source, target in sorted(site.redirects.items())})   # merged ids
+    stubs = {f"{entity_id}.html": stub(entity_id, entity_files) for entity_id in sorted(site.entities)}
+    stubs.update({f"{source}.html": stub(target, entity_files) for source, target in sorted(site.redirects.items())})   # merged ids
     return stubs
 
 
+def slim_file(stem: str) -> str:
+    return f"{stem}.slim.ttl"
+
+
 def write_published(site, ns, result, text: str, stem: str, header: list[str], pages_url: str | None = None,
-                    twin=None) -> int:
+                    twin=None, entity_files: bool = True, browser_graph: str = "full") -> int:
     """The files that go into docs/; returns how many."""
     downloads = {f"{stem}.ttl": utils_bytes(text), ONTOLOGY_NAME: ONTOLOGY.read_bytes()}
     if twin is not None and (utils.ROOT / twin.map_file).is_file():
         downloads[Path(twin.map_file).name] = (utils.ROOT / twin.map_file).read_bytes()      # the table of ids, as it is
+    if browser_graph == "slim":
+        small = rdf.slim(result.triples, ns, site)
+        own = [f"{header[0]} (without the DCAT description of each entity, for the query page; the complete file is {stem}.ttl)",
+               *header[1:]]
+        downloads[slim_file(stem)] = utils_bytes(rdf.to_turtle(small, ns, "\n".join(own),
+                                                               [(rdf.BRIDGE_TITLE, small & result.bridge), (rdf.CRM_TITLE, small & result.crm)]))
     ttl, raw = {}, {}
-    for entity_id, triples in sorted(result.by_entity.items()):
+    for entity_id, triples in sorted(result.by_entity.items() if entity_files else ()):
         own = [f"{entity_id}: the part of the RDF export of {header[0].split(' of ', 1)[-1].split(',')[0]} that describes this entity",
                header[1].replace(f" {__version__};", ";"), *header[2:]]        # the version stands in the files of the whole dataset only
         sections = [(rdf.BRIDGE_TITLE, triples & result.bridge), (rdf.CRM_TITLE, triples & result.crm)]
@@ -119,9 +138,12 @@ def write_published(site, ns, result, text: str, stem: str, header: list[str], p
         if file is not None:
             raw[f"{entity_id}.json"] = file.read_bytes()
     _sync(utils.DOCS / "downloads", downloads)
-    _sync(utils.DOCS / "ttl", ttl)
-    _sync(utils.DOCS / "json", raw)
-    stubs = concept_stubs(site, ns.base, pages_url)
+    for folder, files in (("ttl", ttl), ("json", raw)):
+        if files or (utils.DOCS / folder).is_dir():
+            _sync(utils.DOCS / folder, files)
+            if not files:
+                (utils.DOCS / folder).rmdir()
+    stubs = concept_stubs(site, ns.base, pages_url, entity_files)
     if stubs or (utils.DOCS / "entity").is_dir():
         _sync(utils.DOCS / "entity", stubs)
         if not stubs:
@@ -150,13 +172,13 @@ def main(argv: list[str] | None = None) -> int:
     ns = rdf.Namespaces(base, cfg.rdf_prefix)
     stem = rdf.file_stem(base)
     twin = counterpart.load(cfg.counterpart, utils.ROOT, set(site.entities))        # the same entities in a real Wikibase, or None
-    json_sizes = {e.id: file.stat().st_size for e in site.entities.values() if (file := raw_file(e)) is not None}
+    json_sizes = {e.id: file.stat().st_size for e in site.entities.values() if (file := raw_file(e)) is not None} if cfg.entity_files else {}
     data_date = site.latest_modified or cfg.data_as_of         # the archived entities first, else the date stated in site.yaml
     catalog = rdf.CatalogInfo(
         title=cfg.title, description=cfg.description, license_url=cfg.license_url, source_url=cfg.source_url,
         pages_url=cfg.pages_url, modified=data_date, json_sizes=json_sizes,
         export_file=f"downloads/{stem}.ttl", ontology_file=f"downloads/{ONTOLOGY_NAME}",
-        ontology_bytes=ONTOLOGY.stat().st_size)
+        ontology_bytes=ONTOLOGY.stat().st_size, entity_files=cfg.entity_files)
     result = rdf.build(site, ns, cfg.license_url, catalog, twin, cfg.wkt_property)
 
     own = bool(cfg.pages_url) and ns.base.rstrip("/") == cfg.pages_url.rstrip("/")     # URIs of this site: do not point to the source
@@ -170,10 +192,10 @@ def main(argv: list[str] | None = None) -> int:
     text = rdf.to_turtle(result.triples, ns, "\n".join(header), [(rdf.BRIDGE_TITLE, result.bridge), (rdf.CRM_TITLE, result.crm)])
     target = target_file(base)
     utils.write_text(target, text)
-    published = write_published(site, ns, result, text, stem, header, cfg.pages_url, twin)
+    published = write_published(site, ns, result, text, stem, header, cfg.pages_url, twin, cfg.entity_files, cfg.browser_graph)
 
     print(f"[{STEP}] {result.entities} entities, {result.statements} statements -> {len(result.triples)} triples")
-    print(f"[{STEP}] {published} file(s) in docs/ (downloads, ttl/, json/, entity/); {result.distributions} distributions described")
+    print(f"[{STEP}] {published} file(s) in docs/ ({'downloads, ttl/, json/, entity/' if cfg.entity_files else 'downloads, entity/; entity_files: false'}{'; ' + slim_file(stem) + ' for the query page' if cfg.browser_graph == 'slim' else ''}); {result.distributions} distributions described")
     for note in result.notes:
         print(f"[{STEP}] note: {note}")
     print(f"[{STEP}] {target.relative_to(utils.ROOT).as_posix()}: {len(target.read_bytes())} bytes, base URI {ns.base}"

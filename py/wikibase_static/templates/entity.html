@@ -18,8 +18,10 @@
   <p class="description">{% if description %}{{ description }}{% else %}<span class="muted">{{ ui_no_description }}</span>{% endif %}</p>
 
   <p class="entity-tools">
+    {% if ttl_href %}
     <span class="muted">{{ ui_page_downloads }}:</span>
     <a href="{{ ttl_href }}" download>{{ ui_download_ttl }}</a>
+    {% endif %}
     {% if json_href %}
     <a href="{{ json_href }}" download>{{ ui_download_json }}</a>
     {% endif %}

@@ -3,6 +3,21 @@
 Every version is a tag `vX.Y.Z` on the commit that raised `__version__` (`tools/tag_versions.py` makes the missing tags;
 `0.1.0` is the last commit before 0.2.0). The newest version is on top. The work plan with the findings behind each version is `PRIMER.md`.
 
+## 0.28.0
+Slimmer sites, for a Wikidata set of a thousand items and more (`wd-ogham-static`, 1246 seeds: 202 MB in `docs/`, 62 MB in `data/derived/`,
+a 12.8 MB Turtle file that the query page had to parse in the browser). Everything is optional; without the new settings nothing changes.
+- `import-wikidata --provenance item`: only the `P4` statement of an item names its Wikidata page, the retrieval date and Wikidata as the
+  source (`P6`, `P7`, `P8`); the statements keep just the references Wikidata gave them (numbered from group 1). The default,
+  `--provenance statement`, is the old behaviour (those three on every statement). On the replica with 1246 items this took 79 394
+  reference rows down to 4 747 and `data/derived/` from 62 MB to 23 MB.
+- `site.yaml`: `entity_files: false` writes no `docs/ttl/<ID>.ttl` and `docs/json/<ID>.json`, no download links on the entity pages, no
+  per-entity DCAT distributions of those files (the HTML page stays a distribution), and the `entity/<ID>.html` stubs name no files.
+  The complete Turtle file stays in `downloads/`. The `distributions` example query is left out then.
+- `site.yaml`: `browser_graph: slim` publishes `downloads/<host>.slim.ttl`, the export without the DCAT description of each entity
+  (the datasets stay as `a dcat:Dataset`, the catalogues still count them); the query page loads and queries that file, and links the
+  complete one. `rdf.slim()` makes it. The saving is small (9 % of the triples on the replica) because the statements are the bulk.
+- Tests: 6 new (3 `--provenance`, 3 for the switches; 714 in all).
+
 ## 0.27.1
 - `import-wikidata`: a Wikidata item that was only a *stub* in an earlier run (labels, descriptions, aliases) and is a seed now is
   fetched again in full. Before, `refresh` compared only the revision, so such an item kept its stub copy and stayed without

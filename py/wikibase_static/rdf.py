@@ -391,6 +391,7 @@ class CatalogInfo:
     export_file: str | None = None         # e.g. downloads/fuzzy-sl.wikibase.cloud.ttl
     ontology_file: str | None = None       # e.g. downloads/wikibase-ontology.ttl
     ontology_bytes: int | None = None
+    entity_files: bool = True              # False: no JSON and Turtle distribution per entity (the files are not written)
 
 
 class _Builder:
@@ -813,11 +814,12 @@ class _Builder:
             return
         pages = info.pages_url.rstrip("/") + "/"
         self.add(dataset, self._dcat("landingPage"), iri(f"{pages}{entity.id}.html"))
-        if entity.id in info.json_sizes:
+        if info.entity_files and entity.id in info.json_sizes:
             self._distribution(dataset, f"{entity.id}-json", f"{entity.id}, as archived from the Wikibase API", "json",
                                f"{pages}json/{entity.id}.json", info.json_sizes[entity.id])
-        self._distribution(dataset, f"{entity.id}-ttl", f"{entity.id}, RDF in the Wikibase data model", "ttl",
-                           f"{pages}ttl/{entity.id}.ttl", None)
+        if info.entity_files:
+            self._distribution(dataset, f"{entity.id}-ttl", f"{entity.id}, RDF in the Wikibase data model", "ttl",
+                               f"{pages}ttl/{entity.id}.ttl", None)
         self._distribution(dataset, f"{entity.id}-html", f"{entity.id}, page", "html", f"{pages}{entity.id}.html", None,
                            access_only=True)
 
@@ -946,6 +948,26 @@ def build(site: Site, ns: Namespaces, license_url: str | None = None, catalog: C
         problems.add(f"rdf: {prop} has the datatype {builder.skipped_types[prop]}, which is not exported ({count} value(s) left out)")
     builder.out.problems = sorted(problems)
     return builder.out
+
+
+def slim(triples: Iterable[Triple], ns: Namespaces, site: Site) -> set[Triple]:
+    """The triples for the query page of a large site: the export without the DCAT description of each entity.
+
+    Of every ``dcat:Dataset`` of an entity only ``a dcat:Dataset`` stays (the catalogues still count them), its title,
+    description, licence and so on and all its distributions go; they are a third of the triples of a site with a thousand
+    items and no example query needs them. The statements, qualifiers, references, labels and the catalogues stay."""
+    datasets = {ns.dataset(entity_id) for entity_id in site.entities}
+    kept: set[Triple] = set()
+    type_dataset = (Iri(RDF + "type"), Iri(DCAT + "Dataset"))
+    for triple in triples:
+        subject, predicate, obj = triple
+        if isinstance(subject, Iri):
+            if subject.value.startswith(ns.dist):
+                continue
+            if subject.value in datasets and predicate.value.startswith((DCAT, DCTERMS)) and (predicate, obj) != type_dataset:
+                continue
+        kept.add(triple)
+    return kept
 
 
 # --------------------------------------------------------------------------- serialisation

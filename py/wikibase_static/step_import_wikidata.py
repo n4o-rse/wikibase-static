@@ -157,10 +157,11 @@ class Gaps:
 class Converter:
     def __init__(self, seeds: list[dict[str, str]], entities: dict[str, dict[str, Any]], twins: dict[str, str],
                  datatypes: dict[str, str], idmap: IdMap, languages: tuple[str, ...],
-                 generic: bool = False, skip: frozenset[str] = frozenset()) -> None:
+                 generic: bool = False, skip: frozenset[str] = frozenset(), provenance: str = "statement") -> None:
         self.seeds, self.entities, self.twins, self.datatypes = seeds, entities, dict(twins), dict(datatypes)
         self.idmap, self.languages = idmap, languages
         self.generic, self.skip = generic, skip
+        self.provenance = provenance           # "statement": every statement names its Wikidata page; "item": only the P4 twin does
         self.created: dict[str, str] = {}       # --generic: Wikidata property id -> the local property that was created for it
         self.refused: dict[str, str] = {}       # --generic: Wikidata property id -> why no property was created
         self.out = Out()
@@ -374,6 +375,10 @@ class Converter:
         sid = f"{self.subject}-{TWIN}-wd1"
         self.out.statements.append({"sid": sid, "subject": self.subject, "property": TWIN, "value": qid, "rank": "", "origin": SOURCE})
         self.out.references.append({"sid": sid, "group": "1", "property": REFERENCE_URL, "value": PAGE + qid})
+        if self.provenance == "item":                  # the one place that says where the item comes from, and when
+            if self.retrieved:
+                self.out.references.append({"sid": sid, "group": "1", "property": RETRIEVED, "value": self.retrieved})
+            self.out.references.append({"sid": sid, "group": "1", "property": STATED_IN, "value": self.item(WIKIDATA_ITEM, count=False)})
 
     def statement(self, local: str, pid: str, claim: dict[str, Any], qid: str) -> None:
         value = self.value(claim["mainsnak"], local, pid, qid)
@@ -394,10 +399,12 @@ class Converter:
                 qvalue = self.value(snak, qlocal, qpid, qid)
                 if qvalue is not None:
                     self.out.qualifiers.append({"sid": sid, "property": qlocal, "value": qvalue})
-        group = 1
-        self.reference(sid, group, [(REFERENCE_URL, PAGE + qid)]
-                       + ([(RETRIEVED, self.retrieved)] if self.retrieved else [])
-                       + [(STATED_IN, self.item(WIKIDATA_ITEM, count=False))])
+        group = 0
+        if self.provenance != "item":
+            group = 1
+            self.reference(sid, group, [(REFERENCE_URL, PAGE + qid)]
+                           + ([(RETRIEVED, self.retrieved)] if self.retrieved else [])
+                           + [(STATED_IN, self.item(WIKIDATA_ITEM, count=False))])
         for reference in claim.get("references", []):
             rows: list[tuple[str, str]] = []
             for rpid in reference.get("snaks-order", list(reference.get("snaks", {}))):
@@ -590,6 +597,10 @@ def build_parser() -> argparse.ArgumentParser:
                         help="a Wikidata property without a twin becomes a local property (a site without a model of its own, S14a)")
     parser.add_argument("--skip-property", default="", metavar="P1,P2",
                         help="with --generic: Wikidata properties that are not created (they are reported as without a twin)")
+    parser.add_argument("--provenance", choices=("statement", "item"), default="statement",
+                        help="statement (default): every statement carries a reference to its Wikidata page, the date and Wikidata as the source; "
+                             "item: only the P4 statement of each item does, and the statements keep just the references Wikidata gave them "
+                             "(a site of thousands of items is a third smaller)")
     parser.add_argument("--offline", action="store_true", help="no network: use what is in the raw folder")
     parser.add_argument("--from-dir", metavar="DIR", type=Path, help="store saved JSON files in the raw folder first")
     parser.add_argument("--dry-run", action="store_true", help="print the report, write nothing (implies --offline)")
@@ -601,9 +612,9 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def convert(seeds, raw_entities, site, kernel, idmap, languages, generic: bool = False,
-            skip: frozenset[str] = frozenset()) -> Converter:
+            skip: frozenset[str] = frozenset(), provenance: str = "statement") -> Converter:
     twins = twin_map(site, kernel, ORIGINS)
-    converter = Converter(seeds, raw_entities, twins, property_datatypes(kernel, site), idmap, languages, generic, skip)
+    converter = Converter(seeds, raw_entities, twins, property_datatypes(kernel, site), idmap, languages, generic, skip, provenance)
     known = {row["id"] for one in (site, kernel) for row in one.entities.rows}
     for seed in seeds:
         for target in classes_of(seed):
@@ -655,7 +666,7 @@ def main(argv: list[str] | None = None, client: Client | None = None) -> int:
             contact = args.contact or os.environ.get("WBS_CONTACT") or "https://github.com/n4o-rse/wikibase-static"
             client = client or Client(API, f"wikibase-static/{__version__} (+{contact}; static archive, read-only)", delay=args.delay, maxlag=args.maxlag)
             changed, same = refresh(client, args.raw, wanted, True, languages)
-            first = convert(seeds, load_raw(args.raw), site, kernel, IdMap(idmap_rows, taken, SOURCE), languages, args.generic, skip)
+            first = convert(seeds, load_raw(args.raw), site, kernel, IdMap(idmap_rows, taken, SOURCE), languages, args.generic, skip, args.provenance)
             more = sorted(set(first.stubs) - set(wanted))
             c2, s2 = refresh(client, args.raw, more, False, languages) if more else (0, 0)
             made = sorted(first.created)                  # --generic: the Wikidata properties that got a local one need their labels
@@ -668,7 +679,7 @@ def main(argv: list[str] | None = None, client: Client | None = None) -> int:
                   "or give the files with --from-dir")
             return 2
         idmap = IdMap(idmap_rows, taken, SOURCE)
-        converter = convert(seeds, raw_entities, site, kernel, idmap, languages, args.generic, skip)
+        converter = convert(seeds, raw_entities, site, kernel, idmap, languages, args.generic, skip, args.provenance)
     except (HarvestError, ImportProblem) as err:
         print(f"ERROR: [{STEP}] {err}")
         return getattr(err, "code", 2)

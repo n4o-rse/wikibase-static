@@ -272,7 +272,8 @@ def main(argv: list[str] | None = None) -> int:
             "ui_in_other_languages": r.ui("in_other_languages"), "ui_tools": r.ui("tools"),
             "ui_referenced_by_short": r.ui("referenced_by_short"), "ui_tab_read": r.ui("tab_read"),
             "concept_uri": copy_target(entity.id)[0], "entity_id": entity.id,
-            "ttl_href": f"ttl/{entity.id}.ttl", "json_href": f"json/{entity.id}.json" if raw_file(entity) else None,
+            "ttl_href": f"ttl/{entity.id}.ttl" if cfg.entity_files else None,
+            "json_href": f"json/{entity.id}.json" if cfg.entity_files and raw_file(entity) else None,
             "ui_page_downloads": r.ui("page_downloads"), "ui_download_ttl": r.ui("download_ttl"),
             "ui_download_json": r.ui("download_json"), "ui_copy_uri": r.ui(copy_target(entity.id)[1]), "ui_copied": r.ui("copied"),
             "ui_datatype": r.ui("datatype"), "ui_map": r.ui("map"), "ui_statements": r.ui("statements"),
@@ -363,7 +364,7 @@ def main(argv: list[str] | None = None) -> int:
     entity_pages = sorted(p.name for p in docs.glob("*.html") if ENTITY_PAGE.match(p.name))
     missing = sorted(f"{e}.html" for e in [*site.entities, *site.redirects] if f"{e}.html" not in entity_pages)
     checked, dead = linkcheck(docs, pending=("sparql.html", "query.html", *([table_href] if table_href else [])),
-                              pending_dirs=("ttl/", "json/"))
+                              pending_dirs=("ttl/", "json/") if cfg.entity_files else ())
 
     pages = len(entity_pages) - len(site.redirects)
     print(f"[{STEP}] {len(site.entities)} entities -> {pages} entity pages + index.html in docs/ "

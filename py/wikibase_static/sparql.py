@@ -184,10 +184,10 @@ def apply_language(queries: QuerySet, language: str) -> None:
         query.sparql = query.sparql.replace(LANG_TOKEN, language)
 
 
-def site_features(site: Site, pages_url: str | None = None) -> set[str]:
+def site_features(site: Site, pages_url: str | None = None, distributions: bool = True) -> set[str]:
     """What the data contains, for ``requires``: property datatypes plus the names in ``FEATURES``."""
     found = {e.datatype for e in site.properties if e.datatype}
-    if pages_url:
+    if pages_url and distributions:         # not with entity_files: false or a slim query graph: the files are not there to describe
         found.add("distribution")
     if site.crm:
         found.add("crm")

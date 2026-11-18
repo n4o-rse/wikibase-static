@@ -180,6 +180,8 @@ rdf_base: https://example.org    # optional: base URI of the RDF export; default
 rdf_prefix: chb                  # optional: own prefix family (chb:, chbt:, chbp:, ...) instead of wd:, wdt:, p:, ...; see "Prefixes of the export"
 data_as_of: 2026-10-25           # optional: date (or date and time) of the data, for entities without a modification time of their own (CSV tables); used in the header and the catalogue of the RDF export, else "unknown"
 edit_url: https://github.com/OWNER/REPO/edit/main/data/csv   # optional: folder of the CSV tables in the repository editor (tab "Source rows")
+entity_files: false              # optional, default true: no ttl/ and json/ file per entity (sites with thousands of items)
+browser_graph: slim              # optional, default full: the query page loads the export without the per-entity DCAT description
 counterpart:                     # optional: the same entities in a real Wikibase; see "Counterpart in a real Wikibase"
   name: wiki.example
   uri: https://wiki.example/entity/{id}
@@ -290,6 +292,7 @@ python main.py seeds-from-sparql --offline       no network: write the list from
 python main.py seeds-from-sparql --from-dir DIR  store answers saved in a browser (the JSON download of the Query Service), then write the list
 python main.py import-wikidata --generic         create a local property for every Wikidata property without a twin
 python main.py import-wikidata --generic --skip-property P2671,P646    ... except these
+python main.py import-wikidata --generic --provenance item   Wikidata page, date and source only on the P4 statement of each item (smaller sites)
 ```
 
 `data/seeds/wikidata-<name>.rq` is a query that returns `?item` (optionally `?kind`, `?itemLabel` or `?note`); `data/seeds/wikidata-qids.txt`

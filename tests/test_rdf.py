@@ -12,6 +12,7 @@ import hashlib
 import os
 import subprocess
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -21,7 +22,7 @@ sys.path.insert(0, str(HERE.parent / "py"))
 import rdflib  # noqa: E402
 from rdflib import Literal, URIRef  # noqa: E402
 
-from wikibase_static import rdf  # noqa: E402
+from wikibase_static import rdf, site_config  # noqa: E402
 from wikibase_static.loader import Site, load_site  # noqa: E402
 from wikibase_static.model import Entity, Snak, Statement  # noqa: E402
 
@@ -470,6 +471,53 @@ class DeterminismTests(unittest.TestCase):
                 if isinstance(term, rdf.Iri) and term.value.startswith(rdf.WIKIBASE):
                     used.add(term.value[len(rdf.WIKIBASE):])
         self.assertEqual(used - defined, {"GlobeCoordinate", "identifiers", "propertyType", "statements"})
+
+
+class SlimTests(unittest.TestCase):
+    """0.28.0: ``entity_files: false`` and ``browser_graph: slim`` for sites of thousands of items."""
+
+    def setUp(self) -> None:
+        self.site = load_site(raw=HERE / "fixtures", derived=HERE / "fixtures" / "nothing")
+        self.own = "https://pages.example.org/site"
+        self.ns = rdf.Namespaces(self.own)
+
+    def info(self, **more) -> "rdf.CatalogInfo":
+        return rdf.CatalogInfo(title="t", source_url="https://wb.example.org", pages_url=self.own + "/", json_sizes={"Q1": 12},
+                               export_file="downloads/x.ttl", ontology_file="downloads/wikibase-ontology.ttl", ontology_bytes=5, **more)
+
+    def test_without_entity_files_only_the_page_is_a_distribution(self) -> None:
+        full = rdf.build(self.site, self.ns, None, self.info())
+        few = rdf.build(self.site, self.ns, None, self.info(entity_files=False))
+        urls = {o.value for _s, p, o in few.triples if isinstance(o, rdf.Iri) and p.value == rdf.DCAT + "downloadURL"}
+        self.assertFalse([u for u in urls if "/ttl/" in u or "/json/" in u], urls)
+        self.assertLess(few.distributions, full.distributions)
+
+    def test_slim_drops_the_dcat_description_of_each_entity_and_keeps_the_rest(self) -> None:
+        result = rdf.build(self.site, self.ns, None, self.info())
+        small = rdf.slim(result.triples, self.ns, self.site)
+        self.assertLess(len(small), len(result.triples))
+        datasets = {self.ns.dataset(e) for e in self.site.entities}
+        for s, p, o in small:
+            self.assertFalse(isinstance(s, rdf.Iri) and s.value.startswith(self.ns.dist), (s, p, o))
+            if isinstance(s, rdf.Iri) and s.value in datasets and p.value.startswith((rdf.DCAT, rdf.DCTERMS)):
+                self.assertEqual((p.value, o.value), (rdf.RDF + "type", rdf.DCAT + "Dataset"))
+        dropped = result.triples - small
+        self.assertTrue(dropped)
+        self.assertTrue(all(isinstance(s, rdf.Iri) and (s.value.startswith(self.ns.dist) or s.value in datasets) for s, _p, _o in dropped))
+        catalogue = [t for t in small if isinstance(t[0], rdf.Iri) and t[1].value == rdf.DCAT + "dataset"]
+        self.assertTrue(catalogue)                           # the catalogues still count their datasets
+
+    def test_site_yaml_switches(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "site.yaml"
+            path.write_text("title: t\nentity_files: false\nbrowser_graph: slim\n", encoding="utf-8")
+            cfg = site_config.load_config(path, None)
+            self.assertEqual((cfg.entity_files, cfg.browser_graph), (False, "slim"))
+            self.assertEqual(cfg.problems, [])
+            path.write_text("title: t\nentity_files: nope\nbrowser_graph: tiny\n", encoding="utf-8")
+            cfg = site_config.load_config(path, None)
+            self.assertEqual((cfg.entity_files, cfg.browser_graph), (True, "full"))
+            self.assertEqual(len(cfg.problems), 2)
 
 
 if __name__ == "__main__":
