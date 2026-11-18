@@ -1,0 +1,25 @@
+# Builds the site and publishes docs/ to GitHub Pages. The logic is in the reusable workflow of wikibase-static (PRIMER.md there,
+# S8): the command below twice, the working tree must be clean after each run and the hash of docs/, dist/ and data/derived/ the
+# same (docs/ and data/derived/ are not committed here, the CI makes them), a dead internal link makes the run red; only then the
+# deploy job publishes the docs/ of that build.
+#
+# Once per repository, BEFORE the first push: Settings -> Pages -> Source: "GitHub Actions".
+
+name: Site
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  site:
+    uses: n4o-rse/wikibase-static/.github/workflows/site.yml@main
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    with:
+      command: python main.py --strict
+      deploy: true

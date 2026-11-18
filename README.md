@@ -296,6 +296,18 @@ python tools/new_satellite.py NAME --title ... --prefix ... --query FILE.rq --ou
 python main.py import-wikidata --generic --provenance item   Wikidata page, date and source only on the P4 statement of each item (smaller sites)
 ```
 
+### Sites that are a static copy of a Wikibase (S13a)
+
+```
+python tools/new_satellite.py wb-NAME-static --title ... --prefix ... --wikibase https://NAME.wikibase.cloud --out DIR   skeleton (see the docstring)
+python main.py harvest --probe       in the new folder: one request, says whether the host answers as an API or with a bot challenge
+python main.py harvest               back up the Wikibase into data/raw/ (the first run takes the address from source.url of site.yaml)
+python main.py fetch-logo            save the logo the Wikibase names as assets/logo.<ext> and write `logo:` in site.yaml (--file PATH: your own image)
+```
+
+The skeleton has no seeds and no CSV tables; the printed first-run line harvests, fetches the logo, builds with `--strict`, commits and pushes. The identifiers
+stay those of the source, the URIs of the export are the Pages address of the satellite and use its prefix family (`rdf_prefix`).
+
 `data/seeds/wikidata-<name>.rq` is a query that returns `?item` (optionally `?kind`, `?itemLabel` or `?note`); `data/seeds/wikidata-qids.txt`
 lists single ids (`Q42  a note`). The list is a function of both and of the stored answers (`data/raw/wikidata-seeds/`); a seed that no source names
 any more is dropped, `note` and `instance_of` of the others are kept. `--generic` creates properties from `P100` on with the Wikidata property as

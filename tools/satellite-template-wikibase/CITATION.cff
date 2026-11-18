@@ -1,0 +1,22 @@
+cff-version: 1.2.0
+message: "If you use this software or data, please cite them using the metadata below."
+title: "{{slug}}: {{title}}"
+abstract: >-
+  {{description}}
+type: software
+authors:
+  - family-names: Thiery
+    given-names: Florian
+    orcid: "https://orcid.org/0000-0002-3246-3531"
+    affiliation: "Leibniz-Zentrum für Archäologie (LEIZA)"
+license: MIT
+version: "0.1.0"
+repository-code: "https://github.com/n4o-rse/{{slug}}"
+# date-released: ""  # set when the first release is tagged
+# doi: ""            # add the Zenodo DOI once minted
+keywords:
+  - web archive
+  - Wikibase
+  - Linked Data
+  - static site
+  - GitHub Pages

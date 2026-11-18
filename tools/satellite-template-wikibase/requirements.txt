@@ -1,0 +1,4 @@
+# The tool that harvests and renders this site.
+# Needs wikibase-static {{version}} or later (fetch-logo, rdf_prefix, the Site workflow that builds and publishes).
+# Pinned to a release tag of wikibase-static (CHANGELOG.md there). To update: change the tag, run `pip install --upgrade --force-reinstall -r requirements.txt`, rebuild and commit.
+wikibase-static @ git+https://github.com/n4o-rse/wikibase-static.git@v{{version}}

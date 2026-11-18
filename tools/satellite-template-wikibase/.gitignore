@@ -1,0 +1,34 @@
+# --- Python ---
+**/__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+build/
+.pytest_cache/
+.ipynb_checkpoints/
+
+# --- Virtual environments ---
+.venv/
+venv/
+env/
+ENV/
+
+# --- Local configuration (never commit credentials) ---
+config.local.ini
+config.local.json
+
+# --- Editors / OS ---
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# --- Built by the pipeline, published by the CI ---
+# docs/ and data/derived/ are made by `python main.py` (and by the Site workflow, which publishes docs/). They are not committed:
+# a build is a function of data/ and the pinned package. data/raw/ (the harvested JSON, the archived source) and dist/ (the Turtle and
+# the report, what is cited) are committed.
+docs/
+data/derived/
+
+PATCH-README.md

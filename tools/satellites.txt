@@ -10,3 +10,5 @@ n4o-rse/wd-govanstones-static
 n4o-rse/wd-ogham-static
 n4o-rse/wd-irishroundtowers-static
 n4o-rse/wd-holywells-static
+n4o-rse/wb-squirrelbase-static
+n4o-rse/wb-n4o-prov-static

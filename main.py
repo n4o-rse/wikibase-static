@@ -38,6 +38,7 @@ REPORT = ROOT / "dist" / "pipeline_report.txt"
 # (name, module, in default run, description)
 STEPS = [
     ("harvest", "step_harvest", False, "S4  fetch entities from a Wikibase (network, incremental)"),
+    ("fetch-logo", "step_fetch_logo", False, "S13a the logo of the source Wikibase -> assets/logo.<ext>, named in site.yaml (network; --file: your own image)"),
     ("to-csv", "step_to_csv", False, "S7a harvested JSON -> CSV tables (writes data/csv)"),
     ("csv-fmt", "step_csv_fmt", False, "S7a canonical form of data/csv (--check for CI)"),
     ("import-open-archaeo", "step_import_open_archaeo", False, "S7c open-archaeo entries -> CSV tables (offline, writes data/csv)"),

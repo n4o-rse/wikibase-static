@@ -1,0 +1,27 @@
+# Site metadata (schema: PRIMER.md of wikibase-static, A4).
+title: {{title}}
+description: {{description}}
+source:
+  url: {{source_url}}
+# Where docs/ is published; the RDF export needs it for the download URLs of its DCAT distributions.
+pages_url: https://n4o-rse.github.io/{{slug}}/
+# The URIs of the RDF export and the concept URIs are those of this site, not of the source Wikibase: if that is gone,
+# nothing here may point to it. (Without this line the base would be source.url.)
+rdf_base: https://n4o-rse.github.io/{{slug}}
+# The prefix names of the export: {{prefix}}:, {{prefix}}t:, {{prefix}}p:, ... and not wd:, wdt:, p:, ..., which are those of Wikidata.
+rdf_prefix: {{prefix}}
+languages:
+  default: en
+  second: de
+# The property that holds the formatter URL of external identifiers is P1630 on Wikidata and a property of its own in every other
+# Wikibase. After the first harvest look for the property "formatter URL" in data/raw/entities/ and name it here, for example:
+# formatter_property: P18
+# The logo, top left on every page. `python main.py fetch-logo` saves the one that the source Wikibase names, copies it to assets/
+# and writes the line below; or put a file there yourself. The pages never load it from the source. Name its licence in README.md.
+{{logo_line}}
+# The licence of the data is the default of the package, CC0 1.0 (Public Domain). Write a "license:" block (name, url) only to change it,
+# and only if you are entitled to: the owner of the source Wikibase decides what its data are.
+# A big Wikibase (many hundreds of items): no Turtle and JSON file per item, and a query page that loads the export without the DCAT
+# description of each item. Both are optional; the complete Turtle file stays in downloads/ either way.
+# entity_files: false
+# browser_graph: slim

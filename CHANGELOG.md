@@ -3,6 +3,19 @@
 Every version is a tag `vX.Y.Z` on the commit that raised `__version__` (`tools/tag_versions.py` makes the missing tags;
 `0.1.0` is the last commit before 0.2.0). The newest version is on top. The work plan with the findings behind each version is `PRIMER.md`.
 
+## 0.30.0
+- Satellites that are a static copy of a Wikibase (`wb-squirrelbase-static`, `wb-n4o-prov-static`, S13a). `tools/new_satellite.py --wikibase URL`
+  writes the folder from `tools/satellite-template-wikibase/`: the wrapper `main.py` with the verbs `harvest` (the first run takes the address
+  from `source.url` of `site.yaml`, so it is written down once) and `fetch-logo`, `site.yaml` with the source, own URIs (`rdf_base` = the Pages
+  address) and the prefix family, the two workflows (`deploy: true`), `harvest.cmd` and `update.cmd`, README, PRIMER. `docs/` and
+  `data/derived/` are not committed; `data/raw/` and `dist/` are. No seeds and no CSV tables: the data come from the harvest. The first run is
+  one line (printed at the end): `harvest --probe`, `harvest`, `fetch-logo`, `--strict`, commit, push.
+- New step `fetch-logo` (`step_fetch_logo.py`): asks the Wikibase for the logo it names in its site information, saves it as `assets/logo.<ext>`
+  and writes `logo:` in `site.yaml` (the rest of the file stays as it is), so the pages never load the image from the source. `--file PATH`
+  takes an image you saved yourself. A bot challenge (Anubis) ends the step with exit code 2 and is not worked around, as in `harvest`.
+- `tools/satellites.txt`: the two Wikibase satellites are in the list.
+- 21 new tests (754 in all).
+
 ## 0.29.0
 - The CI builds and publishes the site; `docs/` and `data/derived/` need not be committed any more. `.github/workflows/site.yml`
   (reusable): the Pages artifact is made in the `check` job from the very build that was checked (the `deploy` job only
