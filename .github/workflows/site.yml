@@ -72,8 +72,10 @@ jobs:
             git --no-pager diff --stat
             exit 1
           fi
+      # `|| true`: the shell of the job runs with pipefail, and `find` fails when a folder is missing (a site that is only harvested
+      # has no data/derived/); a missing folder has no files and adds nothing to the hash.
       - name: Hash of the output after run 1
-        run: echo "OUTPUT_HASH_1=$(find docs dist data/derived -type f -print0 2>/dev/null | LC_ALL=C sort -z | xargs -0 -r sha256sum | sha256sum | cut -d' ' -f1)" >> "$GITHUB_ENV"
+        run: echo "OUTPUT_HASH_1=$({ find docs dist data/derived -type f -print0 2>/dev/null || true; } | LC_ALL=C sort -z | xargs -0 -r sha256sum | sha256sum | cut -d' ' -f1)" >> "$GITHUB_ENV"
       - name: Run 2
         run: bash -c "$COMMAND"
       - name: The second run changed nothing
@@ -86,7 +88,7 @@ jobs:
           fi
       - name: The output is the same after run 2 (docs/, dist/ and data/derived/, committed or not)
         run: |
-          now="$(find docs dist data/derived -type f -print0 2>/dev/null | LC_ALL=C sort -z | xargs -0 -r sha256sum | sha256sum | cut -d' ' -f1)"
+          now="$({ find docs dist data/derived -type f -print0 2>/dev/null || true; } | LC_ALL=C sort -z | xargs -0 -r sha256sum | sha256sum | cut -d' ' -f1)"
           if [ "$now" != "$OUTPUT_HASH_1" ]; then
             echo "::error::run 2 wrote other files than run 1 (an ignored folder such as docs/ differs): the pipeline is not deterministic"
             exit 1

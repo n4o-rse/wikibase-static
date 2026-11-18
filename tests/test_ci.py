@@ -200,6 +200,36 @@ class WorkflowFiles(unittest.TestCase):
         deploy_steps = site["jobs"]["deploy"]["steps"]
         self.assertFalse(any("upload-pages-artifact" in step.get("uses", "") or "checkout" in step.get("uses", "") for step in deploy_steps))
 
+    @unittest.skipIf(os.name == "nt" or shutil.which("bash") is None, "needs bash with sha256sum and xargs (the runner of GitHub has them)")
+    def test_the_hash_steps_survive_a_missing_folder_under_pipefail(self) -> None:
+        """0.30.1: a site that is only harvested has no data/derived/; ``find`` then fails and ``bash -eo pipefail`` ended the step."""
+        steps = [step["run"] for step in self.load("site.yml")["jobs"]["check"]["steps"] if "sha256sum" in step.get("run", "")]
+        self.assertEqual(len(steps), 2)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for folder in ("docs", "dist"):
+                (root / folder).mkdir()
+                (root / folder / "a.txt").write_text(folder, encoding="utf-8")
+            github_env = root / "env.txt"
+            github_env.write_text("", encoding="utf-8")
+
+            def run(script: str, **env: str) -> subprocess.CompletedProcess:
+                return subprocess.run(["bash", "--noprofile", "--norc", "-eo", "pipefail", "-c", script], cwd=root, capture_output=True, text=True,
+                                      env={**os.environ, "GITHUB_ENV": str(github_env), **env})
+
+            first = run(steps[0])
+            self.assertEqual(first.returncode, 0, first.stderr)
+            hash_1 = github_env.read_text(encoding="utf-8").strip().split("=", 1)[1]
+            self.assertEqual(len(hash_1), 64)
+            same = run(steps[1], OUTPUT_HASH_1=hash_1)
+            self.assertEqual(same.returncode, 0, same.stderr)
+            (root / "docs" / "a.txt").write_text("changed", encoding="utf-8")        # the gate still sees a difference
+            self.assertEqual(run(steps[1], OUTPUT_HASH_1=hash_1).returncode, 1)
+            (root / "docs" / "a.txt").write_text("docs", encoding="utf-8")
+            (root / "data" / "derived").mkdir(parents=True)                          # and the folder, when it is there, counts
+            (root / "data" / "derived" / "x.json").write_text("{}", encoding="utf-8")
+            self.assertEqual(run(steps[1], OUTPUT_HASH_1=hash_1).returncode, 1)
+
     def test_site_never_interpolates_inputs_into_a_shell_line(self) -> None:
         for line in self.run_lines(self.load("site.yml")["jobs"]["check"]):
             self.assertNotIn("${{", line)

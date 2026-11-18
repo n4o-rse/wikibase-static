@@ -3,6 +3,13 @@
 Every version is a tag `vX.Y.Z` on the commit that raised `__version__` (`tools/tag_versions.py` makes the missing tags;
 `0.1.0` is the last commit before 0.2.0). The newest version is on top. The work plan with the findings behind each version is `PRIMER.md`.
 
+## 0.30.1
+- The Site workflow no longer fails for a site that has no `data/derived/` (one that is only harvested, such as `wb-squirrelbase-static` and
+  `wb-n4o-prov-static`). The step "The output is the same after run 2" hashes `docs/`, `dist/` and `data/derived/`; `find` exits with 1 when a folder
+  is missing, and the shell of the job runs with `pipefail`, so the step ended with exit code 1 (the first hash step hid it behind `echo`). `find` is now
+  `{ find ... || true; }`: a missing folder has no files. A site that has the folder is hashed as before. 1 new test (755 in all); it runs both steps
+  under `bash -eo pipefail`, with and without the folder (skipped on Windows). Callers use `@main`, so no site has to change anything.
+
 ## 0.30.0
 - Satellites that are a static copy of a Wikibase (`wb-squirrelbase-static`, `wb-n4o-prov-static`, S13a). `tools/new_satellite.py --wikibase URL`
   writes the folder from `tools/satellite-template-wikibase/`: the wrapper `main.py` with the verbs `harvest` (the first run takes the address
