@@ -3,6 +3,18 @@
 Every version is a tag `vX.Y.Z` on the commit that raised `__version__` (`tools/tag_versions.py` makes the missing tags;
 `0.1.0` is the last commit before 0.2.0). The newest version is on top. The work plan with the findings behind each version is `PRIMER.md`.
 
+## 0.31.0
+- The CIDOC CRM overlay (`data/crm.csv`) works on every site, not only on one made by `from-csv`. Until now the CRM class and the inherited-from class
+  appeared on the page of an item, and `rdfs:subClassOf` / `rdf:type` were written out, only when the site had the N4O kernel (Q1 to Q3, P1, P2).
+  A harvested Wikibase (`wb-squirrelbase-static`, `wb-n4o-prov-static`, `wb-fuzzysl-static`) has other numbers (P1 instance of and P2 subclass of
+  on one, the other way round on another) and a copy of Wikidata has P31 and P279, so the overlay showed nothing there.
+- New `Site.class_properties()`: with the kernel P2 and P1; otherwise the properties of the datatype `wikibase-item` whose English label is
+  "instance of" or "subclass of", and Wikidata's P31 and P279 when statements use them and the site does not hold the property. `crm_edges()`,
+  `crm_classes()`, the page (`crm_rows`) and `rdf.spell_out()` use it. Without any such property nothing is inherited, as before; with the kernel
+  nothing changes (the output of a kernel site is the same as in 0.30.1). Without the kernel only edges to an item of the site are written out.
+- `crm.CLASSES` knows E5 Event, E21 Person, E26 Physical Feature, E40 Legal Body and E78 Curated Holding by their short code.
+- 7 new tests (762 in all): either numbering of Wikibase Cloud, a copy of Wikidata, a property with another label, the spelled-out tree and the N4O anchor test.
+
 ## 0.30.1
 - The Site workflow no longer fails for a site that has no `data/derived/` (one that is only harvested, such as `wb-squirrelbase-static` and
   `wb-n4o-prov-static`). The step "The output is the same after run 2" hashes `docs/`, `dist/` and `data/derived/`; `find` exits with 1 when a folder

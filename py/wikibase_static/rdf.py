@@ -726,22 +726,29 @@ class _Builder:
                 self.out.crm.add(link)
 
     def spell_out(self) -> None:
-        """With an overlay: ``subclass of`` (P1) and ``instance of`` (P2) of the kernel written as plain ``rdfs:subClassOf``
-        and ``rdf:type`` (S12). The bridge only says ``wdt:P1 rdfs:subPropertyOf rdfs:subClassOf``, which a reader without
-        inference (the N4O profile measures anchoring that way) does not see. Edges to Q1 to Q3 are left out (they are
-        the kernel, not classes of the domain) and so are the kernel items themselves."""
-        if not self.site.crm or not self.site.has_kernel():
+        """With an overlay: ``subclass of`` and ``instance of`` written as plain ``rdfs:subClassOf`` and ``rdf:type`` (S12). The
+        bridge only says ``wdt:P1 rdfs:subPropertyOf rdfs:subClassOf``, which a reader without inference (the N4O profile
+        measures anchoring that way) does not see; a site without the kernel has no bridge at all. The two properties are
+        those of ``Site.class_properties`` (P1 and P2 of the kernel, P31 and P279 on Wikidata, whatever a Wikibase calls
+        them). With the kernel, edges to Q1 to Q3 and the kernel items themselves are left out (they are the kernel, not
+        classes of the domain); without it, only edges to an item of the site are written."""
+        if not self.site.crm:
             return
-        kernel = {"Q1", "Q2", "Q3"}
+        instance, subclass = self.site.class_properties()
+        if not (instance or subclass):
+            return
+        kernel = {"Q1", "Q2", "Q3"} if self.site.has_kernel() else set()
         for entity in self.site.entities.values():
             if entity.id in kernel or not entity.id.startswith("Q"):
                 continue
             for statement in entity.statements:
                 snak = statement.mainsnak
                 target = snak.entity_id
-                if snak.property not in ("P1", "P2") or not target or target in kernel or not target.startswith("Q"):
+                if snak.property not in instance | subclass or not target or target in kernel or not target.startswith("Q"):
                     continue
-                predicate = Iri(RDFS + "subClassOf") if snak.property == "P1" else self._a()
+                if not kernel and target not in self.site.entities:
+                    continue
+                predicate = Iri(RDFS + "subClassOf") if snak.property in subclass else self._a()
                 triple = (self._wd(entity.id), predicate, self._wd(target))
                 self.out.triples.add(triple)
                 self.out.crm.add(triple)

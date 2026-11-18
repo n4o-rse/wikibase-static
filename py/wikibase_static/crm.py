@@ -7,7 +7,8 @@ A site may carry ``data/crm.csv`` next to its data::
 
 ``class`` is the id of a class of the site, ``crm_class`` a class of one of the allowed families in the form
 ``prefix:Name``. The raw data is never changed: the overlay is a table of its own. What a class does not say itself
-it inherits over ``subclass of`` (P1) and ``instance of`` (P2) of the kernel, so one row at the root of a class tree
+it inherits over ``subclass of`` and ``instance of`` (``Site.class_properties``: P1 and P2 of the kernel, P31 and P279 of
+Wikidata, or whatever numbers a harvested Wikibase gives them), so one row at the root of a class tree
 anchors the whole tree. That follows how the N4O profile reads CRM anchoring (``rdfs:subClassOf`` followed
 transitively until a class of the CRM namespaces is reached).
 
@@ -50,6 +51,11 @@ CLASSES: dict[str, tuple[str, str | None]] = {
     "crm:E72_Legal_Object": ("Legal Object", "crm:E70_Thing"),
     "crm:E25_Human-Made_Feature": ("Human-Made Feature", "crm:E24_Physical_Human-Made_Thing"),   # also a E26 Physical Feature; the chain keeps one
     "crm:E53_Place": ("Place", "crm:E1_CRM_Entity"),
+    "crm:E5_Event": ("Event", "crm:E4_Period"),
+    "crm:E21_Person": ("Person", "crm:E20_Biological_Object"),
+    "crm:E26_Physical_Feature": ("Physical Feature", "crm:E18_Physical_Thing"),
+    "crm:E40_Legal_Body": ("Legal Body", "crm:E74_Group"),
+    "crm:E78_Curated_Holding": ("Curated Holding", "crm:E24_Physical_Human-Made_Thing"),
     "crmdig:D1_Digital_Object": ("Digital Object", "crm:E73_Information_Object"),
     "crmdig:D14_Software": ("Software", "crmdig:D1_Digital_Object"),
 }

@@ -38,6 +38,10 @@ KERNEL_CORE_STATEMENTS = (("Q1", "P1", "Q3"), ("Q2", "P1", "Q3"),
                           ("P1", "P10", "Q1"), ("P2", "P10", "Q1"), ("P3", "P10", "Q2"))
 
 
+# Wikidata's own numbers for "instance of" and "subclass of", for a site whose properties are not loaded (``Site.class_properties``).
+WIKIDATA_INSTANCE, WIKIDATA_SUBCLASS = "P31", "P279"
+
+
 @dataclass
 class Site:
     """Everything loaded from disk, plus what was wrong with it."""
@@ -49,6 +53,7 @@ class Site:
     latest_modified: str | None = None
     crm: dict[str, list[str]] = field(default_factory=dict)   # data/crm.csv: class id -> CRM classes (S11)
     redirects: dict[str, str] = field(default_factory=dict)   # merged id -> id it was merged into (data/derived/redirects.json, S7e)
+    _class_properties: tuple | None = field(default=None, init=False, repr=False, compare=False)
 
     @property
     def items(self) -> list[Entity]:
@@ -87,15 +92,47 @@ class Site:
                 return False
         return True
 
+    def class_properties(self) -> tuple[frozenset[str], frozenset[str]]:
+        """The properties that say "instance of" and "subclass of": ``(instance ids, subclass ids)``.
+
+        With the kernel of ``from-csv`` they are P2 and P1. Any other site, a harvested Wikibase or a copy of Wikidata, has
+        its own numbers (P31 and P279 on Wikidata, P1 and P2 or P2 and P1 on Wikibase Cloud), so they are found by what the
+        site says: a property of the datatype ``wikibase-item`` whose English label is "instance of" or "subclass of"; and
+        Wikidata's P31 and P279 when statements use them and the site does not hold the property itself. The CRM overlay
+        inherits along them (``data/crm.csv``), so it works on every site whatever the numbers are."""
+        if self._class_properties is None:
+            if self.has_kernel():
+                self._class_properties = (frozenset({"P2"}), frozenset({"P1"}))
+            else:
+                instance: set[str] = set()
+                subclass: set[str] = set()
+                for entity in self.properties:
+                    if entity.datatype not in (None, "wikibase-item"):
+                        continue
+                    name = entity.labels.get("en", "").strip().lower()
+                    if name == "instance of":
+                        instance.add(entity.id)
+                    elif name == "subclass of":
+                        subclass.add(entity.id)
+                used = {s.mainsnak.property for e in self.entities.values() for s in e.statements}
+                if WIKIDATA_INSTANCE in used and WIKIDATA_INSTANCE not in self.entities:
+                    instance.add(WIKIDATA_INSTANCE)
+                if WIKIDATA_SUBCLASS in used and WIKIDATA_SUBCLASS not in self.entities:
+                    subclass.add(WIKIDATA_SUBCLASS)
+                self._class_properties = (frozenset(instance), frozenset(subclass))
+        return self._class_properties
+
     def crm_edges(self) -> dict[str, list[str]]:
-        """Entity -> the classes it says it belongs to or descends from (kernel P1 and P2); empty without the kernel,
-        where those two properties have no fixed meaning. The CRM rows are inherited over these edges."""
+        """Entity -> the classes it says it belongs to or descends from (``class_properties``); empty when the site has no
+        property of either kind, where inheritance has nothing to follow. The CRM rows are inherited over these edges."""
         edges: dict[str, list[str]] = {}
-        if not self.has_kernel():
+        instance, subclass = self.class_properties()
+        follow = instance | subclass
+        if not follow:
             return edges
         for entity in self.entities.values():
             for statement in entity.statements:
-                if statement.mainsnak.property in ("P1", "P2") and statement.mainsnak.entity_id:
+                if statement.mainsnak.property in follow and statement.mainsnak.entity_id:
                     edges.setdefault(entity.id, []).append(statement.mainsnak.entity_id)
         return edges
 
@@ -104,19 +141,20 @@ class Site:
         return crm.anchors(self.crm, self.crm_edges() if edges is None else edges, entity_id) if self.crm else []
 
     def crm_classes(self) -> list[str]:
-        """The items that are classes (kernel): the target of a ``subclass of`` or ``instance of`` statement, or with a
-        ``subclass of`` statement of their own, except Q1 to Q3 which are the kernel."""
-        if not self.has_kernel():
+        """The items that are classes: the target of a ``subclass of`` or ``instance of`` statement, or with a ``subclass of``
+        statement of their own; with the kernel, Q1 to Q3 are left out (they are the kernel, not classes of the domain)."""
+        instance, subclass = self.class_properties()
+        if not (instance or subclass):
             return []
         found = set()
         for entity in self.entities.values():
             for statement in entity.statements:
                 prop, target = statement.mainsnak.property, statement.mainsnak.entity_id
-                if prop == "P1" and entity.kind == "item":
+                if prop in subclass and entity.kind == "item":
                     found.add(entity.id)
-                if prop in ("P1", "P2") and target in self.entities and self.entities[target].kind == "item":
+                if prop in (instance | subclass) and target in self.entities and self.entities[target].kind == "item":
                     found.add(target)
-        return sorted(found - {"Q1", "Q2", "Q3"}, key=id_sort_key)
+        return sorted(found - ({"Q1", "Q2", "Q3"} if self.has_kernel() else set()), key=id_sort_key)
 
     def labeller(self, languages: list[str]) -> "LabelResolver":
         return LabelResolver(self, languages)

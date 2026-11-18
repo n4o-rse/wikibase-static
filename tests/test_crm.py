@@ -108,13 +108,104 @@ class Inheriting(unittest.TestCase):
         self.assertEqual(site.crm_classes(), ["Q100", "Q101", "Q103"])
         self.assertEqual([c for c in site.crm_classes() if not site.crm_anchors(c)], ["Q103"])
 
-    def test_without_the_kernel_nothing_is_inherited(self) -> None:
+    def test_without_the_kernel_and_without_class_properties_nothing_is_inherited(self) -> None:
         site = csv_site(OVERLAY)
-        site.entities.pop("Q1")                       # no kernel: P1 and P2 mean nothing fixed
+        site.entities.pop("Q1")                       # no kernel ...
+        site.entities.pop("P1")                       # ... and no property that says "subclass of" or "instance of"
+        site.entities.pop("P2")
         self.assertFalse(site.has_kernel())
+        self.assertEqual(site.class_properties(), (frozenset(), frozenset()))
         self.assertEqual(site.crm_edges(), {})
+        self.assertEqual(site.crm_classes(), [])
         self.assertEqual([a.via for a in site.crm_anchors("Q100")], ["Q100"])
         self.assertEqual(site.crm_anchors("Q101"), [])
+
+
+def wb_entity(entity_id: str, label: str, claims: dict | None = None, datatype: str | None = None) -> dict:
+    """An entity in the JSON a Wikibase delivers (what ``harvest`` leaves in data/raw/entities)."""
+    obj = {"id": entity_id, "type": "property" if entity_id[0] == "P" else "item", "labels": {"en": {"language": "en", "value": label}},
+           "descriptions": {}, "aliases": {}, "claims": {}, "lastrevid": 1, "modified": "2026-01-01T00:00:00Z"}
+    if datatype:
+        obj["datatype"] = datatype
+    for prop, targets in (claims or {}).items():
+        obj["claims"][prop] = [{"id": f"{entity_id}${prop}-{n}", "type": "statement", "rank": "normal", "mainsnak": {
+            "snaktype": "value", "property": prop, "datatype": "wikibase-item",
+            "datavalue": {"type": "wikibase-entityid", "value": {"entity-type": "item", "id": target, "numeric-id": int(target[1:])}}}}
+            for n, target in enumerate(targets)]
+    return obj
+
+
+def harvested_site(instance_of: str | None, subclass_of: str | None, overlay: str | None = OVERLAY) -> loader.Site:
+    """A Wikibase that has no kernel: Q100 software > Q101 library, Q102 an item of Q101, Q103 a class of its own. The numbers of
+    the two properties are the caller's (Wikibase Cloud has P1 and P2 either way round, Wikidata P31 and P279); ``None`` leaves
+    the property out, as a copy of Wikidata does."""
+    entities = [wb_entity("Q100", "software"), wb_entity("Q101", "library", {subclass_of or "P279": ["Q100"]}),
+                wb_entity("Q102", "Numpy", {instance_of or "P31": ["Q101"]}), wb_entity("Q103", "loose class", {subclass_of or "P279": ["Q200"]}),
+                wb_entity("Q200", "root")]
+    if instance_of and subclass_of:
+        entities += [wb_entity(instance_of, "instance of", datatype="wikibase-item"), wb_entity(subclass_of, "subclass of", datatype="wikibase-item")]
+    with tempfile.TemporaryDirectory() as tmp:
+        base = Path(tmp)
+        (base / "raw" / "entities").mkdir(parents=True)
+        for obj in entities:
+            (base / "raw" / "entities" / f"{obj['id']}.json").write_text(json.dumps(obj), encoding="utf-8")
+        if overlay is not None:
+            (base / "crm.csv").write_text(overlay, encoding="utf-8")
+        return loader.load_site(base / "raw", base / "derived")
+
+
+class AnyWikibase(unittest.TestCase):
+    """The overlay works on a site that has no kernel: the two properties are found by what the site says (the datatype and the
+    English label), whatever their numbers are."""
+
+    def test_the_numbers_of_wikibase_cloud_either_way_round(self) -> None:
+        for instance_of, subclass_of in (("P1", "P2"), ("P2", "P1"), ("P31", "P279")):
+            with self.subTest(instance_of=instance_of, subclass_of=subclass_of):
+                site = harvested_site(instance_of, subclass_of)
+                self.assertFalse(site.has_kernel())
+                self.assertEqual(site.class_properties(), (frozenset({instance_of}), frozenset({subclass_of})))
+                self.assertEqual([(a.curie, a.via) for a in site.crm_anchors("Q102")], [("crmdig:D14_Software", "Q100")])
+                self.assertEqual(site.crm_classes(), ["Q100", "Q101", "Q103", "Q200"])
+                self.assertEqual([c for c in site.crm_classes() if not site.crm_anchors(c)], ["Q103", "Q200"])
+
+    def test_a_copy_of_wikidata_without_its_properties_uses_p31_and_p279(self) -> None:
+        site = harvested_site(None, None)
+        self.assertEqual(site.class_properties(), (frozenset({"P31"}), frozenset({"P279"})))
+        self.assertEqual([a.via for a in site.crm_anchors("Q102")], ["Q100"])
+
+    def test_a_property_with_another_label_or_datatype_is_not_taken(self) -> None:
+        site = harvested_site("P1", "P2")
+        site.entities["P1"].labels["en"] = "part of"
+        site._class_properties = None
+        self.assertEqual(site.class_properties()[0], frozenset())
+
+    def test_the_kernel_still_means_p2_and_p1(self) -> None:
+        self.assertEqual(csv_site(OVERLAY).class_properties(), (frozenset({"P2"}), frozenset({"P1"})))
+
+    def test_the_export_spells_out_the_class_tree_and_reads_back(self) -> None:
+        site = harvested_site("P2", "P1")
+        result = rdf.build(site, rdf.Namespaces(BASE))
+        triples = {(s.value, p.value, o.value) for s, p, o in result.crm}
+        self.assertIn((BASE + "/entity/Q100", RDFS + "subClassOf", D14), triples)
+        self.assertIn((BASE + "/entity/Q101", RDFS + "subClassOf", BASE + "/entity/Q100"), triples)
+        self.assertIn((BASE + "/entity/Q102", rdf.RDF + "type", BASE + "/entity/Q101"), triples)
+        self.assertNotIn((BASE + "/entity/Q103", RDFS + "subClassOf", BASE + "/entity/Q200"), {t for t in triples if t[2] == "x"})
+        self.assertIn((BASE + "/entity/Q103", RDFS + "subClassOf", BASE + "/entity/Q200"), triples)   # Q200 is an item of the site
+
+    def test_an_edge_to_an_item_the_site_does_not_hold_is_not_written(self) -> None:
+        site = harvested_site("P2", "P1")
+        site.entities.pop("Q200")
+        result = rdf.build(site, rdf.Namespaces(BASE))
+        self.assertNotIn((BASE + "/entity/Q103", RDFS + "subClassOf", BASE + "/entity/Q200"), {(s.value, p.value, o.value) for s, p, o in result.crm})
+
+    def test_the_n4o_anchor_test_reaches_the_cidoc_crm_from_an_item(self) -> None:
+        import rdflib
+        result = rdf.build(harvested_site("P2", "P1"), rdf.Namespaces(BASE))
+        graph = rdflib.Graph()
+        graph.parse(data=rdf.to_turtle(result.triples, rdf.Namespaces(BASE), "", [(rdf.BRIDGE_TITLE, result.bridge), (rdf.CRM_TITLE, result.crm)]), format="turtle")
+        query = f"""SELECT ?c WHERE {{ <{BASE}/entity/Q102> <{RDFS}subClassOf>|a/<{RDFS}subClassOf>* ?c .
+                    FILTER(STRSTARTS(STR(?c), "http://www.cidoc-crm.org/cidoc-crm/")) }}"""
+        self.assertEqual({str(r[0]) for r in graph.query(query)}, {E73})
 
 
 class Exporting(unittest.TestCase):
