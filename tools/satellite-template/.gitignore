@@ -1,0 +1,32 @@
+# --- Python ---
+**/__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+build/
+.pytest_cache/
+.ipynb_checkpoints/
+
+# --- Virtual environments ---
+.venv/
+venv/
+env/
+ENV/
+
+# --- Local configuration (never commit credentials) ---
+config.local.ini
+config.local.json
+
+# --- Editors / OS ---
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# --- Note ---
+# dist/, docs/ and data/ are deliberately NOT ignored: dist/ holds the
+# versioned products, docs/ is served by GitHub Pages, data/raw/ is the
+# archived source. Ignoring any of them breaks the Pages build silently.
+
+PATCH-README.md

@@ -1,0 +1,2 @@
+# Single Wikidata items that are part of this site although no query finds them, one per line:  Q42  a note
+# (a line starting with # is a comment). Do not repeat the ones that the query finds; a repeat is only reported.

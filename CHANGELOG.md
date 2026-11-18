@@ -3,6 +3,15 @@
 Every version is a tag `vX.Y.Z` on the commit that raised `__version__` (`tools/tag_versions.py` makes the missing tags;
 `0.1.0` is the last commit before 0.2.0). The newest version is on top. The work plan with the findings behind each version is `PRIMER.md`.
 
+## 0.28.1
+- `tools/new_satellite.py` and `tools/satellite-template/`: the skeleton of a new satellite site that is a set of Wikidata items
+  (`wd-ogham-static` and the sites after it). One call writes the folder: the wrapper `main.py` (`import-wikidata` with `--generic
+  --provenance item`), `site.yaml` (prefix, `entity_files: false` and `browser_graph: slim`, or both off with `--small`), the two
+  workflows (`deploy: true`), README, PRIMER, CITATION, empty CSV tables, the seed queries (`--query`, `--qids`) and the logo. The pin
+  in `requirements.txt` is the version of the package. The first run is one line (printed at the end): `seeds-from-sparql`,
+  `import-wikidata`, `--strict`, commit, push. 7 new tests (721 in all).
+- `tools/satellites.txt`: the Wikidata sites are in the list.
+
 ## 0.28.0
 Slimmer sites, for a Wikidata set of a thousand items and more (`wd-ogham-static`, 1246 seeds: 202 MB in `docs/`, 62 MB in `data/derived/`,
 a 12.8 MB Turtle file that the query page had to parse in the browser). Everything is optional; without the new settings nothing changes.

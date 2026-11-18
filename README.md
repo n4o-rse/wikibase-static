@@ -292,6 +292,7 @@ python main.py seeds-from-sparql --offline       no network: write the list from
 python main.py seeds-from-sparql --from-dir DIR  store answers saved in a browser (the JSON download of the Query Service), then write the list
 python main.py import-wikidata --generic         create a local property for every Wikidata property without a twin
 python main.py import-wikidata --generic --skip-property P2671,P646    ... except these
+python tools/new_satellite.py NAME --title ... --prefix ... --query FILE.rq --out DIR   skeleton of a new Wikidata satellite (see the docstring)
 python main.py import-wikidata --generic --provenance item   Wikidata page, date and source only on the P4 statement of each item (smaller sites)
 ```
 

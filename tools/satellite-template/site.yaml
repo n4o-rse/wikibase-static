@@ -1,0 +1,26 @@
+# Site metadata (schema: PRIMER.md of wikibase-static, A4).
+title: {{title}}
+description: {{description}}
+# Where docs/ is published; the RDF export needs it for the download URLs of its DCAT distributions.
+pages_url: https://n4o-rse.github.io/{{slug}}/
+# Base of the entity URIs in the RDF export. The numbers of this site are its own (Q100 and up), so it does not borrow the address
+# of Wikidata. A w3id prefix is open (PRIMER.md of wikibase-static, A6).
+rdf_base: https://n4o-rse.github.io/{{slug}}
+# The prefix names of the export: {{prefix}}:, {{prefix}}t:, {{prefix}}p:, ... and not wd:, wdt:, p:, ..., which are those of Wikidata.
+rdf_prefix: {{prefix}}
+edit_url: https://github.com/n4o-rse/{{slug}}/edit/main/data/csv
+languages:
+  default: en
+  second: de
+# The kernel keeps the formatter URL of external-id properties in P5 (Wikidata uses P1630).
+formatter_property: P5
+# The licence is the default of the package, CC0 (the data of Wikidata are CC0). Images are not copied: they stay at Wikimedia
+# Commons with their own licences and are only linked.
+{{logo_line}}
+# No colour of its own: the pages use the BeaverBridge palette.
+# Large sets (hundreds of items): no Turtle and JSON file per item, and a query page that loads the export without the DCAT
+# description of each item. Both are optional; the complete Turtle file stays in downloads/ either way.
+entity_files: {{entity_files}}
+browser_graph: {{browser_graph}}
+# The date of the data (the CSV tables carry no modification time of their own). Set it again when the data change.
+data_as_of: {{today}}

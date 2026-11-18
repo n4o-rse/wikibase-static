@@ -6,3 +6,7 @@ n4o-rse/chublets-wikibase-demo
 n4o-rse/osm-sisal-static
 n4o-rse/osm-ogham-static
 n4o-rse/osm-holywells-static
+n4o-rse/wd-govanstones-static
+n4o-rse/wd-ogham-static
+n4o-rse/wd-irishroundtowers-static
+n4o-rse/wd-holywells-static
