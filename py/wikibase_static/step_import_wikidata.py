@@ -5,6 +5,7 @@
     python main.py import-wikidata --from-dir DIR   store JSON files saved in a browser (Special:EntityData,
                                                     wbgetentities) in data/raw/wikidata/, then import offline
     python main.py import-wikidata --dry-run        print the report, write nothing (reads data/raw only)
+    python main.py import-wikidata --generic        a site without a model of its own (S14a, below)
 
 The seeds are listed in ``data/csv/seeds-wikidata.csv`` (columns ``qid, kind, note`` and optionally ``instance_of``; ``kind`` and
 ``note`` are for the reader). ``instance_of`` holds local item ids separated by ``|`` (the chublet class, say): the seed becomes an
@@ -27,6 +28,15 @@ Raw data: ``data/raw/wikidata/entities/<id>.json`` (one entity as the API return
 ``manifest.json`` (``lastrevid``, ``modified``, ``sha256``), the layout of ``harvest``. Only seeds and stubs whose revision
 changed are fetched again. Reimport: rows with ``origin=wikidata`` or ``wikidata-stub`` are replaced; a row of anyone
 else (empty ``origin``) wins, as in ``import-open-archaeo``.
+
+``--generic`` (S14a) is for a site that is a set of Wikidata items and has no model of its own (a list of stones, of holy wells):
+a Wikidata property without a twin is not reported but *created*, as a local property (``P100`` and up, ``origin=wikidata``, numbered
+through ``idmap.csv`` with the key ``P18``) with its labels, descriptions and aliases, the datatype of the Wikidata property, the twin
+``P4`` (with the reference ``P6``) and, for an external identifier, the formatter URL of Wikidata (``P1630``) in the local formatter
+property. A twin that exists (the kernel's ``P2``, a hand-made property) is used as before. Properties whose datatype the CSV cannot
+hold (geo-shape, tabular data, lexemes, ...) are reported, not created; ``--skip-property P2671,P646`` leaves out properties that
+only add noise (a Wikidata property that is skipped is reported as one without a twin). Classes of "instance of" targets stay stubs
+below the root of the class tree, because no local twin of software is there to hang them under.
 
 The report lists what was not imported (Wikidata properties without a twin, values the CSV cannot hold) and which
 repository and exact-match URLs of the seeds occur in the local items of another origin (open-archaeo) -- a report only,
@@ -67,6 +77,12 @@ SUBCLASS, INSTANCE, TWIN, REFERENCE_URL, RETRIEVED, STATED_IN = "P1", "P2", "P4"
 PARENT_CLASS = "Q7397"                       # software: its local twin is the parent of the class stubs
 DEFAULT_LANGUAGES = ("en", "de")
 QID = re.compile(r"^Q[1-9][0-9]*$")
+PID = re.compile(r"^P[1-9][0-9]*$")
+ENTITY = re.compile(r"^[QP][1-9][0-9]*$")
+PROPERTY_PAGE = PAGE + "Property:"
+FORMATTER_URL = "P1630"                      # Wikidata: formatter URL; its local twin is the formatter property of the model (P5)
+# The datatypes of Wikidata that the CSV can hold (csvio.parse_value); a property of another datatype is not created.
+SUPPORTED = ("wikibase-item", "string", "external-id", "url", "commonsMedia", "time", "quantity", "monolingualtext", "globe-coordinate")
 DATE = re.compile(r"^(\d{4}-\d{2}-\d{2})T")
 GREGORIAN = csvio.GREGORIAN
 REPORT = "wikidata-import.txt"
@@ -139,9 +155,13 @@ class Gaps:
 
 class Converter:
     def __init__(self, seeds: list[dict[str, str]], entities: dict[str, dict[str, Any]], twins: dict[str, str],
-                 datatypes: dict[str, str], idmap: IdMap, languages: tuple[str, ...]) -> None:
-        self.seeds, self.entities, self.twins, self.datatypes = seeds, entities, twins, datatypes
+                 datatypes: dict[str, str], idmap: IdMap, languages: tuple[str, ...],
+                 generic: bool = False, skip: frozenset[str] = frozenset()) -> None:
+        self.seeds, self.entities, self.twins, self.datatypes = seeds, entities, dict(twins), dict(datatypes)
         self.idmap, self.languages = idmap, languages
+        self.generic, self.skip = generic, skip
+        self.created: dict[str, str] = {}       # --generic: Wikidata property id -> the local property that was created for it
+        self.refused: dict[str, str] = {}       # --generic: Wikidata property id -> why no property was created
         self.out = Out()
         self.gaps = Gaps()
         self.counter: Counter[tuple[str, str]] = Counter()
@@ -218,6 +238,50 @@ class Converter:
                 row[f"label_{first}"] = qid
                 self.gaps.other[f"{qid}: no label in the raw data (the label is the Wikidata id)"] += 1
 
+    # ---- properties
+
+    def local_property(self, pid: str, snak: dict[str, Any]) -> str | None:
+        """The local property for a Wikidata property: its twin, or (``--generic``) a property that is created now.
+        ``None`` means there is none (the caller puts the snak in the gaps)."""
+        local = self.twins.get(pid)
+        if local is not None or not self.generic:
+            return local
+        if pid in self.refused:
+            return None
+        datatype = snak.get("datatype", "")
+        if pid in self.skip:
+            self.refused[pid] = "skipped (--skip-property)"
+        elif datatype not in SUPPORTED:
+            self.refused[pid] = f"datatype {datatype or 'unknown'} cannot be held by the CSV tables"
+        if pid in self.refused:
+            return None
+        return self.create_property(pid, datatype)
+
+    def create_property(self, pid: str, datatype: str) -> str:
+        """A local property for a Wikidata property: labels and description from the raw data (the id as label if they are
+        not there yet), its datatype, the twin and, for an external identifier, the formatter URL."""
+        local = self.idmap.get_property(pid)
+        raw = self.entities.get(pid, {})
+        row = {"id": local, "kind": "property", "datatype": datatype, "origin": SOURCE}
+        self.texts(row, raw, pid)
+        self.out.entities[local] = row
+        self.twins[pid] = local
+        self.datatypes[local] = datatype
+        self.created[pid] = local
+        twin = f"{local}-{TWIN}-wd1"
+        self.out.statements.append({"sid": twin, "subject": local, "property": TWIN, "value": pid, "rank": "", "origin": SOURCE})
+        self.out.references.append({"sid": twin, "group": "1", "property": REFERENCE_URL, "value": PROPERTY_PAGE + pid})
+        formatter = self.twins.get(FORMATTER_URL)
+        claims = [c for c in raw.get("claims", {}).get(FORMATTER_URL, []) if c.get("rank") != "deprecated"
+                  and c["mainsnak"].get("snaktype") == "value"]
+        claims.sort(key=lambda c: c.get("rank") != "preferred")
+        if datatype == "external-id" and formatter and claims:
+            sid = f"{local}-{formatter}-wd1"
+            self.out.statements.append({"sid": sid, "subject": local, "property": formatter,
+                                        "value": csvio.escape_text(claims[0]["mainsnak"]["datavalue"]["value"]), "rank": "", "origin": SOURCE})
+            self.out.references.append({"sid": sid, "group": "1", "property": REFERENCE_URL, "value": PROPERTY_PAGE + pid})
+        return local
+
     # ---- values
 
     def value(self, snak: dict[str, Any], local: str, pid: str, qid: str) -> str | None:
@@ -283,7 +347,7 @@ class Converter:
         self.out.entities[self.subject] = row
         self.add_twin(qid)
         for pid, claims in raw.get("claims", {}).items():
-            local = self.twins.get(pid)
+            local = self.local_property(pid, claims[0]["mainsnak"]) if claims else None
             if local is None:
                 self.gaps.property(pid, "statement", qid, len(claims))
                 continue
@@ -320,8 +384,9 @@ class Converter:
         self.out.statements.append({"sid": sid, "subject": self.subject, "property": local, "value": value,
                                     "rank": "" if rank == "normal" else rank, "origin": SOURCE})
         for qpid in claim.get("qualifiers-order", list(claim.get("qualifiers", {}))):
-            qlocal = self.twins.get(qpid)
-            for snak in claim.get("qualifiers", {}).get(qpid, []):
+            qsnaks = claim.get("qualifiers", {}).get(qpid, [])
+            qlocal = self.local_property(qpid, qsnaks[0]) if qsnaks else None
+            for snak in qsnaks:
                 if qlocal is None:
                     self.gaps.property(qpid, "qualifier", qid)
                     continue
@@ -335,8 +400,9 @@ class Converter:
         for reference in claim.get("references", []):
             rows: list[tuple[str, str]] = []
             for rpid in reference.get("snaks-order", list(reference.get("snaks", {}))):
-                rlocal = self.twins.get(rpid)
-                for snak in reference.get("snaks", {}).get(rpid, []):
+                rsnaks = reference.get("snaks", {}).get(rpid, [])
+                rlocal = self.local_property(rpid, rsnaks[0]) if rsnaks else None
+                for snak in rsnaks:
                     if rlocal is None:
                         self.gaps.property(rpid, "reference", qid)
                         continue
@@ -412,7 +478,7 @@ def store_saved(folder: Path, raw: Path) -> int:
             utils.warn(STEP, f"{path.name}: skipped ({err})")
             continue
         for entity in entities:
-            if QID.match(str(entity["id"])):
+            if ENTITY.match(str(entity["id"])):
                 manifest["entities"][entity["id"]] = store_entity(raw, entity)
                 stored += 1
     manifest["source"] = {"url": "https://www.wikidata.org", "api": API}
@@ -477,6 +543,13 @@ def report_lines(converter: Converter, seeds: list[dict[str, str]], reconciled: 
         lines.append(f"  {pid} as {role}: {row['count']}x in {', '.join(sorted(row['items']))}")
     for text, count in sorted(converter.gaps.other.items()):
         lines.append(f"not imported ({count}x): {text}")
+    if converter.generic:
+        made = sorted(converter.created.items(), key=lambda pair: id_sort_key(pair[1]))
+        lines.append(f"--generic: {len(made)} propert{'y' if len(made) == 1 else 'ies'} created from Wikidata properties without a twin"
+                     + (": " + ", ".join(f"{pid} -> {local} ({out.entities[local].get('label_en', '')}, {out.entities[local]['datatype']})"
+                                         for pid, local in made) if made else ""))
+        for pid, why in sorted(converter.refused.items()):
+            lines.append(f"  not created: {pid}: {why}")
     classes = [local for local in out.entities if out.entities[local]["kind"] == "class"]
     if classes:
         named = ", ".join(f"{local} ({converter.stub_of[local]}, {out.entities[local].get('label_en', '')})"
@@ -502,6 +575,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--seeds", type=Path, default=csv_dir / "seeds-wikidata.csv")
     parser.add_argument("--raw", type=Path, default=utils.DATA_RAW / "wikidata", help="folder for the raw Wikidata JSON")
     parser.add_argument("--languages", default=",".join(DEFAULT_LANGUAGES), help="labels and descriptions to import")
+    parser.add_argument("--generic", action="store_true",
+                        help="a Wikidata property without a twin becomes a local property (a site without a model of its own, S14a)")
+    parser.add_argument("--skip-property", default="", metavar="P1,P2",
+                        help="with --generic: Wikidata properties that are not created (they are reported as without a twin)")
     parser.add_argument("--offline", action="store_true", help="no network: use what is in the raw folder")
     parser.add_argument("--from-dir", metavar="DIR", type=Path, help="store saved JSON files in the raw folder first")
     parser.add_argument("--dry-run", action="store_true", help="print the report, write nothing (implies --offline)")
@@ -512,9 +589,10 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def convert(seeds, raw_entities, site, kernel, idmap, languages) -> Converter:
+def convert(seeds, raw_entities, site, kernel, idmap, languages, generic: bool = False,
+            skip: frozenset[str] = frozenset()) -> Converter:
     twins = twin_map(site, kernel, ORIGINS)
-    converter = Converter(seeds, raw_entities, twins, property_datatypes(kernel, site), idmap, languages)
+    converter = Converter(seeds, raw_entities, twins, property_datatypes(kernel, site), idmap, languages, generic, skip)
     known = {row["id"] for one in (site, kernel) for row in one.entities.rows}
     for seed in seeds:
         for target in classes_of(seed):
@@ -528,6 +606,12 @@ def convert(seeds, raw_entities, site, kernel, idmap, languages) -> Converter:
 def main(argv: list[str] | None = None, client: Client | None = None) -> int:
     args = build_parser().parse_args(argv)
     languages = tuple(code.strip() for code in args.languages.split(",") if code.strip()) or DEFAULT_LANGUAGES
+    skip = frozenset(part.strip() for part in args.skip_property.split(",") if part.strip())
+    bad = sorted(part for part in skip if not PID.match(part))
+    if bad or (skip and not args.generic):
+        print(f"ERROR: [{STEP}] --skip-property takes Wikidata property ids (P18) and only goes with --generic"
+              + (f"; not a property id: {', '.join(bad)}" if bad else ""))
+        return 2
     if args.from_dir and args.dry_run:
         print(f"ERROR: [{STEP}] --from-dir writes the raw folder, --dry-run writes nothing; use one of them")
         return 2
@@ -560,10 +644,12 @@ def main(argv: list[str] | None = None, client: Client | None = None) -> int:
             contact = args.contact or os.environ.get("WBS_CONTACT") or "https://github.com/n4o-rse/wikibase-static"
             client = client or Client(API, f"wikibase-static/{__version__} (+{contact}; static archive, read-only)", delay=args.delay, maxlag=args.maxlag)
             changed, same = refresh(client, args.raw, wanted, True, languages)
-            first = convert(seeds, load_raw(args.raw), site, kernel, IdMap(idmap_rows, taken, SOURCE), languages)
+            first = convert(seeds, load_raw(args.raw), site, kernel, IdMap(idmap_rows, taken, SOURCE), languages, args.generic, skip)
             more = sorted(set(first.stubs) - set(wanted))
             c2, s2 = refresh(client, args.raw, more, False, languages) if more else (0, 0)
-            fetched = (changed + c2, same + s2)
+            made = sorted(first.created)                  # --generic: the Wikidata properties that got a local one need their labels
+            c3, s3 = refresh(client, args.raw, made, True, languages) if made else (0, 0)
+            fetched = (changed + c2 + c3, same + s2 + s3)
         raw_entities = load_raw(args.raw)
         missing = [q for q in wanted if q not in raw_entities]
         if missing:
@@ -571,7 +657,7 @@ def main(argv: list[str] | None = None, client: Client | None = None) -> int:
                   "or give the files with --from-dir")
             return 2
         idmap = IdMap(idmap_rows, taken, SOURCE)
-        converter = convert(seeds, raw_entities, site, kernel, idmap, languages)
+        converter = convert(seeds, raw_entities, site, kernel, idmap, languages, args.generic, skip)
     except (HarvestError, ImportProblem) as err:
         print(f"ERROR: [{STEP}] {err}")
         return getattr(err, "code", 2)

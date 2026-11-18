@@ -10,8 +10,8 @@
     python main.py --strict         warnings become errors (what CI runs)
     python main.py harvest          a step that is not in the default run
 
-``harvest``, ``import-wikidata`` and ``import-osm`` are the only steps that touch the network, so they are never part of
-the default run; give them their own verbs. ``to-csv``, ``csv-fmt``, ``import-open-archaeo``, ``import-osm``, ``import-wikidata``, ``merge`` and ``apply-qs`` write source files
+``harvest``, ``import-wikidata``, ``seeds-from-sparql`` and ``import-osm`` are the only steps that touch the network, so they are never part of
+the default run; give them their own verbs. ``to-csv``, ``csv-fmt``, ``import-open-archaeo``, ``import-osm``, ``import-wikidata``, ``seeds-from-sparql``, ``merge`` and ``apply-qs`` write source files
 (``data/csv/``) and have verbs of their own as well. Anything main.py does not recognise is
 passed on to the step when exactly one step is selected, e.g.
 ``python main.py harvest --probe``.
@@ -43,6 +43,7 @@ STEPS = [
     ("import-open-archaeo", "step_import_open_archaeo", False, "S7c open-archaeo entries -> CSV tables (offline, writes data/csv)"),
     ("import-osm", "step_import_osm", False, "S15a OSM: Overpass + history API -> data/raw/osm, then CSV tables (network; --offline: files only; writes data/csv)"),
     ("import-wikidata", "step_import_wikidata", False, "S7d Wikidata seeds -> CSV tables (network, incremental, writes data/csv)"),
+    ("seeds-from-sparql", "step_seeds_sparql", False, "S14a SPARQL queries + ids -> data/csv/seeds-wikidata.csv (network; --offline: stored answers; writes data/csv)"),
     ("merge", "step_merge", False, "S7h merge an item into another (merge Q381 Q359; writes data/csv/merges.csv)"),
     ("apply-qs", "step_apply_qs", False, "S7e change the CSV tables with a QuickStatements file (apply-qs data/edits/x.qs; writes data/csv)"),
     ("from-csv", "step_from_csv", True, "S7a CSV tables + kernel -> Wikibase JSON in data/derived"),

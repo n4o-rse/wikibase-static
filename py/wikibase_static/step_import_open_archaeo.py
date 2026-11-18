@@ -160,7 +160,9 @@ class IdMap:
     def __init__(self, rows: list[dict[str, str]], taken: set[str], source: str = SOURCE) -> None:
         self.source = source              # the importer that asks; rows of other sources are kept and their ids stay taken
         self.ids: dict[tuple[str, str], str] = {(r["source"], r["key"]): r["id"] for r in rows}
-        self.used = {int(i[1:]) for i in list(self.ids.values()) + sorted(taken) if i[:1] == "Q" and i[1:].isdigit()}
+        everyone = list(self.ids.values()) + sorted(taken)
+        self.used = {int(i[1:]) for i in everyone if i[:1] == "Q" and i[1:].isdigit()}
+        self.used_properties = {int(i[1:]) for i in everyone if i[:1] == "P" and i[1:].isdigit()}   # the numbers of P ids, counted on their own
         self.new = 0
 
     def get(self, key: str) -> str:
@@ -172,6 +174,17 @@ class IdMap:
         self.ids[(self.source, key)] = f"Q{number}"
         self.new += 1
         return f"Q{number}"
+
+    def get_property(self, key: str) -> str:
+        """Like ``get`` for a property: the id is ``P<n>``, numbered from ``FIRST_FREE`` on and never used twice (S14a)."""
+        found = self.ids.get((self.source, key))
+        if found:
+            return found
+        number = max([FIRST_FREE - 1] + sorted(self.used_properties)) + 1
+        self.used_properties.add(number)
+        self.ids[(self.source, key)] = f"P{number}"
+        self.new += 1
+        return f"P{number}"
 
     def text(self) -> str:
         rows = [{"source": s, "key": k, "id": i} for (s, k), i in self.ids.items()]

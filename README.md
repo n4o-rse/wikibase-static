@@ -279,6 +279,26 @@ importer's rows; a row whose `origin` you emptied wins. The report also lists wh
 items of another origin (open-archaeo); nothing is merged. The rules are described at the top of
 `py/wikibase_static/step_import_wikidata.py`.
 
+
+### Sites that are a set of Wikidata items (S14a)
+
+For a site without a model of its own (a list of stones, of holy wells) the seeds come from SPARQL queries and the properties from Wikidata:
+
+```
+python main.py seeds-from-sparql                 run the queries at query.wikidata.org, store the answers, write data/csv/seeds-wikidata.csv
+python main.py seeds-from-sparql --offline       no network: write the list from the stored answers
+python main.py seeds-from-sparql --from-dir DIR  store answers saved in a browser (the JSON download of the Query Service), then write the list
+python main.py import-wikidata --generic         create a local property for every Wikidata property without a twin
+python main.py import-wikidata --generic --skip-property P2671,P646    ... except these
+```
+
+`data/seeds/wikidata-<name>.rq` is a query that returns `?item` (optionally `?kind`, `?itemLabel` or `?note`); `data/seeds/wikidata-qids.txt`
+lists single ids (`Q42  a note`). The list is a function of both and of the stored answers (`data/raw/wikidata-seeds/`); a seed that no source names
+any more is dropped, `note` and `instance_of` of the others are kept. `--generic` creates properties from `P100` on with the Wikidata property as
+twin (`P4`), its labels, its datatype and, for identifiers, the formatter URL; properties whose datatype the CSV cannot hold are reported. Items,
+classes and properties get their own ids (the twin `P4` keeps the Wikidata id), as everywhere in the family. The rules are at the top of
+`py/wikibase_static/step_import_wikidata.py` and `step_seeds_sparql.py`.
+
 ### Merging items (S7h)
 
 The same thing can arrive twice, once from Wikidata and once from open-archaeo. `python main.py merge Q381 Q359` merges the first

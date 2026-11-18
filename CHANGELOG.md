@@ -3,6 +3,24 @@
 Every version is a tag `vX.Y.Z` on the commit that raised `__version__` (`tools/tag_versions.py` makes the missing tags;
 `0.1.0` is the last commit before 0.2.0). The newest version is on top. The work plan with the findings behind each version is `PRIMER.md`.
 
+## 0.27.0
+- `import-wikidata --generic` (S14a): for a site that is a set of Wikidata items and has no model of its own. A Wikidata property
+  without a twin is not only reported but created as a local property (`P100` and up, `origin=wikidata`, numbered through
+  `idmap.csv` with the key `P18`): labels, descriptions and aliases from the Wikidata property, its datatype, the twin `P4` with a
+  reference `P6`, and for an external identifier the formatter URL (Wikidata `P1630`) in the local formatter property. Properties
+  with a datatype the CSV cannot hold (geo-shape, tabular data, ...) are reported, not created; `--skip-property P2671,P646` leaves
+  out properties that only add noise. An existing twin (the kernel's, a hand-made one) is used as before. The class stubs of
+  "instance of" targets hang below the root of the class tree. Without `--generic` nothing changes.
+- The online run fetches the Wikidata property entities of the created properties in full (one request per 50), and a second run asks
+  only for revisions as before; `--from-dir` stores saved property files (`P18.json`) as well as item files.
+- `seeds-from-sparql`, a verb of its own (network): `data/seeds/wikidata-<name>.rq` (a query for the Wikidata Query Service that returns
+  `?item`, optionally `?kind` and `?itemLabel` or `?note`) and `data/seeds/wikidata-qids.txt` (single ids with a note) become
+  `data/csv/seeds-wikidata.csv`. The answers are kept in `data/raw/wikidata-seeds/<name>.json` (canonical, so a change shows in git);
+  `--offline`, `--from-dir DIR` (a JSON download from query.wikidata.org), `--dry-run`, `--max-seeds` (default 2000). `note` and
+  `instance_of` of a seed that stays are kept; a seed that no source names any more is dropped from the list and said.
+- `IdMap.get_property` numbers properties from `P100` on, apart from the items.
+- Tests: 707 in the repository.
+
 ## 0.26.1
 - `tools/satellites.txt` lists three more site repositories: `osm-sisal-static`, `osm-ogham-static`, `osm-holywells-static`.
 - `tools/rollout.py` (and so the update workflow) also pins a requirement that has no ref at all (`...wikibase-static.git`, which follows
