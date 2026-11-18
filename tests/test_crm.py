@@ -20,7 +20,7 @@ sys.path.insert(0, str(REPO / "py"))
 sys.path.insert(0, str(HERE))
 
 import test_build  # noqa: E402
-from wikibase_static import crm, csvbuild, loader, rdf, sparql, step_rdf  # noqa: E402
+from wikibase_static import crm, csvbuild, loader, rdf, sparql, step_check_crm, step_rdf  # noqa: E402
 
 BASE = "https://example.org"
 RDFS = rdf.RDFS
@@ -208,6 +208,54 @@ class AnyWikibase(unittest.TestCase):
         self.assertEqual({str(r[0]) for r in graph.query(query)}, {E73})
 
 
+class ModelClasses(unittest.TestCase):
+    """A class of the data model (a vocabulary class, a SKOS class, a role) is marked ``model`` in ``data/crm.csv``: it is not anchored on
+    purpose, so the load report does not count it as missing and ``check-crm`` leaves it out."""
+
+    MARKED = OVERLAY + "Q200,model,root of the vocabulary classes\n"
+
+    def test_a_model_row_is_read_apart_from_the_overlay(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "crm.csv"
+            path.write_text("class,crm_class,note\nQ100,crmdig:D14,\nQ200,model,\nQ201,MODEL,\nQ999,model,\n", encoding="utf-8")
+            model: set[str] = set()
+            overlay, problems = crm.read_overlay(path, {"Q100", "Q200", "Q201"}, model)
+        self.assertEqual((overlay, model), ({"Q100": ["crmdig:D14_Software"]}, {"Q200", "Q201"}))
+        self.assertEqual(len(problems), 1)
+        self.assertIn("Q999 is not an entity", problems[0])
+
+    def test_a_class_with_a_crm_class_and_a_model_mark_keeps_the_crm_class(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "crm.csv"
+            path.write_text("class,crm_class,note\nQ100,crmdig:D14,\nQ100,model,\n", encoding="utf-8")
+            model: set[str] = set()
+            overlay, problems = crm.read_overlay(path, None, model)
+        self.assertEqual((list(overlay), model, len(problems)), (["Q100"], set(), 1))
+
+    def test_the_mark_is_inherited_down_the_tree_but_never_over_an_anchor(self) -> None:
+        site = harvested_site("P2", "P1", self.MARKED)
+        self.assertEqual(site.crm_model, {"Q200"})
+        self.assertTrue(site.crm_is_model("Q200"))
+        self.assertTrue(site.crm_is_model("Q103"))                  # below Q200
+        self.assertFalse(site.crm_is_model("Q101"))                 # anchored through Q100
+        self.assertEqual(site.crm_anchors("Q103"), [])
+
+    def test_check_crm_flags_the_loose_classes_and_leaves_the_marked_ones_out(self) -> None:
+        for overlay, left in ((OVERLAY, ["Q103", "Q200"]), (self.MARKED, [])):
+            site = harvested_site("P2", "P1", overlay)
+            result = rdf.build(site, rdf.Namespaces(BASE))
+            turtle = rdf.to_turtle(result.triples, rdf.Namespaces(BASE), "", [(rdf.BRIDGE_TITLE, result.bridge), (rdf.CRM_TITLE, result.crm)])
+            rows = step_check_crm.validate(turtle, BASE, site.class_properties(), site.has_kernel())
+            rows, _skipped = step_check_crm.without_model(site, BASE, rows)
+            self.assertEqual(sorted(f.rsplit("/", 1)[-1] for s, f, m in rows if s == "Violation" and f.startswith(BASE + "/entity/")), left)
+
+    def test_a_harvested_wikibase_has_real_classes_at_q1_to_q3(self) -> None:
+        text = step_check_crm.shapes_text(BASE, (frozenset({"P2"}), frozenset({"P1"})), kernel=False)
+        self.assertNotIn("/entity/Q1>", text)
+        self.assertIn("/entity/Q1>", step_check_crm.shapes_text(BASE))
+        self.assertIn("targetSubjectsOf <https://example.org/prop/direct/P1>", text)
+
+
 class Exporting(unittest.TestCase):
     def test_the_class_says_subclass_of_the_crm_class_and_the_extension_is_aligned(self) -> None:
         result = rdf.build(csv_site(OVERLAY), rdf.Namespaces(BASE))
@@ -260,6 +308,13 @@ class Page(test_build.Site):
         self.assertIn('title="http://www.cidoc-crm.org/cidoc-crm/E73_Information_Object"', page)
         self.assertIn("none yet", self.page("Q2.html"))
         self.assertNotIn('<p class="crm">', self.page("P1.html"))              # a property has no CRM class
+
+    def test_a_class_marked_model_says_so_instead_of_none_yet(self) -> None:
+        (self.root / "data" / "crm.csv").write_text("class,crm_class,note\nQ1,crm:E73,x\nQ2,model,y\n", encoding="utf-8")
+        self.build()
+        self.assertIn("not anchored on purpose", self.page("Q2.html"))
+        self.assertNotIn("none yet", self.page("Q2.html"))
+        self.assertIn("<code>crm:E73_Information_Object</code>", self.page("Q1.html"))
 
     def test_a_site_without_an_overlay_has_no_such_line(self) -> None:
         self.build()

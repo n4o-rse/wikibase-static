@@ -53,6 +53,7 @@ class Site:
     latest_modified: str | None = None
     crm: dict[str, list[str]] = field(default_factory=dict)   # data/crm.csv: class id -> CRM classes (S11)
     redirects: dict[str, str] = field(default_factory=dict)   # merged id -> id it was merged into (data/derived/redirects.json, S7e)
+    crm_model: set[str] = field(default_factory=set)         # data/crm.csv: classes marked "model" (not anchored on purpose)
     _class_properties: tuple | None = field(default=None, init=False, repr=False, compare=False)
 
     @property
@@ -139,6 +140,14 @@ class Site:
     def crm_anchors(self, entity_id: str, edges: dict[str, list[str]] | None = None) -> list["crm.Anchor"]:
         """The CIDOC CRM classes of an entity from ``data/crm.csv``: its own, then those of the classes above it."""
         return crm.anchors(self.crm, self.crm_edges() if edges is None else edges, entity_id) if self.crm else []
+
+    def crm_is_model(self, entity_id: str, edges: dict[str, list[str]] | None = None) -> bool:
+        """A class of the data model that is not anchored on purpose: marked ``model`` in ``data/crm.csv`` itself or below a class that is,
+        and with no CRM class of its own or inherited (a class that has one is anchored, whatever is above it)."""
+        if not self.crm_model or self.crm_anchors(entity_id, edges):
+            return False
+        edges = self.crm_edges() if edges is None else edges
+        return any(carrier in self.crm_model for carrier in crm.ancestors(edges, entity_id))
 
     def crm_classes(self) -> list[str]:
         """The items that are classes: the target of a ``subclass of`` or ``instance of`` statement, or with a ``subclass of``
@@ -365,7 +374,7 @@ def load_site(raw: Path | None = None, derived: Path | None = None) -> Site:
 
     site.entities = dict(sorted(site.entities.items(), key=lambda kv: id_sort_key(kv[0])))
     _read_redirects(site, derived / "redirects.json")
-    site.crm, crm_problems = crm.read_overlay(raw.parent / "crm.csv", set(site.entities))
+    site.crm, crm_problems = crm.read_overlay(raw.parent / "crm.csv", set(site.entities), site.crm_model)
     problems.extend(crm_problems)
     _check_manifest(site, raw)
     _check_references(site)

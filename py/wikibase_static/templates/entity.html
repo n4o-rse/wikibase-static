@@ -38,7 +38,7 @@
   {% if crm_rows is not none %}
   <p class="crm"><span class="muted">{{ ui_crm }}:</span>
     {% for row in crm_rows %}<span class="crm-class" title="{{ row.iri }}"><code>{{ row.curie }}</code>{% if row.via %} <span class="muted">({{ ui_crm_from }} {{ row.via }})</span>{% endif %}</span>{% if not loop.last %}, {% endif %}{% endfor %}
-    {% if not crm_rows %}<span class="muted">{{ ui_crm_none }}</span>{% endif %}
+    {% if not crm_rows %}<span class="muted">{{ ui_crm_model if crm_model else ui_crm_none }}</span>{% endif %}
   </p>
   {% endif %}
 

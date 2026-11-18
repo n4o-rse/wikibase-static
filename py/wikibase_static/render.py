@@ -61,7 +61,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "page_downloads": "Download", "download_ttl": "RDF (Turtle)", "download_json": "JSON",
         "copy_uri": "Copy concept URI", "copy_page_uri": "Copy page URL", "copied": "Copied",
         "counterpart": "The same entity in {name}", "counterpart_table": "Table of the ids in {name} (CSV)",
-        "crm": "CIDOC CRM class", "crm_from": "from", "crm_none": "none yet",
+        "crm": "CIDOC CRM class", "crm_from": "from", "crm_none": "none yet", "crm_model": "none: a class of the data model, not anchored on purpose",
         "rank": "Rank", "rank_normal": "normal",
         "no_value": "no value", "rank_preferred": "preferred", "rank_deprecated": "deprecated",
         "datatype": "Data type", "referenced_by": "Referenced by ({n})", "items": "Items", "properties": "Properties",
@@ -124,7 +124,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "page_downloads": "Herunterladen", "download_ttl": "RDF (Turtle)", "download_json": "JSON",
         "copy_uri": "Konzept-URI kopieren", "copy_page_uri": "Seiten-URL kopieren", "copied": "Kopiert",
         "counterpart": "Dieselbe Entität in {name}", "counterpart_table": "Tabelle der IDs in {name} (CSV)",
-        "crm": "CIDOC-CRM-Klasse", "crm_from": "von", "crm_none": "noch keine",
+        "crm": "CIDOC-CRM-Klasse", "crm_from": "von", "crm_none": "noch keine", "crm_model": "keine: Klasse des Datenmodells, bewusst nicht verankert",
         "rank": "Rang", "rank_normal": "normal",
         "no_value": "kein Wert", "rank_preferred": "bevorzugt", "rank_deprecated": "veraltet",
         "datatype": "Datentyp", "referenced_by": "Verwendet von ({n})", "items": "Items", "properties": "Properties",
@@ -425,7 +425,7 @@ class Renderer:
         """The CIDOC CRM classes of an item for the page (S11): ``None`` when the site has no ``data/crm.csv`` or the entity is
         a property or a kernel item; an empty list when the item has none yet. ``via`` is the link to the class the row
         was inherited from, ``None`` where the entity says it itself."""
-        if not self.site.crm or entity.kind != "item":
+        if not (self.site.crm or self.site.crm_model) or entity.kind != "item":
             return None
         if self._crm_edges is None:
             self._crm_edges = self.site.crm_edges()
@@ -434,6 +434,13 @@ class Renderer:
             return None
         return [{"curie": a.curie, "iri": crm.iri(a.curie), "via": None if a.via == entity.id else self.entity_link(a.via, show_id=False)}
                 for a in self.site.crm_anchors(entity.id, self._crm_edges)]
+
+    def crm_is_model(self, entity: Entity) -> bool:
+        """True for a class marked ``model`` in ``data/crm.csv`` (or below one) that has no CRM class: the page says so instead of "none yet"."""
+        if self._crm_edges is None:
+            self._crm_edges = self.site.crm_edges()
+            self._kernel = self.site.has_kernel()
+        return entity.kind == "item" and self.site.crm_is_model(entity.id, self._crm_edges)
 
     def heading(self, entity_id: str) -> Markup:
         """``Label (Q1)`` for the page heading."""

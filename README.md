@@ -411,7 +411,7 @@ root class anchors the whole tree; an own row comes before an inherited one, and
 `load` reports the classes that have none, entity pages show the class (and the class it comes from), `rdf` writes
 `rdfs:subClassOf <crm class>` in a section of its own and, for an extension class, the chain up to the first `crm:` class
 (D14 to D1 to E73), so that tools which follow `rdfs:subClassOf` to CIDOC CRM reach it. The default query `crm-classes`
-lists the result. Without `data/crm.csv` nothing changes. The overlay works on every site: the properties "instance of" and "subclass of" are P2 and P1 with the kernel of `from-csv`, and on any other site (a harvested Wikibase, a copy of Wikidata) they are found by their English label (or P31 and P279).
+lists the result. Without `data/crm.csv` nothing changes. A class of the data model (a vocabulary class, a SKOS class, a role) that is not meant to be anchored gets the value `model` in `crm_class`; `load` and `check-crm` then leave it out of what is missing. The overlay works on every site: the properties "instance of" and "subclass of" are P2 and P1 with the kernel of `from-csv`, and on any other site (a harvested Wikibase, a copy of Wikidata) they are found by their English label (or P31 and P279).
 
 The export also ties the DCAT classes it uses to the CRM (`data/dcat-crm.csv` of the package: `dcat:Dataset` is an E73, `dcat:Catalog` an
 E31 and a D1, `dcat:Distribution` a D1) and, with an overlay, writes `subclass of` / `instance of` as plain `rdfs:subClassOf` / `rdf:type`,

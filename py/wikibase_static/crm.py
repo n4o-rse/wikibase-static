@@ -65,6 +65,7 @@ _CODE = re.compile(r"^(?P<prefix>[a-z]+):(?P<name>[A-Za-z][A-Za-z0-9]*(?:_[A-Za-
 _SHORT = re.compile(r"^[A-Za-z]+[0-9]+[a-z]?$")
 ENTITY_ID = re.compile(r"^Q[1-9][0-9]*$")
 COLUMNS = ["class", "crm_class", "note"]
+MODEL = "model"       # in the column crm_class: a class of the data model, deliberately not anchored in the CIDOC CRM
 DCAT = "http://www.w3.org/ns/dcat#"
 DCAT_FILE = Path(__file__).resolve().parent / "data" / "dcat-crm.csv"
 DCAT_COLUMNS = ["dcat_class", "crm_class", "status", "note"]
@@ -117,8 +118,11 @@ def chain(curie: str) -> list[tuple[str, str]]:
     return pairs
 
 
-def read_overlay(path: Path, known_ids: set[str] | None = None) -> tuple[dict[str, list[str]], list[str]]:
+def read_overlay(path: Path, known_ids: set[str] | None = None, model: set[str] | None = None) -> tuple[dict[str, list[str]], list[str]]:
     """The overlay (class id -> CRM classes in the order of the file) and the problems with it, as sorted messages.
+
+    A row whose ``crm_class`` is ``model`` says that the class belongs to the data model of the site (a vocabulary class, a SKOS
+    class, a role) and is deliberately not anchored in the CIDOC CRM; its id is added to ``model`` (when given), not to the overlay.
 
     A row with an unknown family, a malformed class or a class the site does not hold is reported and skipped; a
     row twice is reported once. ``known_ids`` is the set of entity ids of the site (``None`` skips that check)."""
@@ -142,6 +146,12 @@ def read_overlay(path: Path, known_ids: set[str] | None = None) -> tuple[dict[st
         if not ENTITY_ID.match(class_id):
             problems.append(f"{where}: {class_id!r} is not an entity id like Q100")
             continue
+        if curie.lower() == MODEL:
+            if known_ids is not None and class_id not in known_ids:
+                problems.append(f"{where}: {class_id} is not an entity of this site")
+            elif model is not None:
+                model.add(class_id)
+            continue
         match = _CODE.match(curie)
         if not match or match.group("prefix") not in FAMILIES:
             problems.append(f"{where}: {curie!r} is not a class of an allowed family ({', '.join(sorted(FAMILIES))}) in the form prefix:Name")
@@ -154,6 +164,10 @@ def read_overlay(path: Path, known_ids: set[str] | None = None) -> tuple[dict[st
             problems.append(f"{where}: {class_id} {curie} is listed twice")
         else:
             overlay[class_id].append(curie)
+    if model is not None:
+        for class_id in sorted(model & set(overlay)):
+            problems.append(f"{OVERLAY_FILE}: {class_id} has a CRM class and is marked {MODEL}; the mark is ignored")
+        model -= set(overlay)
     return overlay, sorted(set(problems))
 
 

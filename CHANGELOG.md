@@ -3,6 +3,17 @@
 Every version is a tag `vX.Y.Z` on the commit that raised `__version__` (`tools/tag_versions.py` makes the missing tags;
 `0.1.0` is the last commit before 0.2.0). The newest version is on top. The work plan with the findings behind each version is `PRIMER.md`.
 
+## 0.32.0
+- `check-crm` works on every site. Its shapes took P1 and P2 of the kernel as "subclass of" and "instance of", so on a harvested Wikibase they flagged
+  the items (the subjects of P1 where P1 is "instance of") and, with Q1 to Q3 left out unconditionally, missed real classes at those ids.
+  The targets now come from `Site.class_properties()` and Q1 to Q3 are left out only on a site with the kernel; kernel sites check as before.
+- New value `model` in the column `crm_class` of `data/crm.csv`: the class belongs to the data model (a vocabulary class, a SKOS class, a role) and is
+  not anchored in the CIDOC CRM on purpose. The mark holds for the classes below it unless one has a CRM class of its own (an anchor wins).
+  `load` counts such classes as "marked model" and no longer lists them as missing, `check-crm` leaves them out ("N model class(es) not checked"),
+  the page of such a class says "none: a class of the data model, not anchored on purpose" instead of "none yet". A class with a CRM row and the mark
+  is a problem and keeps the CRM class.
+- 6 new tests (768 in all).
+
 ## 0.31.0
 - The CIDOC CRM overlay (`data/crm.csv`) works on every site, not only on one made by `from-csv`. Until now the CRM class and the inherited-from class
   appeared on the page of an item, and `rdfs:subClassOf` / `rdf:type` were written out, only when the site had the N4O kernel (Q1 to Q3, P1, P2).

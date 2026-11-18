@@ -41,12 +41,14 @@ def main(argv: list[str] | None = None) -> int:
     if counts:
         detail = ", ".join(f"{name} {n}" for name, n in counts.items())
         print(f"[{STEP}] {site.statement_count()} statements: {detail}")
-    if site.crm:
+    if site.crm or site.crm_model:
         classes = site.crm_classes()
         edges = site.crm_edges()
-        without = [c for c in classes if not site.crm_anchors(c, edges)]
-        print(f"[{STEP}] CIDOC CRM (data/crm.csv): {len(site.crm)} row-carrying class(es); {len(classes) - len(without)} of {len(classes)} classes anchored"
-              + (f", without: {', '.join(without)}" if without else ""))
+        open_ = [c for c in classes if not site.crm_anchors(c, edges)]
+        model = [c for c in open_ if site.crm_is_model(c, edges)]
+        without = [c for c in open_ if c not in model]
+        print(f"[{STEP}] CIDOC CRM (data/crm.csv): {len(site.crm)} row-carrying class(es); {len(classes) - len(open_)} of {len(classes)} classes anchored"
+              + (f", {len(model)} marked model" if model else "") + (f", without: {', '.join(without)}" if without else ""))
     if site.source_url:
         print(f"[{STEP}] source: {site.source_url}"
               + (f" (latest change {site.latest_modified})" if site.latest_modified else ""))

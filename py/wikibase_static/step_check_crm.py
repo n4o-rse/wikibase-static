@@ -30,11 +30,28 @@ SHAPES = Path(__file__).resolve().parent / "data" / "shapes-crm.ttl"
 SH = "http://www.w3.org/ns/shacl#"
 
 
-def shapes_text(base: str) -> str:
-    return SHAPES.read_text(encoding="utf-8").replace("@@base@@", base.rstrip("/"))
+def target_lines(base: str, class_properties: tuple | None = None) -> str:
+    """The ``sh:target...`` lines of the two shapes: the classes are the ends of "subclass of" and "instance of" of the site (P1 and P2 of the
+    kernel, which is what the shapes assumed up to 0.30.1, or the ``Site.class_properties`` of a harvested Wikibase)."""
+    instance, subclass = class_properties if class_properties is not None else (frozenset({"P2"}), frozenset({"P1"}))
+    direct = lambda ids: " , ".join(f"<{base.rstrip('/')}/prop/direct/{p}>" for p in sorted(ids))     # noqa: E731
+    lines = ""
+    if subclass:
+        lines += f"    sh:targetSubjectsOf {direct(subclass)} ;\n"
+    if subclass or instance:
+        lines += f"    sh:targetObjectsOf {direct(subclass | instance)} ;\n"
+    return lines
 
 
-def validate(turtle: str, base: str) -> list[tuple[str, str, str]]:
+def shapes_text(base: str, class_properties: tuple | None = None, kernel: bool = True) -> str:
+    """The shapes for a site; ``kernel`` leaves Q1 to Q3 out (the kernel of ``from-csv``), a harvested Wikibase has real classes there."""
+    skip = (f"              FILTER ( $this NOT IN ( <{base.rstrip('/')}/entity/Q1>, <{base.rstrip('/')}/entity/Q2>, <{base.rstrip('/')}/entity/Q3> ) )\n"
+            if kernel else "")
+    return (SHAPES.read_text(encoding="utf-8").replace("@@kernel@@", skip).replace("@@targets@@", target_lines(base, class_properties))
+            .replace("@@base@@", base.rstrip("/")))
+
+
+def validate(turtle: str, base: str, class_properties: tuple | None = None, kernel: bool = True) -> list[tuple[str, str, str]]:
     """``(severity, focus node, message)`` for each result, sorted; severity is ``Violation`` or ``Warning``."""
     import pyshacl
     import rdflib
@@ -42,7 +59,7 @@ def validate(turtle: str, base: str) -> list[tuple[str, str, str]]:
     data = rdflib.Graph()
     data.parse(data=turtle, format="turtle")
     shapes = rdflib.Graph()
-    shapes.parse(data=shapes_text(base), format="turtle")
+    shapes.parse(data=shapes_text(base, class_properties, kernel), format="turtle")
     _conforms, report, _text = pyshacl.validate(data, shacl_graph=shapes, inference="none", advanced=True)
     rows = []
     for result in report.subjects(rdflib.RDF.type, rdflib.URIRef(SH + "ValidationResult")):
@@ -51,6 +68,14 @@ def validate(turtle: str, base: str) -> list[tuple[str, str, str]]:
         message = str(report.value(result, rdflib.URIRef(SH + "resultMessage")))
         rows.append((severity, focus, message))
     return sorted(set(rows))
+
+
+def without_model(site, base: str, rows: list[tuple[str, str, str]]) -> tuple[list[tuple[str, str, str]], set[str]]:
+    """The results without those for classes marked ``model`` in ``data/crm.csv`` (or below one), and the focus nodes left out."""
+    edges = site.crm_edges()
+    prefix = base.rstrip("/") + "/entity/"
+    skipped = {iri for _severity, iri, _message in rows if iri.startswith(prefix) and site.crm_is_model(iri[len(prefix):], edges)}
+    return [r for r in rows if r[1] not in skipped], skipped
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -67,18 +92,19 @@ def main(argv: list[str] | None = None) -> int:
         utils.nothing_to_do(STEP, f"{target.relative_to(utils.ROOT).as_posix()} not found: run `python main.py rdf` first")
         return 0
     site = load_site()
-    if not site.crm:
+    if not (site.crm or site.crm_model):
         classes = site.crm_classes()
         if classes:
             utils.warn(STEP, f"no data/crm.csv: {len(classes)} class(es) have no CIDOC CRM class ({', '.join(classes[:8])}{', ...' if len(classes) > 8 else ''})")
     try:
-        rows = validate(target.read_text(encoding="utf-8"), base)
+        rows = validate(target.read_text(encoding="utf-8"), base, site.class_properties(), site.has_kernel())
     except ImportError:
         utils.warn(STEP, "pySHACL is not installed (pip install pyshacl)")
         return 0
+    rows, skipped = without_model(site, base, rows)                 # classes of the data model, marked "model" in data/crm.csv
     violations = [r for r in rows if r[0] == "Violation"]
     notes = [r for r in rows if r[0] != "Violation"]
-    print(f"[{STEP}] {target.name}: {len(violations)} violation(s), {len(notes)} warning(s)")
+    print(f"[{STEP}] {target.name}: {len(violations)} violation(s), {len(notes)} warning(s)" + (f", {len(skipped)} model class(es) not checked" if skipped else ""))
     for _severity, focus, message in violations:
         utils.warn(STEP, message.replace(focus, _short(focus, base)))
     for _severity, focus, message in notes:
